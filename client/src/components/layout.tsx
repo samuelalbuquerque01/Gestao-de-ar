@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { LayoutDashboard, Fan, Wrench, FileText, Users, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Fan, Wrench, FileText, Users, Menu, X, LogOut, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const { user, logout } = useAuth();
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
@@ -54,16 +56,19 @@ export function Layout({ children }: LayoutProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-4">
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent/50">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-            AD
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase">
+            {user?.name?.substring(0, 2) || 'AD'}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">Admin User</p>
-            <p className="text-xs text-muted-foreground truncate">admin@neuro.com</p>
+            <p className="text-sm font-medium truncate">{user?.name || 'Usuário'}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email || 'email@exemplo.com'}</p>
           </div>
         </div>
+        <Button variant="outline" className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={logout}>
+          <LogOut className="w-4 h-4 mr-2" /> Sair
+        </Button>
       </div>
     </div>
   );
