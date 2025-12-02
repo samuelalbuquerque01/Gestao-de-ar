@@ -9,6 +9,15 @@ export type ServiceType = 'PREVENTIVA' | 'CORRETIVA' | 'INSTALACAO' | 'LIMPEZA' 
 export type ServiceStatus = 'AGENDADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO' | 'PENDENTE';
 export type Priority = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
 
+export interface Technician {
+  id: string;
+  nome: string;
+  especialidade: string;
+  telefone: string;
+  email?: string;
+  status: 'ATIVO' | 'INATIVO';
+}
+
 export interface Machine {
   id: string;
   codigo: string;
@@ -20,6 +29,7 @@ export interface Machine {
   localizacaoTipo: LocationType;
   localizacaoDescricao: string;
   localizacaoAndar?: number;
+  filial: string;
   dataInstalacao: string;
   status: MachineStatus;
   observacoes?: string;
@@ -31,6 +41,7 @@ export interface Service {
   maquinaId: string;
   dataAgendamento: string;
   dataConclusao?: string;
+  tecnicoId?: string;
   tecnicoNome: string;
   descricaoProblema?: string;
   descricaoServico: string;
@@ -40,6 +51,30 @@ export interface Service {
 }
 
 // Mock Data
+const INITIAL_TECHNICIANS: Technician[] = [
+  {
+    id: '1',
+    nome: 'Carlos Silva',
+    especialidade: 'Refrigeração Geral',
+    telefone: '(85) 99999-1111',
+    status: 'ATIVO'
+  },
+  {
+    id: '2',
+    nome: 'Roberto Santos',
+    especialidade: 'Elétrica e Comandos',
+    telefone: '(85) 99999-2222',
+    status: 'ATIVO'
+  },
+  {
+    id: '3',
+    nome: 'Ana Paula',
+    especialidade: 'Projetos e Vistoria',
+    telefone: '(85) 99999-3333',
+    status: 'ATIVO'
+  }
+];
+
 const INITIAL_MACHINES: Machine[] = [
   {
     id: '1',
@@ -52,6 +87,7 @@ const INITIAL_MACHINES: Machine[] = [
     localizacaoTipo: 'SALA_REUNIAO',
     localizacaoDescricao: 'Sala Principal',
     localizacaoAndar: 2,
+    filial: 'Matriz',
     dataInstalacao: '2023-01-15',
     status: 'ATIVO',
   },
@@ -66,6 +102,7 @@ const INITIAL_MACHINES: Machine[] = [
     localizacaoTipo: 'ESCRITORIO',
     localizacaoDescricao: 'RH - Sala 3',
     localizacaoAndar: 1,
+    filial: 'Matriz',
     dataInstalacao: '2023-03-10',
     status: 'MANUTENCAO',
   },
@@ -80,6 +117,7 @@ const INITIAL_MACHINES: Machine[] = [
     localizacaoTipo: 'SALA',
     localizacaoDescricao: 'Recepção',
     localizacaoAndar: 0,
+    filial: 'Filial Centro',
     dataInstalacao: '2022-11-05',
     status: 'ATIVO',
   },
@@ -94,6 +132,7 @@ const INITIAL_MACHINES: Machine[] = [
     localizacaoTipo: 'QUARTO',
     localizacaoDescricao: 'Alojamento - Quarto 10',
     localizacaoAndar: 3,
+    filial: 'Filial Aldeota',
     dataInstalacao: '2021-06-20',
     status: 'DEFEITO',
   }
@@ -105,6 +144,7 @@ const INITIAL_SERVICES: Service[] = [
     tipoServico: 'PREVENTIVA',
     maquinaId: '1',
     dataAgendamento: new Date().toISOString(),
+    tecnicoId: '1',
     tecnicoNome: 'Carlos Silva',
     descricaoServico: 'Limpeza de filtros e verificação de gás',
     prioridade: 'MEDIA',
@@ -115,6 +155,7 @@ const INITIAL_SERVICES: Service[] = [
     tipoServico: 'CORRETIVA',
     maquinaId: '2',
     dataAgendamento: subDays(new Date(), 2).toISOString(),
+    tecnicoId: '2',
     tecnicoNome: 'Roberto Santos',
     descricaoProblema: 'Não está gelando',
     descricaoServico: 'Troca do capacitor',
@@ -127,6 +168,7 @@ const INITIAL_SERVICES: Service[] = [
     maquinaId: '3',
     dataAgendamento: subDays(new Date(), 15).toISOString(),
     dataConclusao: subDays(new Date(), 15).toISOString(),
+    tecnicoId: '1',
     tecnicoNome: 'Carlos Silva',
     descricaoServico: 'Higienização completa',
     prioridade: 'BAIXA',
@@ -137,6 +179,7 @@ const INITIAL_SERVICES: Service[] = [
     tipoServico: 'VISTORIA',
     maquinaId: '4',
     dataAgendamento: addDays(new Date(), 5).toISOString(),
+    tecnicoId: '3',
     tecnicoNome: 'Ana Paula',
     descricaoServico: 'Avaliação técnica para troca',
     prioridade: 'MEDIA',
@@ -148,12 +191,16 @@ const INITIAL_SERVICES: Service[] = [
 interface DataContextType {
   machines: Machine[];
   services: Service[];
+  technicians: Technician[];
   addMachine: (machine: Omit<Machine, 'id'>) => void;
   updateMachine: (id: string, machine: Partial<Machine>) => void;
   deleteMachine: (id: string) => void;
   addService: (service: Omit<Service, 'id'>) => void;
   updateService: (id: string, service: Partial<Service>) => void;
   deleteService: (id: string) => void;
+  addTechnician: (technician: Omit<Technician, 'id'>) => void;
+  updateTechnician: (id: string, technician: Partial<Technician>) => void;
+  deleteTechnician: (id: string) => void;
   getMachine: (id: string) => Machine | undefined;
 }
 
@@ -162,6 +209,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export function DataProvider({ children }: { children: ReactNode }) {
   const [machines, setMachines] = useState<Machine[]>(INITIAL_MACHINES);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [technicians, setTechnicians] = useState<Technician[]>(INITIAL_TECHNICIANS);
 
   const addMachine = (machine: Omit<Machine, 'id'>) => {
     const newMachine = { ...machine, id: Math.random().toString(36).substr(2, 9) };
@@ -191,11 +239,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setServices(services.filter(s => s.id !== id));
   };
 
+  const addTechnician = (technician: Omit<Technician, 'id'>) => {
+    const newTech = { ...technician, id: Math.random().toString(36).substr(2, 9) };
+    setTechnicians([...technicians, newTech]);
+  };
+
+  const updateTechnician = (id: string, updatedData: Partial<Technician>) => {
+    setTechnicians(technicians.map(t => t.id === id ? { ...t, ...updatedData } : t));
+  };
+
+  const deleteTechnician = (id: string) => {
+    setTechnicians(technicians.filter(t => t.id !== id));
+  };
+
   return (
     <DataContext.Provider value={{ 
-      machines, services, 
+      machines, services, technicians,
       addMachine, updateMachine, deleteMachine, getMachine,
-      addService, updateService, deleteService 
+      addService, updateService, deleteService,
+      addTechnician, updateTechnician, deleteTechnician
     }}>
       {children}
     </DataContext.Provider>

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Edit2, Trash2, MapPin, Power } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, MapPin, Power, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -45,6 +45,7 @@ const machineSchema = z.object({
   localizacaoTipo: z.string(),
   localizacaoDescricao: z.string().min(1, "Localização é obrigatória"),
   localizacaoAndar: z.coerce.number().optional(),
+  filial: z.string().min(1, "Filial é obrigatória"),
   dataInstalacao: z.string().min(1, "Data é obrigatória"),
   status: z.string(),
   observacoes: z.string().optional(),
@@ -59,6 +60,7 @@ export default function MachinesPage() {
   const filteredMachines = machines.filter(m => 
     m.codigo.toLowerCase().includes(filter.toLowerCase()) ||
     m.localizacaoDescricao.toLowerCase().includes(filter.toLowerCase()) ||
+    m.filial.toLowerCase().includes(filter.toLowerCase()) ||
     m.marca.toLowerCase().includes(filter.toLowerCase())
   );
 
@@ -74,6 +76,7 @@ export default function MachinesPage() {
       localizacaoTipo: 'SALA',
       localizacaoDescricao: '',
       localizacaoAndar: 0,
+      filial: '',
       dataInstalacao: new Date().toISOString().split('T')[0],
       status: 'ATIVO',
       observacoes: ''
@@ -120,6 +123,7 @@ export default function MachinesPage() {
       localizacaoTipo: 'SALA',
       localizacaoDescricao: '',
       localizacaoAndar: 0,
+      filial: '',
       dataInstalacao: new Date().toISOString().split('T')[0],
       status: 'ATIVO',
       observacoes: ''
@@ -261,9 +265,23 @@ export default function MachinesPage() {
                   
                   <div className="md:col-span-2 border-t pt-4 mt-2">
                     <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" /> Localização
+                      <MapPin className="w-4 h-4" /> Localização e Filial
                     </h4>
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="filial"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Filial</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Matriz, Filial Centro..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
@@ -353,7 +371,7 @@ export default function MachinesPage() {
       <div className="flex items-center gap-2 bg-card p-2 rounded-md border shadow-sm">
         <Search className="w-4 h-4 text-muted-foreground ml-2" />
         <Input 
-          placeholder="Buscar por código, marca ou local..." 
+          placeholder="Buscar por código, marca, local ou filial..." 
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="border-0 focus-visible:ring-0 shadow-none"
@@ -370,6 +388,7 @@ export default function MachinesPage() {
               <TableHead>Código</TableHead>
               <TableHead>Equipamento</TableHead>
               <TableHead className="hidden md:table-cell">Localização</TableHead>
+              <TableHead className="hidden md:table-cell">Filial</TableHead>
               <TableHead className="hidden sm:table-cell">Capacidade</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -378,7 +397,7 @@ export default function MachinesPage() {
           <TableBody>
             {filteredMachines.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhuma máquina encontrada.
                 </TableCell>
               </TableRow>
@@ -403,6 +422,12 @@ export default function MachinesPage() {
                       {machine.localizacaoAndar !== undefined && (
                          <span className="text-xs text-muted-foreground pl-4">{machine.localizacaoAndar}º Andar</span>
                       )}
+                    </div>
+                  </TableCell>
+                   <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center gap-1">
+                       <Building2 className="w-3 h-3 text-muted-foreground" />
+                       {machine.filial}
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">

@@ -33,7 +33,7 @@ const serviceSchema = z.object({
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
   dataAgendamento: z.string().min(1, "Data é obrigatória"),
   horaAgendamento: z.string().optional(),
-  tecnicoNome: z.string().min(1, "Técnico é obrigatório"),
+  tecnicoId: z.string().min(1, "Técnico é obrigatório"),
   descricaoServico: z.string().min(1, "Descrição é obrigatória"),
   descricaoProblema: z.string().optional(),
   prioridade: z.string(),
@@ -42,7 +42,7 @@ const serviceSchema = z.object({
 });
 
 export default function ServicesPage() {
-  const { services, machines, addService, updateService, deleteService } = useData();
+  const { services, machines, technicians, addService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -64,7 +64,7 @@ export default function ServicesPage() {
       maquinaId: '',
       dataAgendamento: new Date().toISOString().split('T')[0],
       horaAgendamento: '08:00',
-      tecnicoNome: '',
+      tecnicoId: '',
       descricaoServico: '',
       descricaoProblema: '',
       prioridade: 'MEDIA',
@@ -76,10 +76,13 @@ export default function ServicesPage() {
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
     // Combine date and time
     const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento || '00:00'}:00`).toISOString();
+    
+    const selectedTech = technicians.find(t => t.id === data.tecnicoId);
 
     const formattedData = {
       ...data,
       dataAgendamento: dateTime,
+      tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       tipoServico: data.tipoServico as ServiceType,
       prioridade: data.prioridade as Priority,
       status: data.status as ServiceStatus
@@ -100,6 +103,7 @@ export default function ServicesPage() {
     const dateObj = new Date(service.dataAgendamento);
     form.reset({
       ...service,
+      tecnicoId: service.tecnicoId || '', // Handle legacy records
       dataAgendamento: dateObj.toISOString().split('T')[0],
       horaAgendamento: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       maquinaId: service.maquinaId
@@ -114,7 +118,7 @@ export default function ServicesPage() {
       maquinaId: '',
       dataAgendamento: new Date().toISOString().split('T')[0],
       horaAgendamento: '08:00',
-      tecnicoNome: '',
+      tecnicoId: '',
       descricaoServico: '',
       descricaoProblema: '',
       prioridade: 'MEDIA',
@@ -174,7 +178,7 @@ export default function ServicesPage() {
                           <SelectContent>
                             {machines.map(m => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.codigo} - {m.modelo} ({m.localizacaoDescricao})
+                                {m.codigo} - {m.modelo} ({m.filial})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -261,13 +265,24 @@ export default function ServicesPage() {
 
                   <FormField
                     control={form.control}
-                    name="tecnicoNome"
+                    name="tecnicoId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
                         <FormLabel>Técnico Responsável</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome do técnico" {...field} />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o técnico" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {technicians.map(t => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.nome} - {t.especialidade}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -398,7 +413,7 @@ export default function ServicesPage() {
                       <div className="p-1 bg-secondary rounded">
                         <span className="font-mono text-xs text-foreground">{machine.codigo}</span>
                       </div>
-                      <span className="truncate">{machine.localizacaoDescricao}</span>
+                      <span className="truncate">{machine.localizacaoDescricao} ({machine.filial})</span>
                     </div>
                   )}
                   

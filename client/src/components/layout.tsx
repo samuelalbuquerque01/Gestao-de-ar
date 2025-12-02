@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
-import { LayoutDashboard, Fan, Wrench, FileText, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Fan, Wrench, FileText, Users, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Máquinas', path: '/maquinas', icon: Fan },
   { label: 'Serviços', path: '/servicos', icon: Wrench },
+  { label: 'Técnicos', path: '/tecnicos', icon: Users },
   { label: 'Relatórios', path: '/relatorios', icon: FileText },
 ];
 
@@ -27,7 +28,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-primary-foreground">
             <Fan className="w-5 h-5" />
           </div>
-          GAC System
+          Neuropsicocentro
         </div>
         <p className="text-xs text-muted-foreground mt-1">Gestão de Ar Condicionado</p>
       </div>
@@ -60,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex-1 overflow-hidden">
             <p className="text-sm font-medium truncate">Admin User</p>
-            <p className="text-xs text-muted-foreground truncate">admin@gac.com</p>
+            <p className="text-xs text-muted-foreground truncate">admin@neuro.com</p>
           </div>
         </div>
       </div>
@@ -79,7 +80,7 @@ export function Layout({ children }: LayoutProps) {
         {/* Mobile Header */}
         <header className="md:hidden h-16 border-b bg-background/80 backdrop-blur-md sticky top-0 z-20 flex items-center px-4 justify-between">
           <div className="flex items-center gap-2 font-bold text-lg text-primary">
-             <Fan className="w-5 h-5" /> GAC
+             <Fan className="w-5 h-5" /> Neuropsicocentro
           </div>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
