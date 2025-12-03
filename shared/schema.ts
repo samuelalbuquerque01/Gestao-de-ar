@@ -40,11 +40,13 @@ export const technicianStatusEnum = pgEnum("technician_status", [
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  password_hash: text("password_hash").notNull(), // CORRIGIDO: password_hash
   email: text("email").notNull().unique(),
   name: text("name"),
   phone: text("phone"),
+  role: text("role").default('technician'), // ADICIONADO
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(), // ADICIONADO
 });
 
 export const technicians = pgTable("technicians", {

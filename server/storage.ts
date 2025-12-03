@@ -60,8 +60,10 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   
   // Mapeamentos específicos por tabela
   if (tableName === 'users') {
+    if (result.password_hash) result.password = result.password_hash; // MAPEIA password_hash para password
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
+    delete result.password_hash;
     delete result.created_at;
     delete result.updated_at;
   }
@@ -105,8 +107,10 @@ function mapCamelToDb(data: any, tableName: string): any {
   const result = { ...data };
   
   if (tableName === 'users') {
+    if (result.password) result.password_hash = result.password; // MAPEIA password para password_hash
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
+    delete result.password;
     delete result.createdAt;
     delete result.updatedAt;
   }
@@ -210,6 +214,7 @@ export class DatabaseStorage implements IStorage {
       const [user] = await db.insert(users)
         .values({
           ...dbData,
+          role: 'technician',
           created_at: new Date(),
           updated_at: new Date()
         })
