@@ -1,15 +1,12 @@
 // ========== CONFIGURAÇÃO .env ==========
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import path from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Carrega .env baseado no ambiente
+// Configuração de ambiente simplificada para produção
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
-const envPath = resolve(__dirname, `../${envFile}`);
-dotenv.config({ path: envPath });
+
+// Carrega variáveis de ambiente
+dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 
 console.log('🔧 [ENV] PORT:', process.env.PORT);
 console.log('🔧 [ENV] NODE_ENV:', process.env.NODE_ENV);
@@ -19,7 +16,6 @@ console.log('🔧 [ENV] Node Version:', process.version);
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
@@ -28,21 +24,28 @@ const httpServer = createServer(app);
 // ========== CONFIGURAÇÃO CORS ==========
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      'https://gestao-ar-condicionado.onrender.com', // Seu domínio no Render
-      'https://*.onrender.com' // Todos subdomínios Render
+      'https://gestao-ar-condicionado.onrender.com',
+      'https://*.onrender.com'
     ]
   : ['http://localhost:5000', 'http://127.0.0.1:5000'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Permite requisições sem origem (como mobile apps ou curl)
+    // Permite requisições sem origem
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.some(allowed => origin.match(allowed) || allowed === '*')) {
+    if (allowedOrigins.some(allowed => {
+      if (allowed === '*') return true;
+      if (allowed.startsWith('*')) {
+        const domain = allowed.replace('*.', '');
+        return origin.endsWith(domain);
+      }
+      return origin === allowed;
+    })) {
       callback(null, true);
     } else {
       console.log(`❌ [CORS] Origem bloqueada: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true,
@@ -52,7 +55,7 @@ app.use(cors({
 
 // ========== MIDDLEWARE DE LOG ==========
 app.use((req, res, next) => {
-  console.log(`🌐 [${process.env.NODE_ENV?.toUpperCase()}] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  console.log(`🌐 [${process.env.NODE_ENV?.toUpperCase()}] ${req.method} ${req.path}`);
   next();
 });
 
@@ -104,7 +107,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse).substring(0, 100)}...`;
       }
-
       log(logLine);
     }
   });
@@ -146,7 +148,8 @@ app.use((req, res, next) => {
       res.json({ 
         status: 'healthy', 
         timestamp: new Date().toISOString(),
-        service: 'Gestão de Ar Condicionado'
+        service: 'Gestão de Ar Condicionado',
+        environment: process.env.NODE_ENV
       });
     });
 
@@ -156,10 +159,27 @@ app.use((req, res, next) => {
         message: 'API Gestão de Ar Condicionado',
         version: '1.0.0',
         environment: process.env.NODE_ENV,
-        documentation: '/api/debug'
+        documentation: '/api/debug',
+        health: '/health'
       });
     });
 
+    // Serve arquivos estáticos em produção
+    if (process.env.NODE_ENV === "production") {
+      const staticPath = path.resolve(process.cwd(), 'client/dist');
+      console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
+      
+      app.use(express.static(staticPath));
+      
+      // Fallback para SPA
+      app.get('*', (req, res) => {
+        res.sendFile(path.resolve(staticPath, 'index.html'));
+      });
+      
+      log('✅ Modo produção: arquivos estáticos habilitados');
+    }
+
+    // Error handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
@@ -172,38 +192,17 @@ app.use((req, res, next) => {
       console.error("❌ Erro do servidor:", err);
     });
 
-    // Serve arquivos estáticos em produção
-    if (process.env.NODE_ENV === "production") {
-      const staticPath = resolve(__dirname, '../client/dist');
-      console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
-      
-      app.use(express.static(staticPath));
-      
-      // Fallback para SPA
-      app.get('*', (req, res) => {
-        res.sendFile(resolve(staticPath, 'index.html'));
-      });
-      
-      log('✅ Modo produção: arquivos estáticos habilitados');
-    } else {
-      const { setupVite } = await import("./vite");
-      await setupVite(httpServer, app);
-      log('✅ Modo desenvolvimento: Vite habilitado');
-    }
-
-    const port = parseInt(process.env.PORT || "5001", 10);
+    const port = parseInt(process.env.PORT || "10000", 10);
     
-    // IMPORTANTE: Para Render, NÃO especifique o host
+    // Render não precisa de host específico
     httpServer.listen(port, () => {
       log(`✅ Servidor rodando na porta ${port}`);
       log(`📁 Modo: ${process.env.NODE_ENV}`);
-      log(`🌐 CORS permitido para: ${allowedOrigins.join(', ')}`);
+      log(`🚀 Aplicação pronta!`);
+      log(`🔗 URL Local: http://localhost:${port}`);
       
       if (process.env.NODE_ENV === 'production') {
-        log(`🚀 Aplicação pronta para produção`);
-        log(`🔗 Acesse: http://localhost:${port} (local)`);
-      } else {
-        log(`🔌 Proxy Vite: localhost:5000 → localhost:${port}`);
+        log(`🌐 Acesse externamente na porta: ${port}`);
       }
     });
 
