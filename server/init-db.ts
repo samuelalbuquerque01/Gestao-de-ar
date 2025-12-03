@@ -11,26 +11,28 @@ async function initDatabase() {
     await client.connect();
     console.log('✅ Conectado ao PostgreSQL para inicialização');
     
-    // ========== CRIAR TABELA USERS (conforme schema) ==========
+    // ========== CRIAR TABELA USERS (completa e correta) ==========
     console.log('\n📦 Criando tabela users...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255),
         phone VARCHAR(20),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        role VARCHAR(50) DEFAULT 'technician'
       );
     `);
-    console.log('✅ Tabela users criada/verificada (conforme schema)');
+    console.log('✅ Tabela users criada/verificada');
     
     // ========== CRIAR TABELA TECHNICIANS ==========
     console.log('\n📦 Criando tabela technicians...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS technicians (
-        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         nome VARCHAR(255) NOT NULL,
         especialidade VARCHAR(255) NOT NULL,
         telefone VARCHAR(255) NOT NULL,
@@ -46,7 +48,7 @@ async function initDatabase() {
     console.log('\n📦 Criando tabela machines...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS machines (
-        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         codigo VARCHAR(255) UNIQUE NOT NULL,
         modelo VARCHAR(255) NOT NULL,
         marca VARCHAR(255) NOT NULL,
@@ -70,11 +72,11 @@ async function initDatabase() {
     console.log('\n📦 Criando tabela services...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
-        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tipo_servico VARCHAR(50) NOT NULL,
-        maquina_id VARCHAR(255) NOT NULL,
+        maquina_id UUID NOT NULL,
         data_agendamento TIMESTAMP NOT NULL,
-        tecnico_id VARCHAR(255) NOT NULL,
+        tecnico_id UUID NOT NULL,
         tecnico_nome VARCHAR(255) NOT NULL,
         descricao_servico TEXT NOT NULL,
         descricao_problema TEXT,
@@ -93,8 +95,8 @@ async function initDatabase() {
     console.log('\n📦 Criando tabela service_history...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS service_history (
-        id SERIAL PRIMARY KEY,
-        service_id VARCHAR(255) NOT NULL,
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        service_id UUID NOT NULL,
         status VARCHAR(50) NOT NULL,
         observacao TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -114,6 +116,8 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
       CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status);
       CREATE INDEX IF NOT EXISTS idx_service_history_service_id ON service_history(service_id);
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
     `);
     console.log('✅ Índices criados');
     
