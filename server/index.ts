@@ -13,6 +13,20 @@ console.log('🔧 [ENV] PORT:', process.env.PORT);
 console.log('🔧 [ENV] NODE_ENV:', process.env.NODE_ENV);
 console.log('🔧 [ENV] Node Version:', process.version);
 
+// ========== INICIALIZAÇÃO DO BANCO ==========
+import { initDatabase } from './init-db.js';
+
+async function initializeDatabase() {
+  try {
+    console.log('🔍 Verificando/Inicializando banco de dados...');
+    await initDatabase();
+    console.log('✅ Banco de dados inicializado com sucesso');
+  } catch (error) {
+    console.error('❌ Falha ao inicializar banco de dados:', error);
+    // Não saia do processo, apenas log o erro
+  }
+}
+
 // ========== IMPORTAÇÕES ==========
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
@@ -120,6 +134,9 @@ app.use((req, res, next) => {
   try {
     log('🔧 [INIT] Iniciando servidor...');
     log(`📁 Ambiente: ${process.env.NODE_ENV}`);
+    
+    // INICIALIZAR BANCO DE DADOS PRIMEIRO
+    await initializeDatabase();
     
     // Registra rotas de API
     await registerRoutes(httpServer, app);
