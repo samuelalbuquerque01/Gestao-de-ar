@@ -72,7 +72,7 @@ export function cn(...inputs: ClassValue[]) {
 }`);
 }
 
-// Verificar estrutura básica
+
 const requiredDirs = [
   path.join(clientDir, 'src', 'components', 'ui'),
   path.join(clientDir, 'src', 'hooks')
