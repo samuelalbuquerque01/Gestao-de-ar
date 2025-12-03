@@ -1,7 +1,7 @@
 // ========== CONFIGURAÇÃO .env ==========
 import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs'; // ADICIONE ESTA LINHA
+import fs from 'fs';
 
 // Configuração de ambiente simplificada para produção
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -25,7 +25,7 @@ const httpServer = createServer(app);
 // ========== CONFIGURAÇÃO CORS ==========
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      'https://gestao-ar-condicionado.onrender.com',
+      'https://gestao-de-ar.onrender.com',
       'https://*.onrender.com'
     ]
   : ['http://localhost:5000', 'http://127.0.0.1:5000'];
@@ -154,40 +154,59 @@ app.use((req, res, next) => {
       });
     });
 
-    // Serve arquivos estáticos em produção
+    // ========== CONFIGURAÇÃO DO FRONTEND ==========
+    let frontendEnabled = false;
+    let staticPath = '';
+    
     if (process.env.NODE_ENV === "production") {
-      const staticPath = path.resolve(process.cwd(), 'client/dist');
-      console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
+      console.log('🔍 Procurando frontend build...');
       
-      // Verificar se o diretório existe (usando fs que já foi importado)
-      if (fs.existsSync(staticPath)) {
-        console.log(`✅ Diretório existe`);
-        const files = fs.readdirSync(staticPath);
-        console.log(`📁 Conteúdo: ${files.join(', ')}`);
-        
-        // Verificar index.html
-        const indexPath = path.join(staticPath, 'index.html');
-        if (fs.existsSync(indexPath)) {
-          console.log(`✅ index.html encontrado`);
-        } else {
-          console.log(`❌ index.html NÃO encontrado`);
+      // Possíveis locais onde o frontend pode estar
+      const possiblePaths = [
+        path.resolve(process.cwd(), 'client/dist'),
+        path.resolve(process.cwd(), 'dist'),
+        path.resolve(process.cwd(), 'dist/public'),
+        path.resolve(process.cwd(), 'public'),
+      ];
+      
+      for (const possiblePath of possiblePaths) {
+        console.log(`   Verificando: ${possiblePath}`);
+        if (fs.existsSync(possiblePath)) {
+          const files = fs.readdirSync(possiblePath);
+          console.log(`     Conteúdo: ${files.join(', ')}`);
+          
+          if (files.includes('index.html')) {
+            staticPath = possiblePath;
+            console.log(`✅ Frontend encontrado em: ${staticPath}`);
+            frontendEnabled = true;
+            break;
+          }
         }
-      } else {
-        console.log(`❌ Diretório NÃO existe`);
-        
-        // Tentar criar se não existir
-        fs.mkdirSync(staticPath, { recursive: true });
-        console.log(`📁 Diretório criado: ${staticPath}`);
       }
       
-      app.use(express.static(staticPath));
-      
-      log('✅ Modo produção: arquivos estáticos habilitados');
+      if (frontendEnabled) {
+        console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
+        app.use(express.static(staticPath));
+        log('✅ Frontend habilitado para produção');
+      } else {
+        console.log('❌ Frontend NÃO encontrado!');
+        console.log('⚠️  O frontend não será servido, apenas a API funcionará');
+        
+        // Rota raiz informativa
+        app.get('/', (req, res) => {
+          res.json({
+            message: 'API Gestão de Ar Condicionado',
+            warning: 'Frontend não encontrado - verifique se o build foi feito corretamente',
+            api_endpoints: '/api/debug',
+            health_check: '/health'
+          });
+        });
+      }
     }
 
     // ========== ROTAS FALLBACK ==========
-    if (process.env.NODE_ENV === "production") {
-      // Em produção: Serve o frontend para todas as rotas não-API
+    if (process.env.NODE_ENV === "production" && frontendEnabled) {
+      // Em produção com frontend: Serve o frontend para todas as rotas não-API
       app.get('*', (req, res, next) => {
         // Se é uma rota de API, passa para o próximo middleware (error handler)
         if (req.path.startsWith('/api')) {
@@ -195,20 +214,32 @@ app.use((req, res, next) => {
         }
         
         // Serve o index.html para todas as outras rotas
-        const staticPath = path.resolve(process.cwd(), 'client/dist');
         const indexPath = path.resolve(staticPath, 'index.html');
-        
-        // Verificar se o arquivo existe antes de enviar
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
           console.log(`❌ index.html não encontrado em: ${indexPath}`);
           res.status(404).json({
             error: 'Frontend não encontrado',
-            message: 'O build do frontend não foi encontrado',
-            path: indexPath
+            message: 'O arquivo index.html não foi encontrado'
           });
         }
+      });
+    } else if (process.env.NODE_ENV === "production") {
+      // Em produção sem frontend: Apenas API
+      app.get('*', (req, res) => {
+        if (req.path.startsWith('/api')) {
+          return res.status(404).json({ 
+            error: 'Rota API não encontrada',
+            path: req.path 
+          });
+        }
+        
+        res.json({
+          message: 'Frontend não disponível',
+          reason: 'O build do frontend não foi encontrado',
+          api_documentation: '/api/debug'
+        });
       });
     } else {
       // Em desenvolvimento: Informa que o frontend roda separadamente
@@ -249,15 +280,11 @@ app.use((req, res, next) => {
       log(`✅ Servidor rodando na porta ${port}`);
       log(`📁 Modo: ${process.env.NODE_ENV}`);
       log(`🚀 Aplicação pronta!`);
-      log(`🔗 URL Local: http://localhost:${port}`);
       
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === 'production' && frontendEnabled) {
         log(`🌐 Frontend disponível em: https://gestao-de-ar.onrender.com`);
-        log(`🌐 API disponível em: https://gestao-de-ar.onrender.com/api/debug`);
-      } else {
-        log(`🌐 API disponível em: http://localhost:${port}/api/debug`);
-        log(`🌐 Frontend disponível em: http://localhost:5000`);
       }
+      log(`🌐 API disponível em: https://gestao-de-ar.onrender.com/api/debug`);
     });
 
   } catch (error: any) {
