@@ -229,16 +229,19 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar nova máquina
+  // POST criar nova máquina (CORRIGIDA)
   app.post('/api/machines', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Criando nova máquina...');
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação básica
-      const { codigo, modelo, marca } = req.body;
-      if (!codigo || !modelo || !marca) {
-        return res.status(400).json({ error: 'Código, modelo e marca são obrigatórios' });
+      // Validação básica - CORRIGIDO: usar 'model' e 'brand' em vez de 'modelo' e 'marca'
+      const { codigo, model, brand } = req.body;
+      if (!codigo || !model || !brand) {
+        return res.status(400).json({ 
+          error: 'Código, modelo e marca são obrigatórios',
+          received: { codigo, model, brand }
+        });
       }
       
       // Verifica se código já existe
@@ -247,16 +250,27 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Já existe uma máquina com este código' });
       }
       
-      // Prepara os dados, convertendo datas se necessário
+      // Prepara os dados no formato CORRETO (inglês)
       const machineData = {
-        ...req.body,
-        // Converte string de data para objeto Date se necessário
-        dataInstalacao: req.body.dataInstalacao ? new Date(req.body.dataInstalacao) : new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        codigo: codigo,
+        model: model,  // ← CORRETO: 'model' em inglês
+        brand: brand,  // ← CORRETO: 'brand' em inglês
+        type: req.body.type || 'SPLIT',
+        capacity: parseInt(req.body.capacity) || 9000,
+        voltage: req.body.voltage || 'V220',
+        locationType: req.body.locationType || 'SALA',
+        location: req.body.location || req.body.localizacao || '',
+        locationFloor: req.body.locationFloor || req.body.localizacaoAndar,
+        branch: req.body.branch || 'Matriz',
+        installationDate: req.body.installationDate 
+          ? new Date(req.body.installationDate) 
+          : new Date(),
+        status: req.body.status || 'ATIVO',
+        observacoes: req.body.observacoes
       };
       
-      console.log('📝 [MACHINES] Dados para criação:', JSON.stringify(machineData, null, 2));
+      console.log('📝 [MACHINES] Dados para criação (formato correto):', 
+        JSON.stringify(machineData, null, 2));
       
       // Cria a máquina
       const machine = await storage.createMachine(machineData);
@@ -271,24 +285,31 @@ export async function registerRoutes(
       
     } catch (error: any) {
       console.error('❌ [MACHINES] Erro ao criar máquina:', error);
+      console.error('❌ [MACHINES] Mensagem:', error.message);
       console.error('❌ [MACHINES] Stack:', error.stack);
+      console.error('❌ [MACHINES] Código do erro:', error.code);
+      console.error('❌ [MACHINES] Detalhe:', error.detail);
+      
       res.status(500).json({ 
         error: 'Erro ao criar máquina',
-        message: error.message 
+        message: error.message,
+        hint: 'Verifique se todos os campos foram preenchidos corretamente'
       });
     }
   });
   
-  // PUT atualizar máquina
+  // PUT atualizar máquina (CORRIGIDA)
   app.put('/api/machines/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Atualizando máquina:', req.params.id);
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
+      // Prepara dados no formato CORRETO (inglês)
       const machineData = {
         ...req.body,
-        // Converte string de data para objeto Date se necessário
-        dataInstalacao: req.body.dataInstalacao ? new Date(req.body.dataInstalacao) : undefined,
+        // CORRIGIDO: 'installationDate' em vez de 'dataInstalacao'
+        installationDate: req.body.installationDate ? new Date(req.body.installationDate) : undefined,
+        // Remove campos desnecessários que não existem no schema
         updatedAt: new Date()
       };
       

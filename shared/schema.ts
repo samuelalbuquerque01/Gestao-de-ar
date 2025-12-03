@@ -60,23 +60,24 @@ export const technicians = pgTable("technicians", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// ATUALIZADO: Tabela machines em INGLÊS para bater com o banco
 export const machines = pgTable("machines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   codigo: text("codigo").notNull().unique(),
-  modelo: text("modelo").notNull(),
-  marca: text("marca").notNull(),
-  tipo: machineTypeEnum("tipo").notNull(),
-  capacidade_btu: integer("capacidade_btu").notNull(),
-  voltagem: machineVoltageEnum("voltagem").notNull(),
-  localizacao_tipo: locationTypeEnum("localizacao_tipo").notNull(),
-  localizacao_descricao: text("localizacao_descricao").notNull(),
-  localizacao_andar: integer("localizacao_andar"),
-  filial: text("filial").notNull(),
-  data_instalacao: timestamp("data_instalacao").notNull(),
+  model: text("model").notNull(),  // ← CORRIGIDO: 'model' em vez de 'modelo'
+  brand: text("brand").notNull(),  // ← CORRIGIDO: 'brand' em vez de 'marca'
+  type: machineTypeEnum("type").notNull(),  // ← CORRIGIDO: 'type' em vez de 'tipo'
+  capacity: integer("capacity").notNull(),  // ← CORRIGIDO: 'capacity' em vez de 'capacidade_btu'
+  voltage: machineVoltageEnum("voltage").notNull(),  // ← CORRIGIDO: 'voltage' em vez de 'voltagem'
+  locationType: locationTypeEnum("location_type").notNull(),  // ← CORRIGIDO: 'location_type' em vez de 'localizacao_tipo'
+  location: text("location").notNull(),  // ← CORRIGIDO: 'location' em vez de 'localizacao_descricao'
+  locationFloor: integer("location_floor"),
+  branch: text("branch").notNull(),  // ← CORRIGIDO: 'branch' em vez de 'filial'
+  installationDate: timestamp("installation_date").notNull(),  // ← CORRIGIDO: 'installation_date' em vez de 'data_instalacao'
   status: machineStatusEnum("status").default('ATIVO').notNull(),
   observacoes: text("observacoes"),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const services = pgTable("services", {
@@ -123,10 +124,21 @@ export const insertTechnicianSchema = createInsertSchema(technicians).omit({
   updated_at: true,
 });
 
-export const insertMachineSchema = createInsertSchema(machines).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
+// ATUALIZADO: Schema para machines em INGLÊS
+export const insertMachineSchema = z.object({
+  codigo: z.string().min(1, "Código é obrigatório"),
+  model: z.string().min(1, "Modelo é obrigatório"),  // ← CORRIGIDO
+  brand: z.string().min(1, "Marca é obrigatória"),   // ← CORRIGIDO
+  type: z.enum(['SPLIT', 'WINDOW', 'CASSETE', 'PISO_TETO', 'PORTATIL', 'INVERTER']),
+  capacity: z.number().min(1000, "Capacidade mínima é 1000 BTU"),
+  voltage: z.enum(['V110', 'V220', 'BIVOLT']),
+  locationType: z.enum(['SALA', 'QUARTO', 'ESCRITORIO', 'SALA_REUNIAO', 'OUTRO']),
+  location: z.string().min(1, "Localização é obrigatória"),  // ← CORRIGIDO
+  locationFloor: z.number().optional(),
+  branch: z.string().min(1, "Filial é obrigatória"),  // ← CORRIGIDO
+  installationDate: z.string().or(z.date()),  // ← CORRIGIDO
+  status: z.enum(['ATIVO', 'INATIVO', 'MANUTENCAO', 'DEFEITO']),
+  observacoes: z.string().optional(),
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({

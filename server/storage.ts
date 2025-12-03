@@ -76,19 +76,17 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   }
   
   if (tableName === 'machines') {
-    if (result.capacidade_btu) result.capacidadeBTU = result.capacidade_btu;
-    if (result.localizacao_tipo) result.localizacaoTipo = result.localizacao_tipo;
-    if (result.localizacao_descricao) result.localizacaoDescricao = result.localizacao_descricao;
-    if (result.localizacao_andar) result.localizacaoAndar = result.localizacao_andar;
-    if (result.data_instalacao) result.dataInstalacao = result.data_instalacao;
+    // CORREÇÃO: A tabela já está em inglês, apenas converte snake_case para camelCase
+    if (result.location_type) result.locationType = result.location_type;
+    if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
+    if (result.installation_date) result.installationDate = result.installation_date;
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
-    delete result.capacidade_btu;
-    delete result.localizacao_tipo;
-    delete result.localizacao_descricao;
-    delete result.localizacao_andar;
-    delete result.data_instalacao;
+    // Remove colunas snake_case
+    delete result.location_type;
+    delete result.location_floor;
+    delete result.installation_date;
     delete result.created_at;
     delete result.updated_at;
   }
@@ -150,19 +148,16 @@ function mapCamelToDb(data: any, tableName: string): any {
   }
   
   if (tableName === 'machines') {
-    if (result.capacidadeBTU) result.capacidade_btu = result.capacidadeBTU;
-    if (result.localizacaoTipo) result.localizacao_tipo = result.localizacaoTipo;
-    if (result.localizacaoDescricao) result.localizacao_descricao = result.localizacaoDescricao;
-    if (result.localizacaoAndar !== undefined) result.localizacao_andar = result.localizacaoAndar;
-    if (result.dataInstalacao) result.data_instalacao = result.dataInstalacao;
+    // CORREÇÃO: Converte camelCase para snake_case (inglês)
+    if (result.locationType) result.location_type = result.locationType;
+    if (result.locationFloor !== undefined) result.location_floor = result.locationFloor;
+    if (result.installationDate) result.installation_date = result.installationDate;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     
-    delete result.capacidadeBTU;
-    delete result.localizacaoTipo;
-    delete result.localizacaoDescricao;
-    delete result.localizacaoAndar;
-    delete result.dataInstalacao;
+    delete result.locationType;
+    delete result.locationFloor;
+    delete result.installationDate;
     delete result.createdAt;
     delete result.updatedAt;
   }
@@ -381,9 +376,21 @@ export class DatabaseStorage implements IStorage {
 
   async createMachine(machineData: InsertMachine): Promise<Machine> {
     try {
-      const dbData = mapCamelToDb(machineData, 'machines');
+      console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
       
-      console.log('📝 [STORAGE] Dados da máquina (convertidos):', dbData);
+      // Garante que todos os campos obrigatórios existam
+      const processedData = {
+        ...machineData,
+        capacity: Number(machineData.capacity) || 9000,
+        installationDate: machineData.installationDate 
+          ? new Date(machineData.installationDate)
+          : new Date(),
+        status: machineData.status || 'ATIVO'
+      };
+      
+      const dbData = mapCamelToDb(processedData, 'machines');
+      
+      console.log('📝 [STORAGE] Dados convertidos para banco:', JSON.stringify(dbData, null, 2));
       
       const [machine] = await db.insert(machines).values({
         ...dbData,
@@ -395,6 +402,8 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
+      console.error('❌ [STORAGE] Código do erro:', error.code);
+      console.error('❌ [STORAGE] Detalhe:', error.detail);
       throw error;
     }
   }
