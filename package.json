@@ -12,7 +12,7 @@
     "check": "tsc",
     "db:init": "tsx server/init-db.ts",
     "db:update": "tsx server/update-db.ts",
-    "db:fix": "tsx server/fix-db.ts",  // ADICIONE ESTA LINHA
+    "db:fix": "tsx server/fix-db.ts",  
     "db:reset": "tsx server/reset-db.ts",
     "db:push": "drizzle-kit push"
   },
