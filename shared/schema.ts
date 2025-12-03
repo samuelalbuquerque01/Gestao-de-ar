@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, integer, timestamp, pgEnum, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, pgEnum, serial, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
@@ -60,20 +60,19 @@ export const technicians = pgTable("technicians", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// ATUALIZADO: Tabela machines em INGLÊS para bater com o banco
 export const machines = pgTable("machines", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   codigo: text("codigo").notNull().unique(),
-  model: text("model").notNull(),  // ← CORRIGIDO: 'model' em vez de 'modelo'
-  brand: text("brand").notNull(),  // ← CORRIGIDO: 'brand' em vez de 'marca'
-  type: machineTypeEnum("type").notNull(),  // ← CORRIGIDO: 'type' em vez de 'tipo'
-  capacity: integer("capacity").notNull(),  // ← CORRIGIDO: 'capacity' em vez de 'capacidade_btu'
-  voltage: machineVoltageEnum("voltage").notNull(),  // ← CORRIGIDO: 'voltage' em vez de 'voltagem'
-  locationType: locationTypeEnum("location_type").notNull(),  // ← CORRIGIDO: 'location_type' em vez de 'localizacao_tipo'
-  location: text("location").notNull(),  // ← CORRIGIDO: 'location' em vez de 'localizacao_descricao'
+  model: text("model").notNull(),
+  brand: text("brand").notNull(),
+  type: machineTypeEnum("type").notNull(),
+  capacity: integer("capacity").notNull(),
+  voltage: machineVoltageEnum("voltage").notNull(),
+  locationType: locationTypeEnum("location_type").notNull(),
+  location: text("location").notNull(),
   locationFloor: integer("location_floor"),
-  branch: text("branch").notNull(),  // ← CORRIGIDO: 'branch' em vez de 'filial'
-  installationDate: timestamp("installation_date").notNull(),  // ← CORRIGIDO: 'installation_date' em vez de 'data_instalacao'
+  branch: text("branch").notNull(),
+  installationDate: timestamp("installation_date").notNull(),
   status: machineStatusEnum("status").default('ATIVO').notNull(),
   observacoes: text("observacoes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -85,14 +84,16 @@ export const services = pgTable("services", {
   tipo_servico: serviceTypeEnum("tipo_servico").notNull(),
   maquina_id: varchar("maquina_id").notNull()
     .references(() => machines.id, { onDelete: 'cascade' }),
-  data_agendamento: timestamp("data_agendamento").notNull(),
   tecnico_id: varchar("tecnico_id").notNull()
     .references(() => technicians.id, { onDelete: 'restrict' }),
   tecnico_nome: text("tecnico_nome").notNull(),
   descricao_servico: text("descricao_servico").notNull(),
   descricao_problema: text("descricao_problema"),
+  data_agendamento: timestamp("data_agendamento").notNull(),
+  data_conclusao: timestamp("data_conclusao"),
   prioridade: priorityEnum("prioridade").default('MEDIA').notNull(),
   status: serviceStatusEnum("status").default('AGENDADO').notNull(),
+  custo: numeric("custo", { precision: 10, scale: 2 }),
   observacoes: text("observacoes"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
@@ -124,28 +125,24 @@ export const insertTechnicianSchema = createInsertSchema(technicians).omit({
   updated_at: true,
 });
 
-// ATUALIZADO: Schema para machines em INGLÊS
-export const insertMachineSchema = z.object({
-  codigo: z.string().min(1, "Código é obrigatório"),
-  model: z.string().min(1, "Modelo é obrigatório"),  // ← CORRIGIDO
-  brand: z.string().min(1, "Marca é obrigatória"),   // ← CORRIGIDO
-  type: z.enum(['SPLIT', 'WINDOW', 'CASSETE', 'PISO_TETO', 'PORTATIL', 'INVERTER']),
-  capacity: z.number().min(1000, "Capacidade mínima é 1000 BTU"),
-  voltage: z.enum(['V110', 'V220', 'BIVOLT']),
-  locationType: z.enum(['SALA', 'QUARTO', 'ESCRITORIO', 'SALA_REUNIAO', 'OUTRO']),
-  location: z.string().min(1, "Localização é obrigatória"),  // ← CORRIGIDO
-  locationFloor: z.number().optional(),
-  branch: z.string().min(1, "Filial é obrigatória"),  // ← CORRIGIDO
-  installationDate: z.string().or(z.date()),  // ← CORRIGIDO
-  status: z.enum(['ATIVO', 'INATIVO', 'MANUTENCAO', 'DEFEITO']),
-  observacoes: z.string().optional(),
-});
-
-export const insertServiceSchema = createInsertSchema(services).omit({
+export const insertMachineSchema = createInsertSchema(machines).omit({
   id: true,
-  tecnico_nome: true,
   created_at: true,
   updated_at: true,
+});
+
+export const insertServiceSchema = z.object({
+  tipo_servico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
+  maquina_id: z.string().min(1, "Máquina é obrigatória"),
+  tecnico_id: z.string().min(1, "Técnico é obrigatório"),
+  descricao_servico: z.string().min(1, "Descrição do serviço é obrigatória"),
+  descricao_problema: z.string().optional(),
+  data_agendamento: z.string().or(z.date()),
+  data_conclusao: z.string().or(z.date()).optional(),
+  prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).optional(),
+  status: z.enum(['AGENDADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO', 'PENDENTE']).optional(),
+  custo: z.string().optional(),
+  observacoes: z.string().optional(),
 });
 
 export const insertServiceHistorySchema = createInsertSchema(serviceHistory).omit({

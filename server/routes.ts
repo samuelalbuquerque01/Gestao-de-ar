@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, insertMachineSchema, insertTechnicianSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -229,13 +229,13 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar nova máquina (CORRIGIDA)
+  // POST criar nova máquina (ATUALIZADA)
   app.post('/api/machines', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Criando nova máquina...');
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação básica - CORRIGIDO: usar 'model' e 'brand' em vez de 'modelo' e 'marca'
+      // Validação básica - usar nomes em INGLÊS do schema
       const { codigo, model, brand } = req.body;
       if (!codigo || !model || !brand) {
         return res.status(400).json({ 
@@ -250,27 +250,26 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Já existe uma máquina com este código' });
       }
       
-      // Prepara os dados no formato CORRETO (inglês)
+      // Preparar dados no formato CORRETO (nomes em inglês do schema)
       const machineData = {
         codigo: codigo,
-        model: model,  // ← CORRETO: 'model' em inglês
-        brand: brand,  // ← CORRETO: 'brand' em inglês
+        model: model,
+        brand: brand,
         type: req.body.type || 'SPLIT',
         capacity: parseInt(req.body.capacity) || 9000,
         voltage: req.body.voltage || 'V220',
         locationType: req.body.locationType || 'SALA',
-        location: req.body.location || req.body.localizacao || '',
-        locationFloor: req.body.locationFloor || req.body.localizacaoAndar,
+        location: req.body.location || '',
+        locationFloor: req.body.locationFloor,
         branch: req.body.branch || 'Matriz',
         installationDate: req.body.installationDate 
           ? new Date(req.body.installationDate) 
           : new Date(),
         status: req.body.status || 'ATIVO',
-        observacoes: req.body.observacoes
+        observacoes: req.body.observacoes || ''
       };
       
-      console.log('📝 [MACHINES] Dados para criação (formato correto):', 
-        JSON.stringify(machineData, null, 2));
+      console.log('📝 [MACHINES] Dados para criação:', JSON.stringify(machineData, null, 2));
       
       // Cria a máquina
       const machine = await storage.createMachine(machineData);
@@ -287,30 +286,27 @@ export async function registerRoutes(
       console.error('❌ [MACHINES] Erro ao criar máquina:', error);
       console.error('❌ [MACHINES] Mensagem:', error.message);
       console.error('❌ [MACHINES] Stack:', error.stack);
-      console.error('❌ [MACHINES] Código do erro:', error.code);
-      console.error('❌ [MACHINES] Detalhe:', error.detail);
       
       res.status(500).json({ 
         error: 'Erro ao criar máquina',
         message: error.message,
-        hint: 'Verifique se todos os campos foram preenchidos corretamente'
+        hint: 'Verifique se todos os campos obrigatórios foram preenchidos'
       });
     }
   });
   
-  // PUT atualizar máquina (CORRIGIDA)
+  // PUT atualizar máquina (ATUALIZADA)
   app.put('/api/machines/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Atualizando máquina:', req.params.id);
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Prepara dados no formato CORRETO (inglês)
+      // Preparar dados no formato CORRETO
       const machineData = {
         ...req.body,
-        // CORRIGIDO: 'installationDate' em vez de 'dataInstalacao'
+        // Usar installationDate em vez de dataInstalacao
         installationDate: req.body.installationDate ? new Date(req.body.installationDate) : undefined,
-        // Remove campos desnecessários que não existem no schema
-        updatedAt: new Date()
+        capacity: req.body.capacity ? parseInt(req.body.capacity) : undefined
       };
       
       const machine = await storage.updateMachine(req.params.id, machineData);
@@ -384,23 +380,28 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo técnico
+  // POST criar novo técnico (ATUALIZADA)
   app.post('/api/technicians', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Criando novo técnico...');
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
+      // Validação - usar nomes em português
       const { nome, especialidade, telefone } = req.body;
       
       if (!nome || !especialidade || !telefone) {
         return res.status(400).json({ error: 'Nome, especialidade e telefone são obrigatórios' });
       }
       
-      const technician = await storage.createTechnician({
-        ...req.body,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+      const technicianData = {
+        nome: nome,
+        especialidade: especialidade,
+        telefone: telefone,
+        email: req.body.email || '',
+        status: req.body.status || 'ATIVO'
+      };
+      
+      const technician = await storage.createTechnician(technicianData);
       
       console.log('✅ [TECHNICIANS] Técnico criado com ID:', technician.id);
       
@@ -419,15 +420,17 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar técnico
+  // PUT atualizar técnico (ATUALIZADA)
   app.put('/api/technicians/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Atualizando técnico:', req.params.id);
+    console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      const technician = await storage.updateTechnician(req.params.id, {
-        ...req.body,
-        updatedAt: new Date()
-      });
+      const technicianData = {
+        ...req.body
+      };
+      
+      const technician = await storage.updateTechnician(req.params.id, technicianData);
       
       if (!technician) {
         return res.status(404).json({ error: 'Técnico não encontrado' });
@@ -473,7 +476,7 @@ export async function registerRoutes(
   
   // ========== SERVICES ROUTES (CRUD COMPLETO) ==========
   
-  // GET todos os serviços
+  // GET todos os serviços (ATUALIZADA)
   app.get('/api/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getAllServices();
@@ -498,7 +501,7 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por máquina
+  // GET serviços por máquina (ATUALIZADA)
   app.get('/api/machines/:machineId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByMachine(req.params.machineId);
@@ -509,7 +512,7 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por técnico
+  // GET serviços por técnico (ATUALIZADA)
   app.get('/api/technicians/:technicianId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByTechnician(req.params.technicianId);
@@ -520,12 +523,13 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo serviço
+  // POST criar novo serviço (ATUALIZADA)
   app.post('/api/services', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Criando novo serviço...');
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
+      // Validação - usar nomes em português
       const { tipoServico, maquinaId, tecnicoId, descricaoServico, dataAgendamento } = req.body;
       
       if (!tipoServico || !maquinaId || !tecnicoId || !descricaoServico) {
@@ -534,12 +538,19 @@ export async function registerRoutes(
         });
       }
       
-      // Prepara dados, convertendo datas se necessário
+      // Preparar dados
       const serviceData = {
-        ...req.body,
+        tipoServico: tipoServico,
+        maquinaId: maquinaId,
+        tecnicoId: tecnicoId,
+        descricaoServico: descricaoServico,
+        descricaoProblema: req.body.descricaoProblema || '',
         dataAgendamento: dataAgendamento ? new Date(dataAgendamento) : new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        dataConclusao: req.body.dataConclusao ? new Date(req.body.dataConclusao) : undefined,
+        prioridade: req.body.prioridade || 'MEDIA',
+        status: req.body.status || 'AGENDADO',
+        custo: req.body.custo || null,
+        observacoes: req.body.observacoes || ''
       };
       
       console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
@@ -563,15 +574,16 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar serviço
+  // PUT atualizar serviço (ATUALIZADA)
   app.put('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
+    console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
       const serviceData = {
         ...req.body,
         dataAgendamento: req.body.dataAgendamento ? new Date(req.body.dataAgendamento) : undefined,
-        updatedAt: new Date()
+        dataConclusao: req.body.dataConclusao ? new Date(req.body.dataConclusao) : undefined
       };
       
       const service = await storage.updateService(req.params.id, serviceData);
@@ -662,6 +674,32 @@ export async function registerRoutes(
       console.error('❌ [API] Erro ao buscar perfil:', error);
       res.status(500).json({ error: 'Erro ao buscar perfil' });
     }
+  });
+  
+  // ========== ADDITIONAL ROUTES ==========
+  
+  // GET máquina por código
+  app.get('/api/machines/codigo/:codigo', authenticateToken, async (req, res) => {
+    try {
+      const machine = await storage.getMachineByCodigo(req.params.codigo);
+      if (!machine) {
+        return res.status(404).json({ error: 'Máquina não encontrada' });
+      }
+      res.json({ success: true, data: machine });
+    } catch (error) {
+      console.error('❌ [API] Erro ao buscar máquina por código:', error);
+      res.status(500).json({ error: 'Erro ao buscar máquina por código' });
+    }
+  });
+  
+  // GET check health
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'Gestão de Ar Condicionado API',
+      version: '1.0.0'
+    });
   });
   
   return httpServer;

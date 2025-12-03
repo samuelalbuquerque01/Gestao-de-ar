@@ -76,14 +76,12 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   }
   
   if (tableName === 'machines') {
-    // CORREÇÃO: A tabela já está em inglês, apenas converte snake_case para camelCase
     if (result.location_type) result.locationType = result.location_type;
     if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
     if (result.installation_date) result.installationDate = result.installation_date;
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
-    // Remove colunas snake_case
     delete result.location_type;
     delete result.location_floor;
     delete result.installation_date;
@@ -94,21 +92,25 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   if (tableName === 'services') {
     if (result.tipo_servico) result.tipoServico = result.tipo_servico;
     if (result.maquina_id) result.maquinaId = result.maquina_id;
-    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
     if (result.tecnico_id) result.tecnicoId = result.tecnico_id;
     if (result.tecnico_nome) result.tecnicoNome = result.tecnico_nome;
     if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
     if (result.descricao_problema) result.descricaoProblema = result.descricao_problema;
+    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
+    if (result.data_conclusao) result.dataConclusao = result.data_conclusao;
+    if (result.custo) result.custo = result.custo.toString();
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
     delete result.tipo_servico;
     delete result.maquina_id;
-    delete result.data_agendamento;
     delete result.tecnico_id;
     delete result.tecnico_nome;
     delete result.descricao_servico;
     delete result.descricao_problema;
+    delete result.data_agendamento;
+    delete result.data_conclusao;
+    delete result.custo;
     delete result.created_at;
     delete result.updated_at;
   }
@@ -148,7 +150,6 @@ function mapCamelToDb(data: any, tableName: string): any {
   }
   
   if (tableName === 'machines') {
-    // CORREÇÃO: Converte camelCase para snake_case (inglês)
     if (result.locationType) result.location_type = result.locationType;
     if (result.locationFloor !== undefined) result.location_floor = result.locationFloor;
     if (result.installationDate) result.installation_date = result.installationDate;
@@ -165,21 +166,25 @@ function mapCamelToDb(data: any, tableName: string): any {
   if (tableName === 'services') {
     if (result.tipoServico) result.tipo_servico = result.tipoServico;
     if (result.maquinaId) result.maquina_id = result.maquinaId;
-    if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
     if (result.tecnicoId) result.tecnico_id = result.tecnicoId;
     if (result.tecnicoNome) result.tecnico_nome = result.tecnicoNome;
     if (result.descricaoServico) result.descricao_servico = result.descricaoServico;
     if (result.descricaoProblema) result.descricao_problema = result.descricaoProblema;
+    if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
+    if (result.dataConclusao) result.data_conclusao = result.dataConclusao;
+    if (result.custo) result.custo = result.custo;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     
     delete result.tipoServico;
     delete result.maquinaId;
-    delete result.dataAgendamento;
     delete result.tecnicoId;
     delete result.tecnicoNome;
     delete result.descricaoServico;
     delete result.descricaoProblema;
+    delete result.dataAgendamento;
+    delete result.dataConclusao;
+    delete result.custo;
     delete result.createdAt;
     delete result.updatedAt;
   }
@@ -378,14 +383,15 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
       
-      // Garante que todos os campos obrigatórios existam
+      // Processar dados
       const processedData = {
         ...machineData,
         capacity: Number(machineData.capacity) || 9000,
         installationDate: machineData.installationDate 
           ? new Date(machineData.installationDate)
           : new Date(),
-        status: machineData.status || 'ATIVO'
+        status: machineData.status || 'ATIVO',
+        observacoes: machineData.observacoes || ''
       };
       
       const dbData = mapCamelToDb(processedData, 'machines');
@@ -485,21 +491,39 @@ export class DatabaseStorage implements IStorage {
 
   async createService(serviceData: InsertService): Promise<Service> {
     try {
-      const dbData = mapCamelToDb(serviceData, 'services');
+      console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
       
-      console.log('📝 [STORAGE] Dados do serviço (convertidos):', dbData);
+      // Processar dados
+      const processedData = {
+        ...serviceData,
+        dataAgendamento: serviceData.data_agendamento 
+          ? new Date(serviceData.data_agendamento)
+          : new Date(),
+        dataConclusao: serviceData.data_conclusao 
+          ? new Date(serviceData.data_conclusao)
+          : undefined,
+        status: serviceData.status || 'AGENDADO',
+        prioridade: serviceData.prioridade || 'MEDIA',
+        custo: serviceData.custo || null,
+        descricaoProblema: serviceData.descricao_problema || '',
+        observacoes: serviceData.observacoes || ''
+      };
       
-      // Get technician name for denormalization
-      const technician = await this.getTechnician(dbData.tecnico_id);
+      // Obter nome do técnico
+      const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
-
+      
+      const dbData = mapCamelToDb(processedData, 'services');
+      dbData.tecnico_nome = tecnicoNome;
+      
+      console.log('📝 [STORAGE] Dados convertidos para banco:', JSON.stringify(dbData, null, 2));
+      
       const [service] = await db.insert(services).values({
         ...dbData,
-        tecnico_nome: tecnicoNome,
         updated_at: new Date()
       }).returning();
       
-      // Add to history
+      // Adicionar ao histórico
       await this.addServiceHistory({
         serviceId: service.id,
         status: service.status,
@@ -519,7 +543,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const dbData = mapCamelToDb(serviceData, 'services');
       
-      // If technician is being updated, get new name
+      // Se técnico foi atualizado, obter novo nome
       if (dbData.tecnico_id) {
         const technician = await this.getTechnician(dbData.tecnico_id);
         dbData.tecnico_nome = technician?.nome || "Desconhecido";
@@ -593,7 +617,7 @@ export class DatabaseStorage implements IStorage {
     completedServices: number;
   }> {
     try {
-      // Get machine counts
+      // Contar máquinas por status
       const [activeResult] = await db.select({ count: count() })
         .from(machines)
         .where(eq(machines.status, 'ATIVO'));
@@ -606,10 +630,10 @@ export class DatabaseStorage implements IStorage {
         .from(machines)
         .where(eq(machines.status, 'DEFEITO'));
       
-      // Get service counts
+      // Contar serviços por status
       const [pendingResult] = await db.select({ count: count() })
         .from(services)
-        .where(sql`status IN ('AGENDADO', 'PENDENTE')`);
+        .where(sql`status IN ('AGENDADO', 'PENDENTE', 'EM_ANDAMENTO')`);
       
       const [completedResult] = await db.select({ count: count() })
         .from(services)
