@@ -155,8 +155,31 @@ app.use((req, res, next) => {
 
     // Serve arquivos estáticos em produção
     if (process.env.NODE_ENV === "production") {
-      const staticPath = path.resolve(process.cwd(), 'client/dist/public');
+      // MUDEI: de 'client/dist/public' para 'client/dist'
+      const staticPath = path.resolve(process.cwd(), 'client/dist');
       console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
+      
+      // Verificar se o diretório existe
+      const fs = require('fs');
+      if (fs.existsSync(staticPath)) {
+        console.log(`✅ Diretório existe`);
+        const files = fs.readdirSync(staticPath);
+        console.log(`📁 Conteúdo: ${files.join(', ')}`);
+        
+        // Verificar index.html
+        const indexPath = path.join(staticPath, 'index.html');
+        if (fs.existsSync(indexPath)) {
+          console.log(`✅ index.html encontrado`);
+        } else {
+          console.log(`❌ index.html NÃO encontrado`);
+        }
+      } else {
+        console.log(`❌ Diretório NÃO existe`);
+        
+        // Tentar criar se não existir
+        fs.mkdirSync(staticPath, { recursive: true });
+        console.log(`📁 Diretório criado: ${staticPath}`);
+      }
       
       app.use(express.static(staticPath));
       
@@ -164,9 +187,6 @@ app.use((req, res, next) => {
     }
 
     // ========== ROTAS FALLBACK ==========
-    // IMPORTANTE: Esta rota deve estar DEPOIS de todas as rotas de API
-    // mas ANTES do error handler
-    
     if (process.env.NODE_ENV === "production") {
       // Em produção: Serve o frontend para todas as rotas não-API
       app.get('*', (req, res, next) => {
@@ -176,7 +196,8 @@ app.use((req, res, next) => {
         }
         
         // Serve o index.html para todas as outras rotas
-        const staticPath = path.resolve(process.cwd(), 'client/dist/public');
+        // MUDEI: de 'client/dist/public' para 'client/dist'
+        const staticPath = path.resolve(process.cwd(), 'client/dist');
         res.sendFile(path.resolve(staticPath, 'index.html'));
       });
     } else {

@@ -1,4 +1,3 @@
-// client/vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -7,7 +6,6 @@ import path from "path";
 export default defineConfig({
   plugins: [
     react(),
-    // Use apenas o plugin do Vite, NÃO configure PostCSS separadamente
     tailwindcss(),
   ],
   
@@ -18,7 +16,8 @@ export default defineConfig({
   },
   
   build: {
-    outDir: path.resolve(__dirname, "../dist/public"),
+    // MUDEI: de "../dist/public" para "../dist"
+    outDir: path.resolve(__dirname, "../dist"),
     emptyOutDir: true,
   },
   
