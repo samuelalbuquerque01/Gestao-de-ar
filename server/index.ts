@@ -120,10 +120,10 @@ app.use((req, res, next) => {
     log('🔧 [INIT] Iniciando servidor...');
     log(`📁 Ambiente: ${process.env.NODE_ENV}`);
     
-    // Registra rotas
+    // Registra rotas de API
     await registerRoutes(httpServer, app);
     
-    // Rota de debug
+    // Rota de debug da API
     app.get('/api/debug', (req, res) => {
       res.json({
         success: true,
@@ -153,34 +153,52 @@ app.use((req, res, next) => {
       });
     });
 
-    // Rota raiz
-    app.get('/', (req, res) => {
-      res.json({
-        message: 'API Gestão de Ar Condicionado',
-        version: '1.0.0',
-        environment: process.env.NODE_ENV,
-        documentation: '/api/debug',
-        health: '/health'
-      });
-    });
-
     // Serve arquivos estáticos em produção
     if (process.env.NODE_ENV === "production") {
-      // CORREÇÃO AQUI: Mudar de 'client/dist' para 'client/dist/public'
       const staticPath = path.resolve(process.cwd(), 'client/dist/public');
       console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
       
       app.use(express.static(staticPath));
       
-      // Fallback para SPA - IMPORTANTE: Esta rota deve estar DEPOIS das rotas API
-      app.get('*', (req, res) => {
-        res.sendFile(path.resolve(staticPath, 'index.html'));
-      });
-      
       log('✅ Modo produção: arquivos estáticos habilitados');
     }
 
-    // Error handler - DEVE estar DEPOIS da rota fallback
+    // ========== ROTAS FALLBACK ==========
+    // IMPORTANTE: Esta rota deve estar DEPOIS de todas as rotas de API
+    // mas ANTES do error handler
+    
+    if (process.env.NODE_ENV === "production") {
+      // Em produção: Serve o frontend para todas as rotas não-API
+      app.get('*', (req, res, next) => {
+        // Se é uma rota de API, passa para o próximo middleware (error handler)
+        if (req.path.startsWith('/api')) {
+          return next();
+        }
+        
+        // Serve o index.html para todas as outras rotas
+        const staticPath = path.resolve(process.cwd(), 'client/dist/public');
+        res.sendFile(path.resolve(staticPath, 'index.html'));
+      });
+    } else {
+      // Em desenvolvimento: Informa que o frontend roda separadamente
+      app.get('*', (req, res) => {
+        if (req.path.startsWith('/api')) {
+          // Rota API não encontrada
+          return res.status(404).json({ 
+            error: 'Rota API não encontrada',
+            path: req.path 
+          });
+        }
+        
+        res.json({
+          message: 'Frontend não servido por este servidor em desenvolvimento',
+          instruction: 'Execute o frontend separadamente: cd client && npm run dev',
+          frontend_url: 'http://localhost:5000'
+        });
+      });
+    }
+
+    // Error handler - Só é alcançado para rotas /api não tratadas
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
@@ -203,7 +221,11 @@ app.use((req, res, next) => {
       log(`🔗 URL Local: http://localhost:${port}`);
       
       if (process.env.NODE_ENV === 'production') {
-        log(`🌐 Acesse externamente na porta: ${port}`);
+        log(`🌐 Frontend disponível em: https://gestao-de-ar.onrender.com`);
+        log(`🌐 API disponível em: https://gestao-de-ar.onrender.com/api/debug`);
+      } else {
+        log(`🌐 API disponível em: http://localhost:${port}/api/debug`);
+        log(`🌐 Frontend disponível em: http://localhost:5000`);
       }
     });
 
