@@ -28,7 +28,7 @@ async function initDatabase() {
     `);
     console.log('✅ Tabela users criada/verificada');
     
-    // ========== CRIAR TABELA TECHNICIANS ==========
+    // ========== CRIAR TABELA TECHNICIANS (COM TODAS AS COLUNAS CORRETAS) ==========
     console.log('\n📦 Criando tabela technicians...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS technicians (
@@ -44,22 +44,22 @@ async function initDatabase() {
     `);
     console.log('✅ Tabela technicians criada/verificada');
     
-    // ========== CRIAR TABELA MACHINES ==========
+    // ========== CRIAR TABELA MACHINES (COM TODAS AS COLUNAS CORRETAS) ==========
     console.log('\n📦 Criando tabela machines...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS machines (
         id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
         codigo VARCHAR(255) UNIQUE NOT NULL,
-        modelo VARCHAR(255) NOT NULL,
-        marca VARCHAR(255) NOT NULL,
-        tipo VARCHAR(50) NOT NULL,
-        capacidade_btu INTEGER NOT NULL,
-        voltagem VARCHAR(50) NOT NULL,
-        localizacao_tipo VARCHAR(50) NOT NULL,
-        localizacao_descricao TEXT NOT NULL,
-        localizacao_andar INTEGER,
-        filial VARCHAR(255) NOT NULL,
-        data_instalacao TIMESTAMP NOT NULL,
+        model VARCHAR(255) NOT NULL,
+        brand VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL DEFAULT 'SPLIT',
+        capacity INTEGER NOT NULL DEFAULT 9000,
+        voltage VARCHAR(50) NOT NULL DEFAULT 'V220',
+        location_type VARCHAR(50) NOT NULL DEFAULT 'SALA',
+        location TEXT NOT NULL,
+        location_floor INTEGER,
+        branch VARCHAR(255) NOT NULL DEFAULT 'Matriz',
+        installation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         status VARCHAR(50) DEFAULT 'ATIVO' NOT NULL,
         observacoes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -68,20 +68,21 @@ async function initDatabase() {
     `);
     console.log('✅ Tabela machines criada/verificada');
     
-    // ========== CRIAR TABELA SERVICES ==========
+    // ========== CRIAR TABELA SERVICES (COM NOMES EM PORTUGUÊS) ==========
     console.log('\n📦 Criando tabela services...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-        tipo_servico VARCHAR(50) NOT NULL,
+        tipo_servico VARCHAR(50) NOT NULL DEFAULT 'PREVENTIVA',
         maquina_id VARCHAR(255) NOT NULL,
-        data_agendamento TIMESTAMP NOT NULL,
+        data_agendamento TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         tecnico_id VARCHAR(255) NOT NULL,
-        tecnico_nome VARCHAR(255) NOT NULL,
+        tecnico_nome VARCHAR(255) NOT NULL DEFAULT 'Técnico',
         descricao_servico TEXT NOT NULL,
         descricao_problema TEXT,
         prioridade VARCHAR(50) DEFAULT 'MEDIA' NOT NULL,
         status VARCHAR(50) DEFAULT 'AGENDADO' NOT NULL,
+        custo NUMERIC(10, 2),
         observacoes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -155,6 +156,76 @@ async function initDatabase() {
     }
     
     console.log('✅ Índices criados/verificados');
+    
+    // ========== VERIFICAR E CORRIGIR ESTRUTURA EXISTENTE ==========
+    console.log('\n🔍 Verificando e corrigindo estrutura existente...');
+    
+    // Verificar e corrigir tabela technicians se necessário
+    const checkTechEmail = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'technicians' AND column_name = 'email'
+    `);
+    
+    if (checkTechEmail.rows.length === 0) {
+      console.log('📝 Adicionando coluna email à tabela technicians...');
+      await client.query(`ALTER TABLE technicians ADD COLUMN email VARCHAR(255);`);
+      console.log('✅ Coluna email adicionada à technicians');
+    }
+    
+    // Verificar e corrigir tabela services se necessário
+    const checkServicesStructure = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'services' AND column_name = 'maquina_id'
+    `);
+    
+    if (checkServicesStructure.rows.length === 0) {
+      console.log('📝 Verificando se services tem machine_id...');
+      const checkMachineId = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'services' AND column_name = 'machine_id'
+      `);
+      
+      if (checkMachineId.rows.length > 0) {
+        console.log('🔄 Renomeando machine_id para maquina_id...');
+        await client.query(`ALTER TABLE services RENAME COLUMN machine_id TO maquina_id;`);
+        console.log('✅ machine_id renomeado para maquina_id');
+      } else {
+        console.log('📝 Adicionando coluna maquina_id à services...');
+        await client.query(`ALTER TABLE services ADD COLUMN maquina_id VARCHAR(255);`);
+        console.log('✅ Coluna maquina_id adicionada à services');
+      }
+    }
+    
+    // Verificar e corrigir descricao_servico
+    const checkDescServico = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'services' AND column_name = 'descricao_servico'
+    `);
+    
+    if (checkDescServico.rows.length === 0) {
+      console.log('📝 Verificando se services tem description...');
+      const checkDescription = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'services' AND column_name = 'description'
+      `);
+      
+      if (checkDescription.rows.length > 0) {
+        console.log('🔄 Renomeando description para descricao_servico...');
+        await client.query(`ALTER TABLE services RENAME COLUMN description TO descricao_servico;`);
+        console.log('✅ description renomeado para descricao_servico');
+      } else {
+        console.log('📝 Adicionando coluna descricao_servico à services...');
+        await client.query(`ALTER TABLE services ADD COLUMN descricao_servico TEXT NOT NULL DEFAULT '';`);
+        console.log('✅ Coluna descricao_servico adicionada à services');
+      }
+    }
+    
+    console.log('\n🎉 Banco de dados inicializado e corrigido com sucesso!');
     
   } catch (error) {
     console.error('❌ Erro ao inicializar banco de dados:', error);
