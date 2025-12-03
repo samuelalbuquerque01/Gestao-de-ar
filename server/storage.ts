@@ -60,7 +60,7 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   
   // Mapeamentos específicos por tabela
   if (tableName === 'users') {
-    if (result.password_hash) result.password = result.password_hash; // MAPEIA password_hash para password
+    if (result.password_hash) result.password = result.password_hash;
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     delete result.password_hash;
@@ -68,18 +68,35 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     delete result.updated_at;
   }
   
+  if (tableName === 'technicians') {
+    if (result.created_at) result.createdAt = result.created_at;
+    if (result.updated_at) result.updatedAt = result.updated_at;
+    delete result.created_at;
+    delete result.updated_at;
+  }
+  
   if (tableName === 'machines') {
+    if (result.capacidade_btu) result.capacidadeBTU = result.capacidade_btu;
+    if (result.localizacao_tipo) result.localizacaoTipo = result.localizacao_tipo;
+    if (result.localizacao_descricao) result.localizacaoDescricao = result.localizacao_descricao;
+    if (result.localizacao_andar) result.localizacaoAndar = result.localizacao_andar;
     if (result.data_instalacao) result.dataInstalacao = result.data_instalacao;
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
+    
+    delete result.capacidade_btu;
+    delete result.localizacao_tipo;
+    delete result.localizacao_descricao;
+    delete result.localizacao_andar;
     delete result.data_instalacao;
     delete result.created_at;
     delete result.updated_at;
   }
   
   if (tableName === 'services') {
-    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
+    if (result.tipo_servico) result.tipoServico = result.tipo_servico;
     if (result.maquina_id) result.maquinaId = result.maquina_id;
+    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
     if (result.tecnico_id) result.tecnicoId = result.tecnico_id;
     if (result.tecnico_nome) result.tecnicoNome = result.tecnico_nome;
     if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
@@ -87,14 +104,24 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
-    delete result.data_agendamento;
+    delete result.tipo_servico;
     delete result.maquina_id;
+    delete result.data_agendamento;
     delete result.tecnico_id;
     delete result.tecnico_nome;
     delete result.descricao_servico;
     delete result.descricao_problema;
     delete result.created_at;
     delete result.updated_at;
+  }
+  
+  if (tableName === 'service_history') {
+    if (result.service_id) result.serviceId = result.service_id;
+    if (result.created_at) result.createdAt = result.created_at;
+    if (result.created_by) result.createdBy = result.created_by;
+    delete result.service_id;
+    delete result.created_at;
+    delete result.created_by;
   }
   
   return result;
@@ -107,7 +134,7 @@ function mapCamelToDb(data: any, tableName: string): any {
   const result = { ...data };
   
   if (tableName === 'users') {
-    if (result.password) result.password_hash = result.password; // MAPEIA password para password_hash
+    if (result.password) result.password_hash = result.password;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     delete result.password;
@@ -115,18 +142,35 @@ function mapCamelToDb(data: any, tableName: string): any {
     delete result.updatedAt;
   }
   
+  if (tableName === 'technicians') {
+    if (result.createdAt) result.created_at = result.createdAt;
+    if (result.updatedAt) result.updated_at = result.updatedAt;
+    delete result.createdAt;
+    delete result.updatedAt;
+  }
+  
   if (tableName === 'machines') {
+    if (result.capacidadeBTU) result.capacidade_btu = result.capacidadeBTU;
+    if (result.localizacaoTipo) result.localizacao_tipo = result.localizacaoTipo;
+    if (result.localizacaoDescricao) result.localizacao_descricao = result.localizacaoDescricao;
+    if (result.localizacaoAndar !== undefined) result.localizacao_andar = result.localizacaoAndar;
     if (result.dataInstalacao) result.data_instalacao = result.dataInstalacao;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
+    
+    delete result.capacidadeBTU;
+    delete result.localizacaoTipo;
+    delete result.localizacaoDescricao;
+    delete result.localizacaoAndar;
     delete result.dataInstalacao;
     delete result.createdAt;
     delete result.updatedAt;
   }
   
   if (tableName === 'services') {
-    if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
+    if (result.tipoServico) result.tipo_servico = result.tipoServico;
     if (result.maquinaId) result.maquina_id = result.maquinaId;
+    if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
     if (result.tecnicoId) result.tecnico_id = result.tecnicoId;
     if (result.tecnicoNome) result.tecnico_nome = result.tecnicoNome;
     if (result.descricaoServico) result.descricao_servico = result.descricaoServico;
@@ -134,14 +178,24 @@ function mapCamelToDb(data: any, tableName: string): any {
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     
-    delete result.dataAgendamento;
+    delete result.tipoServico;
     delete result.maquinaId;
+    delete result.dataAgendamento;
     delete result.tecnicoId;
     delete result.tecnicoNome;
     delete result.descricaoServico;
     delete result.descricaoProblema;
     delete result.createdAt;
     delete result.updatedAt;
+  }
+  
+  if (tableName === 'service_history') {
+    if (result.serviceId) result.service_id = result.serviceId;
+    if (result.createdAt) result.created_at = result.createdAt;
+    if (result.createdBy) result.created_by = result.createdBy;
+    delete result.serviceId;
+    delete result.createdAt;
+    delete result.createdBy;
   }
   
   return result;
@@ -306,10 +360,11 @@ export class DatabaseStorage implements IStorage {
 
   async getMachineByCodigo(codigo: string): Promise<Machine | undefined> {
     try {
+      console.log('🔍 [STORAGE] Buscando máquina por código:', codigo);
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
       return machine ? mapDbToCamelCase(machine, 'machines') : undefined;
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error);
+    } catch (error: any) {
+      console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error.message);
       return undefined;
     }
   }

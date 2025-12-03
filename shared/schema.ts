@@ -40,13 +40,13 @@ export const technicianStatusEnum = pgEnum("technician_status", [
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
-  password_hash: text("password_hash").notNull(), // CORRIGIDO: password_hash
+  password_hash: text("password_hash").notNull(),
   email: text("email").notNull().unique(),
   name: text("name"),
   phone: text("phone"),
-  role: text("role").default('technician'), // ADICIONADO
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(), // ADICIONADO
+  role: text("role").default('technician'),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const technicians = pgTable("technicians", {
@@ -56,8 +56,8 @@ export const technicians = pgTable("technicians", {
   telefone: text("telefone").notNull(),
   email: text("email"),
   status: technicianStatusEnum("status").default('ATIVO').notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const machines = pgTable("machines", {
@@ -66,45 +66,45 @@ export const machines = pgTable("machines", {
   modelo: text("modelo").notNull(),
   marca: text("marca").notNull(),
   tipo: machineTypeEnum("tipo").notNull(),
-  capacidadeBTU: integer("capacidade_btu").notNull(),
+  capacidade_btu: integer("capacidade_btu").notNull(),
   voltagem: machineVoltageEnum("voltagem").notNull(),
-  localizacaoTipo: locationTypeEnum("localizacao_tipo").notNull(),
-  localizacaoDescricao: text("localizacao_descricao").notNull(),
-  localizacaoAndar: integer("localizacao_andar"),
+  localizacao_tipo: locationTypeEnum("localizacao_tipo").notNull(),
+  localizacao_descricao: text("localizacao_descricao").notNull(),
+  localizacao_andar: integer("localizacao_andar"),
   filial: text("filial").notNull(),
-  dataInstalacao: timestamp("data_instalacao").notNull(),
+  data_instalacao: timestamp("data_instalacao").notNull(),
   status: machineStatusEnum("status").default('ATIVO').notNull(),
   observacoes: text("observacoes"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const services = pgTable("services", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tipoServico: serviceTypeEnum("tipo_servico").notNull(),
-  maquinaId: varchar("maquina_id").notNull()
+  tipo_servico: serviceTypeEnum("tipo_servico").notNull(),
+  maquina_id: varchar("maquina_id").notNull()
     .references(() => machines.id, { onDelete: 'cascade' }),
-  dataAgendamento: timestamp("data_agendamento").notNull(),
-  tecnicoId: varchar("tecnico_id").notNull()
+  data_agendamento: timestamp("data_agendamento").notNull(),
+  tecnico_id: varchar("tecnico_id").notNull()
     .references(() => technicians.id, { onDelete: 'restrict' }),
-  tecnicoNome: text("tecnico_nome").notNull(),
-  descricaoServico: text("descricao_servico").notNull(),
-  descricaoProblema: text("descricao_problema"),
+  tecnico_nome: text("tecnico_nome").notNull(),
+  descricao_servico: text("descricao_servico").notNull(),
+  descricao_problema: text("descricao_problema"),
   prioridade: priorityEnum("prioridade").default('MEDIA').notNull(),
   status: serviceStatusEnum("status").default('AGENDADO').notNull(),
   observacoes: text("observacoes"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const serviceHistory = pgTable("service_history", {
   id: serial("id").primaryKey(),
-  serviceId: varchar("service_id").notNull()
+  service_id: varchar("service_id").notNull()
     .references(() => services.id, { onDelete: 'cascade' }),
   status: serviceStatusEnum("status").notNull(),
   observacao: text("observacao"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  createdBy: varchar("created_by")
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  created_by: varchar("created_by")
     .references(() => users.id),
 });
 
@@ -119,26 +119,26 @@ export const insertUserSchema = z.object({
 
 export const insertTechnicianSchema = createInsertSchema(technicians).omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
+  created_at: true,
+  updated_at: true,
 });
 
 export const insertMachineSchema = createInsertSchema(machines).omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
+  created_at: true,
+  updated_at: true,
 });
 
 export const insertServiceSchema = createInsertSchema(services).omit({
   id: true,
-  tecnicoNome: true,
-  createdAt: true,
-  updatedAt: true,
+  tecnico_nome: true,
+  created_at: true,
+  updated_at: true,
 });
 
 export const insertServiceHistorySchema = createInsertSchema(serviceHistory).omit({
   id: true,
-  createdAt: true,
+  created_at: true,
 });
 
 // ========== TYPES ==========
