@@ -15,12 +15,15 @@ console.log('🔧 [ENV] Node Version:', process.version);
 
 // ========== INICIALIZAÇÃO DO BANCO ==========
 import { initDatabase } from './init-db.js';
+import { updateDatabase } from './update-db.js'; // IMPORTE A ATUALIZAÇÃO
 
 async function initializeDatabase() {
   try {
     console.log('🔍 Verificando/Inicializando banco de dados...');
-    await initDatabase();
-    console.log('✅ Banco de dados inicializado com sucesso');
+    await initDatabase(); // Cria tabelas se não existirem
+    console.log('🔄 Verificando atualizações necessárias...');
+    await updateDatabase(); // Adiciona colunas faltantes
+    console.log('✅ Banco de dados inicializado e atualizado com sucesso');
   } catch (error) {
     console.error('❌ Falha ao inicializar banco de dados:', error);
     // Não saia do processo, apenas log o erro
@@ -135,7 +138,7 @@ app.use((req, res, next) => {
     log('🔧 [INIT] Iniciando servidor...');
     log(`📁 Ambiente: ${process.env.NODE_ENV}`);
     
-    // INICIALIZAR BANCO DE DADOS PRIMEIRO
+    // INICIALIZAR BANCO DE DADOS PRIMEIRO (cria tabelas e adiciona colunas)
     await initializeDatabase();
     
     // Registra rotas de API

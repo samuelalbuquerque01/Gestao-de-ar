@@ -10,8 +10,9 @@
     "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:client": "cd client && npm run dev -- --port 5000",
     "check": "tsc",
-    "db:push": "drizzle-kit push",
-    "db:init": "tsx server/init-db.ts"
+    "db:init": "tsx server/init-db.ts",
+    "db:update": "tsx server/update-db.ts",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
