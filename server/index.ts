@@ -1,6 +1,7 @@
 // ========== CONFIGURAÇÃO .env ==========
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs'; // ADICIONE ESTA LINHA
 
 // Configuração de ambiente simplificada para produção
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
@@ -155,12 +156,10 @@ app.use((req, res, next) => {
 
     // Serve arquivos estáticos em produção
     if (process.env.NODE_ENV === "production") {
-      // MUDEI: de 'client/dist/public' para 'client/dist'
       const staticPath = path.resolve(process.cwd(), 'client/dist');
       console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
       
-      // Verificar se o diretório existe
-      const fs = require('fs');
+      // Verificar se o diretório existe (usando fs que já foi importado)
       if (fs.existsSync(staticPath)) {
         console.log(`✅ Diretório existe`);
         const files = fs.readdirSync(staticPath);
@@ -196,9 +195,20 @@ app.use((req, res, next) => {
         }
         
         // Serve o index.html para todas as outras rotas
-        // MUDEI: de 'client/dist/public' para 'client/dist'
         const staticPath = path.resolve(process.cwd(), 'client/dist');
-        res.sendFile(path.resolve(staticPath, 'index.html'));
+        const indexPath = path.resolve(staticPath, 'index.html');
+        
+        // Verificar se o arquivo existe antes de enviar
+        if (fs.existsSync(indexPath)) {
+          res.sendFile(indexPath);
+        } else {
+          console.log(`❌ index.html não encontrado em: ${indexPath}`);
+          res.status(404).json({
+            error: 'Frontend não encontrado',
+            message: 'O build do frontend não foi encontrado',
+            path: indexPath
+          });
+        }
       });
     } else {
       // Em desenvolvimento: Informa que o frontend roda separadamente
