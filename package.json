@@ -4,7 +4,6 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "prebuild": "node ensure-files.js",
     "build": "cd client && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
