@@ -1,110 +1,124 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useLocation } from 'wouter';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
-// Types
-export interface User {
+interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  phone: string;
-  role: 'ADMIN' | 'USER';
+  name?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: any) => Promise<void>;
   logout: () => void;
-  register: (data: Omit<User, 'id' | 'role'>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock Admin User
-const ADMIN_USER: User = {
-  id: 'admin-001',
-  name: 'Administrador',
-  email: 'admin@neuro.com',
-  phone: '(85) 99999-9999',
-  role: 'ADMIN'
-};
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [location, setLocation] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for persisted session on mount
+  // Verificar token no localStorage ao iniciar
   useEffect(() => {
-    const storedUser = localStorage.getItem('neuro_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      // Auto-create admin for demo purposes if no users exist (simulated)
-      // In a real app, this would happen on server init
-      console.log('System initialized. Default admin available: admin@neuro.com');
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        console.log('✅ Sessão restaurada');
+      } catch (error) {
+        console.error('Erro ao restaurar sessão:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
   }, []);
 
-  const login = async (email: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Simple mock login logic
-    if (email === 'admin@neuro.com') {
-      const admin = ADMIN_USER;
-      setUser(admin);
-      localStorage.setItem('neuro_user', JSON.stringify(admin));
-      setLocation('/');
-    } else {
-      // Allow any other registered user (mock persistence in memory for this session)
-      const storedUsers = JSON.parse(localStorage.getItem('neuro_registered_users') || '[]');
-      const foundUser = storedUsers.find((u: User) => u.email === email);
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      console.log('🔑 Tentando login...');
       
-      if (foundUser) {
-        setUser(foundUser);
-        localStorage.setItem('neuro_user', JSON.stringify(foundUser));
-        setLocation('/');
+      const response = await api.post('/auth/login', { email, password });
+      
+      console.log('📥 Resposta:', response.data);
+      
+      if (response.data.success && response.data.data) {
+        const { token, user: userData } = response.data.data;
+        
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        console.log('✅ Login bem-sucedido');
       } else {
-        alert('Usuário não encontrado. Use admin@neuro.com ou cadastre-se.');
+        throw new Error(response.data.error || 'Login falhou');
       }
+      
+    } catch (error: any) {
+      console.error('❌ Erro no login:', error);
+      
+      let errorMessage = 'Falha no login';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
-  const register = async (data: Omit<User, 'id' | 'role'>) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      role: 'USER',
-      ...data
-    };
-
-    // Save to "DB"
-    const storedUsers = JSON.parse(localStorage.getItem('neuro_registered_users') || '[]');
-    storedUsers.push(newUser);
-    localStorage.setItem('neuro_registered_users', JSON.stringify(storedUsers));
-
-    // Auto login
-    setUser(newUser);
-    localStorage.setItem('neuro_user', JSON.stringify(newUser));
-    setLocation('/');
+  const register = async (userData: any): Promise<void> => {
+    try {
+      console.log('👤 Tentando registro...');
+      const response = await api.post('/auth/register', userData);
+      
+      if (response.data.success && response.data.data) {
+        const { token, user: newUser } = response.data.data;
+        
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        
+        setUser(newUser);
+        setIsAuthenticated(true);
+        
+        console.log('✅ Registro bem-sucedido');
+      } else {
+        throw new Error(response.data.error || 'Registro falhou');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Erro no registro:', error);
+      
+      let errorMessage = 'Falha no registro';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      throw new Error(errorMessage);
+    }
   };
 
   const logout = () => {
+    console.log('🚪 Fazendo logout...');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    localStorage.removeItem('neuro_user');
-    setLocation('/login');
+    setIsAuthenticated(false);
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user,
-      login, 
-      logout, 
-      register 
-    }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -112,8 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth deve ser usado dentro de AuthProvider');
   }
   return context;
 }

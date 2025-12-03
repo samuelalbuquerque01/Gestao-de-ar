@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useData, Machine, MachineType, LocationType, MachineStatus } from '@/lib/data';
+import { useData, type Machine, type MachineType, type LocationType, type MachineStatus } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -52,7 +52,8 @@ const machineSchema = z.object({
 });
 
 export default function MachinesPage() {
-  const { machines, addMachine, updateMachine, deleteMachine } = useData();
+  // CORREÇÃO: Chame useData() DENTRO do componente
+  const { machines, createMachine, updateMachine, deleteMachine } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
@@ -95,7 +96,8 @@ export default function MachinesPage() {
     if (editingMachine) {
       updateMachine(editingMachine.id, formattedData);
     } else {
-      addMachine(formattedData);
+      // CORREÇÃO: Use createMachine, não addMachine
+      createMachine(formattedData);
     }
     setIsDialogOpen(false);
     setEditingMachine(null);

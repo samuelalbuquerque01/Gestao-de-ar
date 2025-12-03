@@ -1,4 +1,20 @@
+// ========== CONFIGURAÇÃO .env ==========
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const envPath = resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
+
+console.log('🔧 [ENV] PORT:', process.env.PORT);
+console.log('🔧 [ENV] NODE_ENV:', process.env.NODE_ENV);
+
+// ========== IMPORTAÇÕES ==========
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -6,6 +22,21 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
+// ========== CONFIGURAÇÃO CORS SIMPLIFICADA ==========
+app.use(cors({
+  origin: ['http://localhost:5000', 'http://127.0.0.1:5000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// ========== MIDDLEWARE DE LOG ==========
+app.use((req, res, next) => {
+  console.log(`🌐 [API] ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
+
+// ========== MIDDLEWARES ==========
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -22,7 +53,8 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-export function log(message: string, source = "express") {
+// ========== LOGGING ==========
+function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -49,7 +81,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse).substring(0, 100)}...`;
       }
 
       log(logLine);
@@ -59,40 +91,66 @@ app.use((req, res, next) => {
   next();
 });
 
+// ========== INICIALIZAÇÃO ==========
 (async () => {
-  await registerRoutes(httpServer, app);
+  try {
+    log('🔧 [INIT] Iniciando servidor...');
+    
+    // Registra rotas
+    await registerRoutes(httpServer, app);
+    
+    // Rota de debug
+    app.get('/api/debug', (req, res) => {
+      res.json({
+        success: true,
+        message: 'API funcionando',
+        timestamp: new Date().toISOString(),
+        endpoints: [
+          '/api/test',
+          '/api/auth/login',
+          '/api/auth/register',
+          '/api/technicians',
+          '/api/machines',
+          '/api/services',
+          '/api/dashboard/stats'
+        ]
+      });
+    });
+    
+    // Rota de health check
+    app.get('/health', (req, res) => {
+      res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+    });
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
-  });
+      res.status(status).json({ 
+        success: false,
+        error: message 
+      });
+      console.error("❌ Erro do servidor:", err);
+    });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
+    if (process.env.NODE_ENV === "production") {
+      serveStatic(app);
+    } else {
+      const { setupVite } = await import("./vite");
+      await setupVite(httpServer, app);
+    }
+
+    const port = parseInt(process.env.PORT || "5001", 10);
+    
+    httpServer.listen(port, "127.0.0.1", () => {
+      log(`✅ Servidor rodando em http://127.0.0.1:${port}`);
+      log(`📁 Modo: ${process.env.NODE_ENV}`);
+      log(`🌐 CORS permitido para: localhost:5000, 127.0.0.1:5000`);
+      log(`🔌 Proxy Vite: localhost:5000 → 127.0.0.1:${port}`);
+    });
+
+  } catch (error) {
+    console.error("❌ Erro fatal ao iniciar servidor:", error);
+    process.exit(1);
   }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
 })();

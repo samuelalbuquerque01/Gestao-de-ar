@@ -42,7 +42,8 @@ const serviceSchema = z.object({
 });
 
 export default function ServicesPage() {
-  const { services, machines, technicians, addService, updateService, deleteService } = useData();
+  // CORREÇÃO: Mude addService para createService
+  const { services, machines, technicians, createService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -91,7 +92,8 @@ export default function ServicesPage() {
     if (editingService) {
       updateService(editingService.id, formattedData);
     } else {
-      addService(formattedData);
+      // CORREÇÃO: Mude addService para createService
+      createService(formattedData);
     }
     setIsDialogOpen(false);
     setEditingService(null);
@@ -430,7 +432,7 @@ export default function ServicesPage() {
 
                 <div className="mt-4 pt-3 border-t pl-2 flex justify-between items-center">
                   <span className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
+                    "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
                     service.status === 'CONCLUIDO' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
                     service.status === 'EM_ANDAMENTO' ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
                     service.status === 'CANCELADO' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :

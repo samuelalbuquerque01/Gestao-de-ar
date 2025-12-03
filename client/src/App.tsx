@@ -17,9 +17,9 @@ import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   
-  if (!isAuthenticated && !user) { // Check user too as auth state might lag slightly on init
+  if (!isAuthenticated) {
     return <Redirect to="/login" />;
   }
   
@@ -41,19 +41,24 @@ function Router() {
       <Route path="/">
         <ProtectedRoute component={Dashboard} />
       </Route>
+      
       <Route path="/maquinas">
         <ProtectedRoute component={MachinesPage} />
       </Route>
+      
       <Route path="/servicos">
         <ProtectedRoute component={ServicesPage} />
       </Route>
+      
       <Route path="/tecnicos">
         <ProtectedRoute component={TechniciansPage} />
       </Route>
+      
       <Route path="/relatorios">
         <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Relatórios em Desenvolvimento</div>} />
       </Route>
       
+      {/* 404 */}
       <Route component={NotFound} />
     </Switch>
   );

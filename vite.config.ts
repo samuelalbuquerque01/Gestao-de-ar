@@ -41,11 +41,31 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: 5000,
     host: "0.0.0.0",
     allowedHosts: true,
     fs: {
       strict: true,
       deny: ["**/.*"],
+    },
+    // ========== PROXY CONFIGURADO PARA PORTA 5001 ==========
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('❌ [VITE PROXY] Erro:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('➡️  [VITE PROXY] Request:', req.method, req.url, '→', proxyReq.path);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('⬅️  [VITE PROXY] Response:', proxyRes.statusCode, req.url);
+          });
+        }
+      }
     },
   },
 });

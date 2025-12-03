@@ -1,264 +1,222 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { addDays, subDays } from 'date-fns';
+// data.tsx - FRONTEND COMPLETO
+import { createContext, useContext } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
-// Types
-export type MachineStatus = 'ATIVO' | 'INATIVO' | 'MANUTENCAO' | 'DEFEITO';
-export type MachineType = 'SPLIT' | 'WINDOW' | 'PISO_TETO' | 'CASSETE' | 'INVERTER' | 'PORTATIL';
-export type LocationType = 'SALA' | 'QUARTO' | 'ESCRITORIO' | 'SALA_REUNIAO' | 'OUTRO';
-export type ServiceType = 'PREVENTIVA' | 'CORRETIVA' | 'INSTALACAO' | 'LIMPEZA' | 'VISTORIA';
-export type ServiceStatus = 'AGENDADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO' | 'PENDENTE';
-export type Priority = 'BAIXA' | 'MEDIA' | 'ALTA' | 'URGENTE';
-
-export interface Technician {
-  id: string;
-  nome: string;
-  especialidade: string;
-  telefone: string;
-  email?: string;
-  status: 'ATIVO' | 'INATIVO';
-}
-
-export interface Machine {
-  id: string;
-  codigo: string;
-  modelo: string;
-  marca: string;
-  tipo: MachineType;
-  capacidadeBTU: number;
-  voltagem: 'V110' | 'V220' | 'BIVOLT';
-  localizacaoTipo: LocationType;
-  localizacaoDescricao: string;
-  localizacaoAndar?: number;
-  filial: string;
-  dataInstalacao: string;
-  status: MachineStatus;
-  observacoes?: string;
-}
-
-export interface Service {
-  id: string;
-  tipoServico: ServiceType;
-  maquinaId: string;
-  dataAgendamento: string;
-  dataConclusao?: string;
-  tecnicoId?: string;
-  tecnicoNome: string;
-  descricaoProblema?: string;
-  descricaoServico: string;
-  prioridade: Priority;
-  status: ServiceStatus;
-  observacoes?: string;
-}
-
-// Mock Data
-const INITIAL_TECHNICIANS: Technician[] = [
-  {
-    id: '1',
-    nome: 'Carlos Silva',
-    especialidade: 'Refrigeração Geral',
-    telefone: '(85) 99999-1111',
-    status: 'ATIVO'
-  },
-  {
-    id: '2',
-    nome: 'Roberto Santos',
-    especialidade: 'Elétrica e Comandos',
-    telefone: '(85) 99999-2222',
-    status: 'ATIVO'
-  },
-  {
-    id: '3',
-    nome: 'Ana Paula',
-    especialidade: 'Projetos e Vistoria',
-    telefone: '(85) 99999-3333',
-    status: 'ATIVO'
-  }
-];
-
-const INITIAL_MACHINES: Machine[] = [
-  {
-    id: '1',
-    codigo: 'AC-001',
-    modelo: 'Dual Inverter Voice',
-    marca: 'LG',
-    tipo: 'SPLIT',
-    capacidadeBTU: 12000,
-    voltagem: 'V220',
-    localizacaoTipo: 'SALA_REUNIAO',
-    localizacaoDescricao: 'Sala Principal',
-    localizacaoAndar: 2,
-    filial: 'Matriz',
-    dataInstalacao: '2023-01-15',
-    status: 'ATIVO',
-  },
-  {
-    id: '2',
-    codigo: 'AC-002',
-    modelo: 'WindFree',
-    marca: 'Samsung',
-    tipo: 'SPLIT',
-    capacidadeBTU: 9000,
-    voltagem: 'V220',
-    localizacaoTipo: 'ESCRITORIO',
-    localizacaoDescricao: 'RH - Sala 3',
-    localizacaoAndar: 1,
-    filial: 'Matriz',
-    dataInstalacao: '2023-03-10',
-    status: 'MANUTENCAO',
-  },
-  {
-    id: '3',
-    codigo: 'AC-003',
-    modelo: 'Eco Garden',
-    marca: 'Gree',
-    tipo: 'CASSETE',
-    capacidadeBTU: 24000,
-    voltagem: 'V220',
-    localizacaoTipo: 'SALA',
-    localizacaoDescricao: 'Recepção',
-    localizacaoAndar: 0,
-    filial: 'Filial Centro',
-    dataInstalacao: '2022-11-05',
-    status: 'ATIVO',
-  },
-  {
-    id: '4',
-    codigo: 'AC-004',
-    modelo: 'Springer Midea',
-    marca: 'Midea',
-    tipo: 'WINDOW',
-    capacidadeBTU: 7500,
-    voltagem: 'V110',
-    localizacaoTipo: 'QUARTO',
-    localizacaoDescricao: 'Alojamento - Quarto 10',
-    localizacaoAndar: 3,
-    filial: 'Filial Aldeota',
-    dataInstalacao: '2021-06-20',
-    status: 'DEFEITO',
-  }
-];
-
-const INITIAL_SERVICES: Service[] = [
-  {
-    id: '1',
-    tipoServico: 'PREVENTIVA',
-    maquinaId: '1',
-    dataAgendamento: new Date().toISOString(),
-    tecnicoId: '1',
-    tecnicoNome: 'Carlos Silva',
-    descricaoServico: 'Limpeza de filtros e verificação de gás',
-    prioridade: 'MEDIA',
-    status: 'AGENDADO',
-  },
-  {
-    id: '2',
-    tipoServico: 'CORRETIVA',
-    maquinaId: '2',
-    dataAgendamento: subDays(new Date(), 2).toISOString(),
-    tecnicoId: '2',
-    tecnicoNome: 'Roberto Santos',
-    descricaoProblema: 'Não está gelando',
-    descricaoServico: 'Troca do capacitor',
-    prioridade: 'ALTA',
-    status: 'EM_ANDAMENTO',
-  },
-  {
-    id: '3',
-    tipoServico: 'LIMPEZA',
-    maquinaId: '3',
-    dataAgendamento: subDays(new Date(), 15).toISOString(),
-    dataConclusao: subDays(new Date(), 15).toISOString(),
-    tecnicoId: '1',
-    tecnicoNome: 'Carlos Silva',
-    descricaoServico: 'Higienização completa',
-    prioridade: 'BAIXA',
-    status: 'CONCLUIDO',
-  },
-  {
-    id: '4',
-    tipoServico: 'VISTORIA',
-    maquinaId: '4',
-    dataAgendamento: addDays(new Date(), 5).toISOString(),
-    tecnicoId: '3',
-    tecnicoNome: 'Ana Paula',
-    descricaoServico: 'Avaliação técnica para troca',
-    prioridade: 'MEDIA',
-    status: 'AGENDADO',
-  }
-];
-
-// Context
 interface DataContextType {
-  machines: Machine[];
-  services: Service[];
-  technicians: Technician[];
-  addMachine: (machine: Omit<Machine, 'id'>) => void;
-  updateMachine: (id: string, machine: Partial<Machine>) => void;
-  deleteMachine: (id: string) => void;
-  addService: (service: Omit<Service, 'id'>) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  addTechnician: (technician: Omit<Technician, 'id'>) => void;
-  updateTechnician: (id: string, technician: Partial<Technician>) => void;
-  deleteTechnician: (id: string) => void;
-  getMachine: (id: string) => Machine | undefined;
+  technicians: any[];
+  isLoadingTechnicians: boolean;
+  errorTechnicians: any;
+  createTechnician: (data: any) => Promise<any>;
+  updateTechnician: (id: string, data: any) => Promise<any>;
+  deleteTechnician: (id: string) => Promise<any>;
+  
+  machines: any[];
+  isLoadingMachines: boolean;
+  errorMachines: any;
+  createMachine: (data: any) => Promise<any>;
+  updateMachine: (id: string, data: any) => Promise<any>;
+  deleteMachine: (id: string) => Promise<any>;
+  
+  services: any[];
+  isLoadingServices: boolean;
+  errorServices: any;
+  createService: (data: any) => Promise<any>;
+  updateService: (id: string, data: any) => Promise<any>;
+  deleteService: (id: string) => Promise<any>;
+  
+  dashboardStats: any;
+  isLoadingStats: boolean;
+  errorStats: any;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-export function DataProvider({ children }: { children: ReactNode }) {
-  const [machines, setMachines] = useState<Machine[]>(INITIAL_MACHINES);
-  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
-  const [technicians, setTechnicians] = useState<Technician[]>(INITIAL_TECHNICIANS);
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
 
-  const addMachine = (machine: Omit<Machine, 'id'>) => {
-    const newMachine = { ...machine, id: Math.random().toString(36).substr(2, 9) };
-    setMachines([...machines, newMachine]);
-  };
+  // ========== TÉCNICOS ==========
+  const { 
+    data: techniciansData = [], 
+    isLoading: isLoadingTechnicians,
+    error: errorTechnicians 
+  } = useQuery({
+    queryKey: ['technicians'],
+    queryFn: async () => {
+      try {
+        console.log('📊 [DATA] Buscando técnicos...');
+        const response = await api.get('/technicians');
+        console.log('✅ [DATA] Técnicos carregados:', response.data.data?.length || 0);
+        return response.data.data || [];
+      } catch (error) {
+        console.error('❌ [DATA] Erro ao buscar técnicos:', error);
+        return [];
+      }
+    },
+    retry: 1,
+  });
 
-  const updateMachine = (id: string, updatedData: Partial<Machine>) => {
-    setMachines(machines.map(m => m.id === id ? { ...m, ...updatedData } : m));
-  };
+  const createTechnicianMutation = useMutation({
+    mutationFn: (data: any) => api.post('/technicians', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+    },
+  });
 
-  const deleteMachine = (id: string) => {
-    setMachines(machines.filter(m => m.id !== id));
-  };
+  const updateTechnicianMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => 
+      api.put(`/technicians/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+    },
+  });
 
-  const getMachine = (id: string) => machines.find(m => m.id === id);
+  const deleteTechnicianMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/technicians/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+    },
+  });
 
-  const addService = (service: Omit<Service, 'id'>) => {
-    const newService = { ...service, id: Math.random().toString(36).substr(2, 9) };
-    setServices([...services, newService]);
-  };
+  // ========== MÁQUINAS ==========
+  const { 
+    data: machinesData = [], 
+    isLoading: isLoadingMachines,
+    error: errorMachines 
+  } = useQuery({
+    queryKey: ['machines'],
+    queryFn: async () => {
+      try {
+        console.log('📊 [DATA] Buscando máquinas...');
+        const response = await api.get('/machines');
+        console.log('✅ [DATA] Máquinas carregadas:', response.data.data?.length || 0);
+        return response.data.data || [];
+      } catch (error) {
+        console.error('❌ [DATA] Erro ao buscar máquinas:', error);
+        return [];
+      }
+    },
+    retry: 1,
+  });
 
-  const updateService = (id: string, updatedData: Partial<Service>) => {
-    setServices(services.map(s => s.id === id ? { ...s, ...updatedData } : s));
-  };
+  const createMachineMutation = useMutation({
+    mutationFn: (data: any) => api.post('/machines', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+    },
+  });
 
-  const deleteService = (id: string) => {
-    setServices(services.filter(s => s.id !== id));
-  };
+  const updateMachineMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => 
+      api.put(`/machines/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+    },
+  });
 
-  const addTechnician = (technician: Omit<Technician, 'id'>) => {
-    const newTech = { ...technician, id: Math.random().toString(36).substr(2, 9) };
-    setTechnicians([...technicians, newTech]);
-  };
+  const deleteMachineMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/machines/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+    },
+  });
 
-  const updateTechnician = (id: string, updatedData: Partial<Technician>) => {
-    setTechnicians(technicians.map(t => t.id === id ? { ...t, ...updatedData } : t));
-  };
+  // ========== SERVIÇOS ==========
+  const { 
+    data: servicesData = [], 
+    isLoading: isLoadingServices,
+    error: errorServices 
+  } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => {
+      try {
+        console.log('📊 [DATA] Buscando serviços...');
+        const response = await api.get('/services');
+        console.log('✅ [DATA] Serviços carregados:', response.data.data?.length || 0);
+        return response.data.data || [];
+      } catch (error) {
+        console.error('❌ [DATA] Erro ao buscar serviços:', error);
+        return [];
+      }
+    },
+    retry: 1,
+  });
 
-  const deleteTechnician = (id: string) => {
-    setTechnicians(technicians.filter(t => t.id !== id));
+  const createServiceMutation = useMutation({
+    mutationFn: (data: any) => api.post('/services', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: any }) => 
+      api.put(`/services/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/services/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+  });
+
+  // ========== DASHBOARD STATS ==========
+  const { 
+    data: dashboardStatsData = {}, 
+    isLoading: isLoadingStats,
+    error: errorStats 
+  } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      try {
+        console.log('📊 [DATA] Buscando estatísticas...');
+        const response = await api.get('/dashboard/stats');
+        console.log('✅ [DATA] Estatísticas carregadas:', response.data.data);
+        return response.data.data || {};
+      } catch (error) {
+        console.error('❌ [DATA] Erro ao buscar estatísticas:', error);
+        return {};
+      }
+    },
+    retry: 1,
+  });
+
+  const value: DataContextType = {
+    technicians: techniciansData,
+    isLoadingTechnicians,
+    errorTechnicians,
+    createTechnician: createTechnicianMutation.mutateAsync,
+    updateTechnician: (id: string, data: any) => 
+      updateTechnicianMutation.mutateAsync({ id, data }),
+    deleteTechnician: deleteTechnicianMutation.mutateAsync,
+    
+    machines: machinesData,
+    isLoadingMachines,
+    errorMachines,
+    createMachine: createMachineMutation.mutateAsync,
+    updateMachine: (id: string, data: any) => 
+      updateMachineMutation.mutateAsync({ id, data }),
+    deleteMachine: deleteMachineMutation.mutateAsync,
+    
+    services: servicesData,
+    isLoadingServices,
+    errorServices,
+    createService: createServiceMutation.mutateAsync,
+    updateService: (id: string, data: any) => 
+      updateServiceMutation.mutateAsync({ id, data }),
+    deleteService: deleteServiceMutation.mutateAsync,
+    
+    dashboardStats: dashboardStatsData,
+    isLoadingStats,
+    errorStats,
   };
 
   return (
-    <DataContext.Provider value={{ 
-      machines, services, technicians,
-      addMachine, updateMachine, deleteMachine, getMachine,
-      addService, updateService, deleteService,
-      addTechnician, updateTechnician, deleteTechnician
-    }}>
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
@@ -266,8 +224,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 export function useData() {
   const context = useContext(DataContext);
-  if (context === undefined) {
-    throw new Error('useData must be used within a DataProvider');
+  if (!context) {
+    throw new Error('useData deve ser usado dentro de DataProvider');
   }
   return context;
 }

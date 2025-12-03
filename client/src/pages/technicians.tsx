@@ -42,7 +42,8 @@ const technicianSchema = z.object({
 });
 
 export default function TechniciansPage() {
-  const { technicians, addTechnician, updateTechnician, deleteTechnician } = useData();
+  // CORREÇÃO: Use createTechnician em vez de addTechnician
+  const { technicians, createTechnician, updateTechnician, deleteTechnician } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTechnician, setEditingTechnician] = useState<Technician | null>(null);
@@ -72,7 +73,8 @@ export default function TechniciansPage() {
     if (editingTechnician) {
       updateTechnician(editingTechnician.id, formattedData);
     } else {
-      addTechnician(formattedData);
+      // CORREÇÃO: Use createTechnician em vez de addTechnician
+      createTechnician(formattedData);
     }
     setIsDialogOpen(false);
     setEditingTechnician(null);

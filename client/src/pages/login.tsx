@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,18 +9,30 @@ import { Fan, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  const [_, navigate] = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Redireciona se já estiver autenticado
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
+    
     try {
-      await login(email);
-    } catch (error) {
-      console.error(error);
+      await login(email, password);
+      navigate('/');
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -38,6 +51,12 @@ export default function LoginPage() {
           <CardDescription>Sistema de Gestão de Ar Condicionado</CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md">
+              {error}
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -48,6 +67,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -62,11 +82,12 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required 
+                disabled={isLoading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Entrar
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
           
@@ -90,7 +111,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2 text-center text-xs text-muted-foreground bg-muted/20 py-4 rounded-b-lg">
-          <p>Credenciais Padrão: admin@neuro.com / (qualquer senha)</p>
+          <p>Credenciais: admin@neuro.com / admin123</p>
         </CardFooter>
       </Card>
     </div>
