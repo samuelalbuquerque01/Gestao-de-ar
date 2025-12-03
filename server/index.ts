@@ -166,12 +166,13 @@ app.use((req, res, next) => {
 
     // Serve arquivos estáticos em produção
     if (process.env.NODE_ENV === "production") {
-      const staticPath = path.resolve(process.cwd(), 'client/dist');
+      // CORREÇÃO AQUI: Mudar de 'client/dist' para 'client/dist/public'
+      const staticPath = path.resolve(process.cwd(), 'client/dist/public');
       console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
       
       app.use(express.static(staticPath));
       
-      // Fallback para SPA
+      // Fallback para SPA - IMPORTANTE: Esta rota deve estar DEPOIS das rotas API
       app.get('*', (req, res) => {
         res.sendFile(path.resolve(staticPath, 'index.html'));
       });
@@ -179,7 +180,7 @@ app.use((req, res, next) => {
       log('✅ Modo produção: arquivos estáticos habilitados');
     }
 
-    // Error handler
+    // Error handler - DEVE estar DEPOIS da rota fallback
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
