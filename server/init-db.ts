@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 
 async function initDatabase() {
-  console.log('🚀 Inicializando banco de dados...');
+  console.log('🚀 Inicializando banco de dados conforme schema...');
   
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
@@ -11,75 +11,111 @@ async function initDatabase() {
     await client.connect();
     console.log('✅ Conectado ao PostgreSQL para inicialização');
     
-    // Criar tabela users COM username
-    console.log('📦 Criando tabela users...');
+    // ========== CRIAR TABELA USERS (conforme schema) ==========
+    console.log('\n📦 Criando tabela users...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username VARCHAR(255) UNIQUE NOT NULL,      -- COLUNA ADICIONADA
-        name VARCHAR(255) NOT NULL,
+        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        phone VARCHAR(20),                          -- COLUNA ADICIONADA
-        role VARCHAR(50) DEFAULT 'technician',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        name VARCHAR(255),
+        phone VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       );
     `);
-    console.log('✅ Tabela users criada/verificada (com username)');
+    console.log('✅ Tabela users criada/verificada (conforme schema)');
     
-    // Criar tabela technicians
-    console.log('📦 Criando tabela technicians...');
+    // ========== CRIAR TABELA TECHNICIANS ==========
+    console.log('\n📦 Criando tabela technicians...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS technicians (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        specialization VARCHAR(255),
-        experience_years INTEGER,
-        status VARCHAR(50) DEFAULT 'active',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        nome VARCHAR(255) NOT NULL,
+        especialidade VARCHAR(255) NOT NULL,
+        telefone VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'ATIVO' NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       );
     `);
     console.log('✅ Tabela technicians criada/verificada');
     
-    // Criar tabela machines
-    console.log('📦 Criando tabela machines...');
+    // ========== CRIAR TABELA MACHINES ==========
+    console.log('\n📦 Criando tabela machines...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS machines (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        model VARCHAR(255) NOT NULL,
-        brand VARCHAR(255) NOT NULL,
-        capacity VARCHAR(50),
-        installation_date DATE,
-        location TEXT,
-        status VARCHAR(50) DEFAULT 'active',
-        last_maintenance_date DATE,
-        next_maintenance_date DATE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        codigo VARCHAR(255) UNIQUE NOT NULL,
+        modelo VARCHAR(255) NOT NULL,
+        marca VARCHAR(255) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        capacidade_btu INTEGER NOT NULL,
+        voltagem VARCHAR(50) NOT NULL,
+        localizacao_tipo VARCHAR(50) NOT NULL,
+        localizacao_descricao TEXT NOT NULL,
+        localizacao_andar INTEGER,
+        filial VARCHAR(255) NOT NULL,
+        data_instalacao TIMESTAMP NOT NULL,
+        status VARCHAR(50) DEFAULT 'ATIVO' NOT NULL,
+        observacoes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       );
     `);
     console.log('✅ Tabela machines criada/verificada');
     
-    // Criar tabela services
-    console.log('📦 Criando tabela services...');
+    // ========== CRIAR TABELA SERVICES ==========
+    console.log('\n📦 Criando tabela services...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        machine_id UUID REFERENCES machines(id) ON DELETE CASCADE,
-        technician_id UUID REFERENCES technicians(id) ON DELETE SET NULL,
-        service_type VARCHAR(100) NOT NULL,
-        description TEXT,
-        scheduled_date DATE NOT NULL,
-        completed_date DATE,
-        status VARCHAR(50) DEFAULT 'scheduled',
-        priority VARCHAR(50) DEFAULT 'medium',
-        cost DECIMAL(10, 2),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        tipo_servico VARCHAR(50) NOT NULL,
+        maquina_id VARCHAR(255) NOT NULL,
+        data_agendamento TIMESTAMP NOT NULL,
+        tecnico_id VARCHAR(255) NOT NULL,
+        tecnico_nome VARCHAR(255) NOT NULL,
+        descricao_servico TEXT NOT NULL,
+        descricao_problema TEXT,
+        prioridade VARCHAR(50) DEFAULT 'MEDIA' NOT NULL,
+        status VARCHAR(50) DEFAULT 'AGENDADO' NOT NULL,
+        observacoes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        FOREIGN KEY (maquina_id) REFERENCES machines(id) ON DELETE CASCADE,
+        FOREIGN KEY (tecnico_id) REFERENCES technicians(id) ON DELETE RESTRICT
       );
     `);
     console.log('✅ Tabela services criada/verificada');
     
-    console.log('🎉 Todas as tabelas foram criadas/verificadas com sucesso!');
+    // ========== CRIAR TABELA SERVICE_HISTORY ==========
+    console.log('\n📦 Criando tabela service_history...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS service_history (
+        id SERIAL PRIMARY KEY,
+        service_id VARCHAR(255) NOT NULL,
+        status VARCHAR(50) NOT NULL,
+        observacao TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        created_by VARCHAR(255),
+        FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
+      );
+    `);
+    console.log('✅ Tabela service_history criada/verificada');
+    
+    console.log('\n🎉 Todas as tabelas foram criadas/verificadas com sucesso!');
+    
+    // ========== CRIAR ÍNDICES ==========
+    console.log('\n📊 Criando índices para melhor performance...');
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_services_maquina_id ON services(maquina_id);
+      CREATE INDEX IF NOT EXISTS idx_services_tecnico_id ON services(tecnico_id);
+      CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
+      CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status);
+      CREATE INDEX IF NOT EXISTS idx_service_history_service_id ON service_history(service_id);
+    `);
+    console.log('✅ Índices criados');
     
   } catch (error) {
     console.error('❌ Erro ao inicializar banco de dados:', error);
