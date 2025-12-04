@@ -4,12 +4,54 @@ import { storage } from "./storage";
 import { insertUserSchema, insertMachineSchema, insertTechnicianSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // ========== SCHEMAS CUSTOMIZADOS ==========
+  // Schema customizado para máquinas (português para frontend)
+  const machineRequestSchema = z.object({
+    codigo: z.string().min(1, "Código é obrigatório"),
+    modelo: z.string().min(1, "Modelo é obrigatório"),
+    marca: z.string().min(1, "Marca é obrigatória"),
+    tipo: z.enum(['SPLIT', 'WINDOW', 'CASSETE', 'PISO_TETO', 'PORTATIL', 'INVERTER']).optional().default('SPLIT'),
+    capacidadeBTU: z.coerce.number().min(1000).optional().default(9000),
+    voltagem: z.enum(['V110', 'V220', 'BIVOLT']).optional().default('V220'),
+    localizacaoTipo: z.enum(['SALA', 'QUARTO', 'ESCRITORIO', 'SALA_REUNIAO', 'OUTRO']).optional().default('SALA'),
+    localizacaoDescricao: z.string().min(1, "Localização é obrigatória"),
+    localizacaoAndar: z.coerce.number().optional().default(0),
+    filial: z.string().min(1, "Filial é obrigatória"),
+    dataInstalacao: z.string().min(1, "Data de instalação é obrigatória"),
+    status: z.enum(['ATIVO', 'INATIVO', 'MANUTENCAO', 'DEFEITO']).optional().default('ATIVO'),
+    observacoes: z.string().optional()
+  });
+
+  // Schema customizado para técnicos
+  const technicianRequestSchema = z.object({
+    nome: z.string().min(1, "Nome é obrigatório"),
+    especialidade: z.string().min(1, "Especialidade é obrigatória"),
+    telefone: z.string().min(1, "Telefone é obrigatório"),
+    email: z.string().email("Email inválido").optional().or(z.literal('')),
+    status: z.enum(['ATIVO', 'INATIVO']).optional().default('ATIVO')
+  });
+
+  // Schema customizado para serviços
+  const serviceRequestSchema = z.object({
+    tipoServico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
+    maquinaId: z.string().min(1, "Máquina é obrigatória"),
+    tecnicoId: z.string().min(1, "Técnico é obrigatório"),
+    descricaoServico: z.string().min(1, "Descrição do serviço é obrigatória"),
+    descricaoProblema: z.string().optional(),
+    dataAgendamento: z.string().min(1, "Data de agendamento é obrigatória"),
+    horaAgendamento: z.string().optional(),
+    prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).optional().default('MEDIA'),
+    status: z.enum(['AGENDADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO', 'PENDENTE']).optional().default('AGENDADO'),
+    observacoes: z.string().optional()
+  });
+
   // ========== MIDDLEWARE ==========
   const authenticateToken = (req: any, res: any, next: any) => {
     const authHeader = req.headers['authorization'];
@@ -235,40 +277,32 @@ export async function registerRoutes(
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação básica - usar nomes em PORTUGUÊS do frontend
-      const { codigo, modelo, marca } = req.body;
-      if (!codigo || !modelo || !marca) {
-        return res.status(400).json({ 
-          error: 'Código, modelo e marca são obrigatórios',
-          received: { 
-            codigo: codigo || 'não fornecido',
-            modelo: modelo || 'não fornecido', 
-            marca: marca || 'não fornecido' 
-          }
-        });
-      }
+      // Valida com o schema customizado (português)
+      const validatedData = machineRequestSchema.parse(req.body);
+      
+      console.log('✅ [MACHINES] Dados validados:', validatedData);
       
       // Verifica se código já existe
-      const existingMachine = await storage.getMachineByCodigo(codigo);
+      const existingMachine = await storage.getMachineByCodigo(validatedData.codigo);
       if (existingMachine) {
         return res.status(400).json({ error: 'Já existe uma máquina com este código' });
       }
       
-      // Preparar dados no formato CORRETO para o storage
+      // Converter para o formato do storage (que espera nomes em português)
       const machineData = {
-        codigo: codigo,
-        modelo: modelo,
-        marca: marca,
-        tipo: req.body.tipo || 'SPLIT',
-        capacidadeBTU: parseInt(req.body.capacidadeBTU) || 9000,
-        voltagem: req.body.voltagem || 'V220',
-        localizacaoTipo: req.body.localizacaoTipo || 'SALA',
-        localizacaoDescricao: req.body.localizacaoDescricao || '',
-        localizacaoAndar: req.body.localizacaoAndar || 0,
-        filial: req.body.filial || 'Matriz',
-        dataInstalacao: req.body.dataInstalacao || new Date().toISOString().split('T')[0],
-        status: req.body.status || 'ATIVO',
-        observacoes: req.body.observacoes || ''
+        codigo: validatedData.codigo,
+        modelo: validatedData.modelo,
+        marca: validatedData.marca,
+        tipo: validatedData.tipo,
+        capacidadeBTU: validatedData.capacidadeBTU,
+        voltagem: validatedData.voltagem,
+        localizacaoTipo: validatedData.localizacaoTipo,
+        localizacaoDescricao: validatedData.localizacaoDescricao,
+        localizacaoAndar: validatedData.localizacaoAndar,
+        filial: validatedData.filial,
+        dataInstalacao: validatedData.dataInstalacao,
+        status: validatedData.status,
+        observacoes: validatedData.observacoes || ''
       };
       
       console.log('📝 [MACHINES] Dados para criação:', JSON.stringify(machineData, null, 2));
@@ -287,12 +321,20 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error('❌ [MACHINES] Erro ao criar máquina:', error);
       console.error('❌ [MACHINES] Mensagem:', error.message);
-      console.error('❌ [MACHINES] Stack:', error.stack);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
       
       res.status(500).json({ 
         error: 'Erro ao criar máquina',
-        message: error.message,
-        hint: 'Verifique se todos os campos obrigatórios foram preenchidos'
+        message: error.message
       });
     }
   });
@@ -303,21 +345,26 @@ export async function registerRoutes(
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Preparar dados no formato CORRETO
+      // Valida com schema parcial (todos os campos opcionais)
+      const validatedData = machineRequestSchema.partial().parse(req.body);
+      
+      console.log('✅ [MACHINES] Dados validados para atualização:', validatedData);
+      
+      // Converter para o formato do storage
       const machineData = {
-        codigo: req.body.codigo,
-        modelo: req.body.modelo,
-        marca: req.body.marca,
-        tipo: req.body.tipo,
-        capacidadeBTU: req.body.capacidadeBTU ? parseInt(req.body.capacidadeBTU) : undefined,
-        voltagem: req.body.voltagem,
-        localizacaoTipo: req.body.localizacaoTipo,
-        localizacaoDescricao: req.body.localizacaoDescricao,
-        localizacaoAndar: req.body.localizacaoAndar,
-        filial: req.body.filial,
-        dataInstalacao: req.body.dataInstalacao,
-        status: req.body.status,
-        observacoes: req.body.observacoes
+        codigo: validatedData.codigo,
+        modelo: validatedData.modelo,
+        marca: validatedData.marca,
+        tipo: validatedData.tipo,
+        capacidadeBTU: validatedData.capacidadeBTU,
+        voltagem: validatedData.voltagem,
+        localizacaoTipo: validatedData.localizacaoTipo,
+        localizacaoDescricao: validatedData.localizacaoDescricao,
+        localizacaoAndar: validatedData.localizacaoAndar,
+        filial: validatedData.filial,
+        dataInstalacao: validatedData.dataInstalacao,
+        status: validatedData.status,
+        observacoes: validatedData.observacoes
       };
       
       // Remover campos undefined
@@ -343,8 +390,19 @@ export async function registerRoutes(
         message: 'Máquina atualizada com sucesso'
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [MACHINES] Erro ao atualizar máquina:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
       res.status(500).json({ error: 'Erro ao atualizar máquina' });
     }
   });
@@ -406,19 +464,17 @@ export async function registerRoutes(
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação - usar nomes em português
-      const { nome, especialidade, telefone } = req.body;
+      // Valida com schema customizado
+      const validatedData = technicianRequestSchema.parse(req.body);
       
-      if (!nome || !especialidade || !telefone) {
-        return res.status(400).json({ error: 'Nome, especialidade e telefone são obrigatórios' });
-      }
+      console.log('✅ [TECHNICIANS] Dados validados:', validatedData);
       
       const technicianData = {
-        nome: nome,
-        especialidade: especialidade,
-        telefone: telefone,
-        email: req.body.email || '',
-        status: req.body.status || 'ATIVO'
+        nome: validatedData.nome,
+        especialidade: validatedData.especialidade,
+        telefone: validatedData.telefone,
+        email: validatedData.email || '',
+        status: validatedData.status
       };
       
       const technician = await storage.createTechnician(technicianData);
@@ -433,6 +489,17 @@ export async function registerRoutes(
       
     } catch (error: any) {
       console.error('❌ [TECHNICIANS] Erro ao criar técnico:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
       res.status(500).json({ 
         error: 'Erro ao criar técnico',
         message: error.message 
@@ -446,12 +513,17 @@ export async function registerRoutes(
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
+      // Valida com schema parcial
+      const validatedData = technicianRequestSchema.partial().parse(req.body);
+      
+      console.log('✅ [TECHNICIANS] Dados validados para atualização:', validatedData);
+      
       const technicianData = {
-        nome: req.body.nome,
-        especialidade: req.body.especialidade,
-        telefone: req.body.telefone,
-        email: req.body.email,
-        status: req.body.status
+        nome: validatedData.nome,
+        especialidade: validatedData.especialidade,
+        telefone: validatedData.telefone,
+        email: validatedData.email,
+        status: validatedData.status
       };
       
       // Remover campos undefined
@@ -475,8 +547,19 @@ export async function registerRoutes(
         message: 'Técnico atualizado com sucesso'
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [TECHNICIANS] Erro ao atualizar técnico:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
       res.status(500).json({ error: 'Erro ao atualizar técnico' });
     }
   });
@@ -560,28 +643,25 @@ export async function registerRoutes(
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação - usar nomes em português
-      const { tipoServico, maquinaId, tecnicoId, descricaoServico, dataAgendamento } = req.body;
+      // Valida com schema customizado
+      const validatedData = serviceRequestSchema.parse(req.body);
       
-      if (!tipoServico || !maquinaId || !tecnicoId || !descricaoServico) {
-        return res.status(400).json({ 
-          error: 'Tipo de serviço, máquina, técnico e descrição são obrigatórios' 
-        });
-      }
+      console.log('✅ [SERVICES] Dados validados:', validatedData);
+      
+      // Combinar data e hora
+      const dataAgendamento = `${validatedData.dataAgendamento}T${validatedData.horaAgendamento || '08:00'}:00`;
       
       // Preparar dados
       const serviceData = {
-        tipoServico: tipoServico,
-        maquinaId: maquinaId,
-        tecnicoId: tecnicoId,
-        descricaoServico: descricaoServico,
-        descricaoProblema: req.body.descricaoProblema || '',
-        dataAgendamento: dataAgendamento || new Date().toISOString(),
-        dataConclusao: req.body.dataConclusao,
-        prioridade: req.body.prioridade || 'MEDIA',
-        status: req.body.status || 'AGENDADO',
-        custo: req.body.custo,
-        observacoes: req.body.observacoes || ''
+        tipoServico: validatedData.tipoServico,
+        maquinaId: validatedData.maquinaId,
+        tecnicoId: validatedData.tecnicoId,
+        descricaoServico: validatedData.descricaoServico,
+        descricaoProblema: validatedData.descricaoProblema || '',
+        dataAgendamento: dataAgendamento,
+        prioridade: validatedData.prioridade,
+        status: validatedData.status,
+        observacoes: validatedData.observacoes || ''
       };
       
       console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
@@ -598,6 +678,17 @@ export async function registerRoutes(
       
     } catch (error: any) {
       console.error('❌ [SERVICES] Erro ao criar serviço:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
       res.status(500).json({ 
         error: 'Erro ao criar serviço',
         message: error.message 
@@ -611,24 +702,34 @@ export async function registerRoutes(
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      const serviceData = {
-        tipoServico: req.body.tipoServico,
-        maquinaId: req.body.maquinaId,
-        tecnicoId: req.body.tecnicoId,
-        descricaoServico: req.body.descricaoServico,
-        descricaoProblema: req.body.descricaoProblema,
-        dataAgendamento: req.body.dataAgendamento,
-        dataConclusao: req.body.dataConclusao,
-        prioridade: req.body.prioridade,
-        status: req.body.status,
-        custo: req.body.custo,
-        observacoes: req.body.observacoes
+      // Valida com schema parcial
+      const validatedData = serviceRequestSchema.partial().parse(req.body);
+      
+      console.log('✅ [SERVICES] Dados validados para atualização:', validatedData);
+      
+      // Preparar dados
+      const serviceData: any = {
+        tipoServico: validatedData.tipoServico,
+        maquinaId: validatedData.maquinaId,
+        tecnicoId: validatedData.tecnicoId,
+        descricaoServico: validatedData.descricaoServico,
+        descricaoProblema: validatedData.descricaoProblema,
+        prioridade: validatedData.prioridade,
+        status: validatedData.status,
+        observacoes: validatedData.observacoes
       };
+      
+      // Combinar data e hora se ambos existirem
+      if (validatedData.dataAgendamento && validatedData.horaAgendamento) {
+        serviceData.dataAgendamento = `${validatedData.dataAgendamento}T${validatedData.horaAgendamento}:00`;
+      } else if (validatedData.dataAgendamento) {
+        serviceData.dataAgendamento = `${validatedData.dataAgendamento}T08:00:00`;
+      }
       
       // Remover campos undefined
       Object.keys(serviceData).forEach(key => {
-        if (serviceData[key as keyof typeof serviceData] === undefined) {
-          delete serviceData[key as keyof typeof serviceData];
+        if (serviceData[key] === undefined) {
+          delete serviceData[key];
         }
       });
       
@@ -648,8 +749,19 @@ export async function registerRoutes(
         message: 'Serviço atualizado com sucesso'
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [SERVICES] Erro ao atualizar serviço:', error);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
       res.status(500).json({ error: 'Erro ao atualizar serviço' });
     }
   });
@@ -748,27 +860,6 @@ export async function registerRoutes(
       service: 'Gestão de Ar Condicionado API',
       version: '1.0.0'
     });
-  });
-  
-  // Rota para limpar dados de teste (apenas desenvolvimento)
-  app.post('/api/dev/cleanup', authenticateToken, async (req, res) => {
-    if (process.env.NODE_ENV !== 'development') {
-      return res.status(403).json({ error: 'Apenas em desenvolvimento' });
-    }
-    
-    try {
-      // Limpar serviços
-      await db.delete(services);
-      // Limpar máquinas (exceto a de teste)
-      await db.delete(machines).where(sql`codigo != 'AR-001'`);
-      // Limpar técnicos (exceto o de teste)
-      await db.delete(technicians).where(sql`nome != 'Carlos Silva'`);
-      
-      res.json({ success: true, message: 'Dados de teste limpos' });
-    } catch (error) {
-      console.error('❌ [API] Erro ao limpar dados:', error);
-      res.status(500).json({ error: 'Erro ao limpar dados' });
-    }
   });
   
   return httpServer;
