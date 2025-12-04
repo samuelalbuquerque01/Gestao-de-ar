@@ -724,9 +724,9 @@ export class DatabaseStorage implements IStorage {
         tecnico_nome: tecnicoNome,
         descricao_servico: serviceData.descricaoServico || '',
         descricao_problema: serviceData.descricaoProblema || '',
-        data_agendamento: serviceData.dataAgendamento 
-          ? new Date(serviceData.dataAgendamento)
-          : new Date(),
+        data_agendamento: serviceData.dataAgendamento && !isNaN(new Date(serviceData.dataAgendamento).getTime())
+  ? new Date(serviceData.dataAgendamento)
+  : new Date(),
         data_conclusao: serviceData.dataConclusao 
           ? new Date(serviceData.dataConclusao)
           : undefined,
@@ -794,9 +794,14 @@ export class DatabaseStorage implements IStorage {
       }
       if (serviceData.descricaoServico !== undefined) updateData.descricao_servico = serviceData.descricaoServico;
       if (serviceData.descricaoProblema !== undefined) updateData.descricao_problema = serviceData.descricaoProblema;
-      if (serviceData.dataAgendamento !== undefined) {
-        updateData.data_agendamento = new Date(serviceData.dataAgendamento);
-      }
+     if (serviceData.dataAgendamento !== undefined) {
+  const date = new Date(serviceData.dataAgendamento);
+  if (!isNaN(date.getTime())) {
+    updateData.data_agendamento = date;
+  } else {
+    console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
+  }
+}
       if (serviceData.dataConclusao !== undefined) {
         updateData.data_conclusao = serviceData.dataConclusao ? new Date(serviceData.dataConclusao) : null;
       }

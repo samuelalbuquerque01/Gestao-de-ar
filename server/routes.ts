@@ -637,65 +637,143 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo serviço (CORRIGIDO)
-  app.post('/api/services', authenticateToken, async (req, res) => {
-    console.log('🔍 [SERVICES] Criando novo serviço...');
-    console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
+  // Na rota POST /api/services (substitua completamente):
+
+// POST criar novo serviço (CORRIGIDO)
+app.post('/api/services', authenticateToken, async (req, res) => {
+  console.log('🔍 [SERVICES] Criando novo serviço...');
+  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    // Valida com schema customizado
+    const validatedData = serviceRequestSchema.parse(req.body);
     
-    try {
-      // Valida com schema customizado
-      const validatedData = serviceRequestSchema.parse(req.body);
-      
-      console.log('✅ [SERVICES] Dados validados:', validatedData);
-      
-      // Combinar data e hora
-      const dataAgendamento = `${validatedData.dataAgendamento}T${validatedData.horaAgendamento || '08:00'}:00`;
-      
-      // Preparar dados
-      const serviceData = {
-        tipoServico: validatedData.tipoServico,
-        maquinaId: validatedData.maquinaId,
-        tecnicoId: validatedData.tecnicoId,
-        descricaoServico: validatedData.descricaoServico,
-        descricaoProblema: validatedData.descricaoProblema || '',
-        dataAgendamento: dataAgendamento,
-        prioridade: validatedData.prioridade,
-        status: validatedData.status,
-        observacoes: validatedData.observacoes || ''
-      };
-      
-      console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
-      
-      const service = await storage.createService(serviceData);
-      
-      console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
-      
-      res.status(201).json({
-        success: true,
-        data: service,
-        message: 'Serviço agendado com sucesso'
-      });
-      
-    } catch (error: any) {
-      console.error('❌ [SERVICES] Erro ao criar serviço:', error);
-      
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ 
-          error: 'Erro de validação',
-          details: error.errors.map((e: any) => ({
-            field: e.path.join('.'),
-            message: e.message
-          }))
-        });
-      }
-      
-      res.status(500).json({ 
-        error: 'Erro ao criar serviço',
-        message: error.message 
+    console.log('✅ [SERVICES] Dados validados:', validatedData);
+    
+    // Combinar data e hora (remover Z se existir)
+    const dateStr = validatedData.dataAgendamento.replace('Z', '');
+    const timeStr = validatedData.horaAgendamento || '08:00';
+    const dataAgendamento = `${dateStr}T${timeStr}:00`;
+    
+    console.log('📅 [SERVICES] Data agendamento combinada:', dataAgendamento);
+    
+    // Preparar dados
+    const serviceData = {
+      tipoServico: validatedData.tipoServico,
+      maquinaId: validatedData.maquinaId,
+      tecnicoId: validatedData.tecnicoId,
+      descricaoServico: validatedData.descricaoServico,
+      descricaoProblema: validatedData.descricaoProblema || '',
+      dataAgendamento: dataAgendamento,
+      prioridade: validatedData.prioridade,
+      status: validatedData.status,
+      observacoes: validatedData.observacoes || ''
+    };
+    
+    console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
+    
+    const service = await storage.createService(serviceData);
+    
+    console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
+    
+    res.status(201).json({
+      success: true,
+      data: service,
+      message: 'Serviço agendado com sucesso'
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [SERVICES] Erro ao criar serviço:', error);
+    
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: 'Erro de validação',
+        details: error.errors.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
       });
     }
-  });
+    
+    res.status(500).json({ 
+      error: 'Erro ao criar serviço',
+      message: error.message 
+    });
+  }
+});
+
+// Na rota PUT /api/services (substitua completamente):
+
+// PUT atualizar serviço (CORRIGIDO)
+app.put('/api/services/:id', authenticateToken, async (req, res) => {
+  console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
+  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
   
+  try {
+    // Valida com schema parcial
+    const validatedData = serviceRequestSchema.partial().parse(req.body);
+    
+    console.log('✅ [SERVICES] Dados validados para atualização:', validatedData);
+    
+    // Preparar dados
+    const serviceData: any = {
+      tipoServico: validatedData.tipoServico,
+      maquinaId: validatedData.maquinaId,
+      tecnicoId: validatedData.tecnicoId,
+      descricaoServico: validatedData.descricaoServico,
+      descricaoProblema: validatedData.descricaoProblema,
+      prioridade: validatedData.prioridade,
+      status: validatedData.status,
+      observacoes: validatedData.observacoes
+    };
+    
+    // Combinar data e hora se data existir
+    if (validatedData.dataAgendamento) {
+      const dateStr = validatedData.dataAgendamento.replace('Z', '');
+      const timeStr = validatedData.horaAgendamento || '08:00';
+      serviceData.dataAgendamento = `${dateStr}T${timeStr}:00`;
+      console.log('📅 [SERVICES] Data agendamento para atualização:', serviceData.dataAgendamento);
+    }
+    
+    // Remover campos undefined
+    Object.keys(serviceData).forEach(key => {
+      if (serviceData[key] === undefined) {
+        delete serviceData[key];
+      }
+    });
+    
+    console.log('📝 [SERVICES] Dados para atualização:', JSON.stringify(serviceData, null, 2));
+    
+    const service = await storage.updateService(req.params.id, serviceData);
+    
+    if (!service) {
+      return res.status(404).json({ error: 'Serviço não encontrado' });
+    }
+    
+    console.log('✅ [SERVICES] Serviço atualizado');
+    
+    res.json({
+      success: true,
+      data: service,
+      message: 'Serviço atualizado com sucesso'
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [SERVICES] Erro ao atualizar serviço:', error);
+    
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: 'Erro de validação',
+        details: error.errors.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+    
+    res.status(500).json({ error: 'Erro ao atualizar serviço' });
+  }
+});
   // PUT atualizar serviço (CORRIGIDO)
   app.put('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
