@@ -42,7 +42,6 @@ const serviceSchema = z.object({
 });
 
 export default function ServicesPage() {
-  // CORREÇÃO: Mude addService para createService
   const { services, machines, technicians, createService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -75,24 +74,26 @@ export default function ServicesPage() {
   });
 
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
-    // Combine date and time
     const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento || '00:00'}:00`).toISOString();
     
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
 
     const formattedData = {
-      ...data,
-      dataAgendamento: dateTime,
-      tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       tipoServico: data.tipoServico as ServiceType,
+      maquinaId: data.maquinaId,
+      dataAgendamento: dateTime,
+      tecnicoId: data.tecnicoId,
+      tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
+      descricaoServico: data.descricaoServico,
+      descricaoProblema: data.descricaoProblema,
       prioridade: data.prioridade as Priority,
-      status: data.status as ServiceStatus
+      status: data.status as ServiceStatus,
+      observacoes: data.observacoes
     };
 
     if (editingService) {
       updateService(editingService.id, formattedData);
     } else {
-      // CORREÇÃO: Mude addService para createService
       createService(formattedData);
     }
     setIsDialogOpen(false);
@@ -104,11 +105,16 @@ export default function ServicesPage() {
     setEditingService(service);
     const dateObj = new Date(service.dataAgendamento);
     form.reset({
-      ...service,
-      tecnicoId: service.tecnicoId || '', // Handle legacy records
+      tipoServico: service.tipoServico,
+      maquinaId: service.maquinaId,
       dataAgendamento: dateObj.toISOString().split('T')[0],
       horaAgendamento: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      maquinaId: service.maquinaId
+      tecnicoId: service.tecnicoId || '',
+      descricaoServico: service.descricaoServico,
+      descricaoProblema: service.descricaoProblema || '',
+      prioridade: service.prioridade,
+      status: service.status,
+      observacoes: service.observacoes || ''
     });
     setIsDialogOpen(true);
   };
@@ -421,7 +427,7 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(new Date(service.dataAgendamento), "dd/MM/yyyy 'às' HH:mm")}</span>
+                    <span>{format(new Date(service.dataAgendamento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -438,8 +444,8 @@ export default function ServicesPage() {
                     service.status === 'CANCELADO' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
                     "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                   )}>
-                    {service.status === 'CONCLUIDO' && <CheckCircle className="w-3 h-3" />}
-                    {service.status === 'EM_ANDAMENTO' && <Clock className="w-3 h-3" />}
+                    {service.status === 'CONCLUIDO' && <CheckCircle className="w-3 h-3 mr-1" />}
+                    {service.status === 'EM_ANDAMENTO' && <Clock className="w-3 h-3 mr-1" />}
                     {service.status.replace('_', ' ')}
                   </span>
                 </div>

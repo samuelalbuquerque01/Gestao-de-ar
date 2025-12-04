@@ -31,13 +31,14 @@ export default function Dashboard() {
   
   // Chart Data - Machines by Type
   const machinesByType = machines.reduce((acc, curr) => {
-    acc[curr.tipo] = (acc[curr.tipo] || 0) + 1;
+    const tipo = curr.tipo || 'DESCONHECIDO';
+    acc[tipo] = (acc[tipo] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const pieData = Object.entries(machinesByType).map(([name, value]) => ({ name, value }));
   
-  // Chart Data - Services by Month (Mocking "recent" distribution for visual)
+  // Chart Data - Services by Type
   const serviceStats = [
     { name: 'Prev.', total: services.filter(s => s.tipoServico === 'PREVENTIVA').length },
     { name: 'Corr.', total: services.filter(s => s.tipoServico === 'CORRETIVA').length },
@@ -202,7 +203,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{service.descricaoServico}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>{machine?.codigo} - {machine?.localizacaoDescricao}</span>
+                          <span>{machine?.codigo || 'Sem máquina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
                           <span>•</span>
                           <span>{format(new Date(service.dataAgendamento), "dd 'de' MMMM", { locale: ptBR })}</span>
                         </div>

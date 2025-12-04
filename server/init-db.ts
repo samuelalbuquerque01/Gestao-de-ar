@@ -160,7 +160,20 @@ async function initDatabase() {
     // ========== VERIFICAR E CORRIGIR ESTRUTURA EXISTENTE ==========
     console.log('\n🔍 Verificando e corrigindo estrutura existente...');
     
-    // 1. Verificar e corrigir tabela technicians
+    // 1. Verificar e adicionar coluna prioridade se não existir
+    const checkPrioridade = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'services' AND column_name = 'prioridade'
+    `);
+    
+    if (checkPrioridade.rows.length === 0) {
+      console.log('📝 Adicionando coluna prioridade à tabela services...');
+      await client.query(`ALTER TABLE services ADD COLUMN prioridade VARCHAR(50) DEFAULT 'MEDIA' NOT NULL;`);
+      console.log('✅ Coluna prioridade adicionada à services');
+    }
+    
+    // 2. Verificar e corrigir tabela technicians
     const checkTechEmail = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -186,7 +199,7 @@ async function initDatabase() {
       console.log('✅ updated_at adicionado à technicians');
     }
     
-    // 2. Verificar e corrigir tabela services
+    // 3. Verificar e corrigir tabela services
     const checkServicesStructure = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -339,7 +352,7 @@ async function initDatabase() {
       console.log('✅ descricao_problema adicionado à services');
     }
     
-    // 3. Verificar e corrigir foreign keys
+    // 4. Verificar e corrigir foreign keys
     console.log('\n🔗 Verificando e criando foreign keys...');
     
     try {
@@ -365,7 +378,7 @@ async function initDatabase() {
       console.log('⚠️  Não foi possível criar foreign keys:', error.message);
     }
     
-    // 4. Criar dados de teste se necessário
+    // 5. Criar dados de teste se necessário
     console.log('\n🧪 Verificando dados de teste...');
     
     const checkTechCount = await client.query(`SELECT COUNT(*) as count FROM technicians;`);

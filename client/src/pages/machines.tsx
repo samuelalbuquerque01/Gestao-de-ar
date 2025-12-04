@@ -52,7 +52,6 @@ const machineSchema = z.object({
 });
 
 export default function MachinesPage() {
-  // CORREÇÃO: Chame useData() DENTRO do componente
   const { machines, createMachine, updateMachine, deleteMachine } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -96,7 +95,6 @@ export default function MachinesPage() {
     if (editingMachine) {
       updateMachine(editingMachine.id, formattedData);
     } else {
-      // CORREÇÃO: Use createMachine, não addMachine
       createMachine(formattedData);
     }
     setIsDialogOpen(false);
@@ -108,7 +106,7 @@ export default function MachinesPage() {
     setEditingMachine(machine);
     form.reset({
       ...machine,
-      dataInstalacao: machine.dataInstalacao.split('T')[0] // Fix date format for input
+      dataInstalacao: machine.dataInstalacao ? machine.dataInstalacao.split('T')[0] : new Date().toISOString().split('T')[0]
     });
     setIsDialogOpen(true);
   };
@@ -329,7 +327,7 @@ export default function MachinesPage() {
                       <FormItem>
                         <FormLabel>Andar</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input type="number" {...field} value={field.value || 0} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -354,6 +352,34 @@ export default function MachinesPage() {
                             <SelectItem value="INATIVO">Inativo</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dataInstalacao"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Instalação</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Observações adicionais..." {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -421,7 +447,7 @@ export default function MachinesPage() {
                         <MapPin className="w-3 h-3 text-muted-foreground" /> 
                         {machine.localizacaoDescricao}
                       </span>
-                      {machine.localizacaoAndar !== undefined && (
+                      {machine.localizacaoAndar !== undefined && machine.localizacaoAndar > 0 && (
                          <span className="text-xs text-muted-foreground pl-4">{machine.localizacaoAndar}º Andar</span>
                       )}
                     </div>
@@ -433,8 +459,10 @@ export default function MachinesPage() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    {machine.capacidadeBTU.toLocaleString()} BTU
-                    <span className="block text-xs text-muted-foreground">{machine.voltagem.replace('V', '')}V</span>
+                    {machine.capacidadeBTU ? machine.capacidadeBTU.toLocaleString() : 0} BTU
+                    <span className="block text-xs text-muted-foreground">
+                      {machine.voltagem ? machine.voltagem.replace('V', '') : '220'}V
+                    </span>
                   </TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[machine.status] || 'bg-gray-100 text-gray-800'}`}>

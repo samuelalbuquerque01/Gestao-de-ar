@@ -351,7 +351,29 @@ export class DatabaseStorage implements IStorage {
   async getMachine(id: string): Promise<Machine | undefined> {
     try {
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
-      return machine ? mapDbToCamelCase(machine, 'machines') : undefined;
+      if (!machine) return undefined;
+      
+      return {
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: machine.installationDate 
+          ? new Date(machine.installationDate).toISOString() 
+          : new Date().toISOString(),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquina:', error);
       return undefined;
@@ -362,7 +384,29 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('🔍 [STORAGE] Buscando máquina por código:', codigo);
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
-      return machine ? mapDbToCamelCase(machine, 'machines') : undefined;
+      if (!machine) return undefined;
+      
+      return {
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: machine.installationDate 
+          ? new Date(machine.installationDate).toISOString() 
+          : new Date().toISOString(),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error.message);
       return undefined;
@@ -372,7 +416,27 @@ export class DatabaseStorage implements IStorage {
   async getAllMachines(): Promise<Machine[]> {
     try {
       const machinesList = await db.select().from(machines).orderBy(machines.codigo);
-      return machinesList.map(machine => mapDbToCamelCase(machine, 'machines'));
+      return machinesList.map(machine => ({
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: machine.installationDate 
+          ? new Date(machine.installationDate).toISOString() 
+          : new Date().toISOString(),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      }));
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquinas:', error);
       return [];
@@ -383,12 +447,20 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
       
-      // Processar dados
+      // Processar dados - usar nomes em inglês do schema
       const processedData = {
-        ...machineData,
-        capacity: Number(machineData.capacity) || 9000,
-        installationDate: machineData.installationDate 
-          ? new Date(machineData.installationDate)
+        codigo: machineData.codigo,
+        model: machineData.modelo || '',
+        brand: machineData.marca || '',
+        type: machineData.tipo || 'SPLIT',
+        capacity: Number(machineData.capacidadeBTU) || 9000,
+        voltage: machineData.voltagem || 'V220',
+        locationType: machineData.localizacaoTipo || 'SALA',
+        location: machineData.localizacaoDescricao || '',
+        locationFloor: machineData.localizacaoAndar || 0,
+        branch: machineData.filial || 'Matriz',
+        installationDate: machineData.dataInstalacao 
+          ? new Date(machineData.dataInstalacao)
           : new Date(),
         status: machineData.status || 'ATIVO',
         observacoes: machineData.observacoes || ''
@@ -404,7 +476,28 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       
       console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
-      return mapDbToCamelCase(machine, 'machines');
+      
+      // Retornar no formato correto para o frontend
+      return {
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: machine.installationDate 
+          ? new Date(machine.installationDate).toISOString() 
+          : new Date().toISOString(),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
@@ -416,16 +509,61 @@ export class DatabaseStorage implements IStorage {
 
   async updateMachine(id: string, machineData: Partial<InsertMachine>): Promise<Machine | undefined> {
     try {
-      const dbData = mapCamelToDb(machineData, 'machines');
+      // Preparar dados para atualização
+      const updateData: any = {};
+      
+      // Mapear campos do frontend para o banco
+      if (machineData.codigo !== undefined) updateData.codigo = machineData.codigo;
+      if (machineData.modelo !== undefined) updateData.model = machineData.modelo;
+      if (machineData.marca !== undefined) updateData.brand = machineData.marca;
+      if (machineData.tipo !== undefined) updateData.type = machineData.tipo;
+      if (machineData.capacidadeBTU !== undefined) updateData.capacity = Number(machineData.capacidadeBTU);
+      if (machineData.voltagem !== undefined) updateData.voltage = machineData.voltagem;
+      if (machineData.localizacaoTipo !== undefined) updateData.locationType = machineData.localizacaoTipo;
+      if (machineData.localizacaoDescricao !== undefined) updateData.location = machineData.localizacaoDescricao;
+      if (machineData.localizacaoAndar !== undefined) updateData.locationFloor = machineData.localizacaoAndar;
+      if (machineData.filial !== undefined) updateData.branch = machineData.filial;
+      if (machineData.dataInstalacao !== undefined) {
+        updateData.installationDate = new Date(machineData.dataInstalacao);
+      }
+      if (machineData.status !== undefined) updateData.status = machineData.status;
+      if (machineData.observacoes !== undefined) updateData.observacoes = machineData.observacoes;
+      
+      updateData.updated_at = new Date();
+      
+      console.log('📝 [STORAGE] Atualizando máquina:', id);
+      console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
       
       const [machine] = await db.update(machines)
-        .set({
-          ...dbData,
-          updated_at: new Date()
-        })
+        .set(updateData)
         .where(eq(machines.id, id))
         .returning();
-      return machine ? mapDbToCamelCase(machine, 'machines') : undefined;
+      
+      if (!machine) return undefined;
+      
+      console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
+      
+      // Retornar no formato correto
+      return {
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: machine.installationDate 
+          ? new Date(machine.installationDate).toISOString() 
+          : new Date().toISOString(),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao atualizar máquina:', error);
       return undefined;
@@ -446,7 +584,30 @@ export class DatabaseStorage implements IStorage {
   async getService(id: string): Promise<Service | undefined> {
     try {
       const [service] = await db.select().from(services).where(eq(services.id, id));
-      return service ? mapDbToCamelCase(service, 'services') : undefined;
+      if (!service) return undefined;
+      
+      return {
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviço:', error);
       return undefined;
@@ -456,7 +617,28 @@ export class DatabaseStorage implements IStorage {
   async getAllServices(): Promise<Service[]> {
     try {
       const servicesList = await db.select().from(services).orderBy(desc(services.data_agendamento));
-      return servicesList.map(service => mapDbToCamelCase(service, 'services'));
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços:', error);
       return [];
@@ -469,7 +651,28 @@ export class DatabaseStorage implements IStorage {
         .from(services)
         .where(eq(services.maquina_id, machineId))
         .orderBy(desc(services.data_agendamento));
-      return servicesList.map(service => mapDbToCamelCase(service, 'services'));
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por máquina:', error);
       return [];
@@ -482,7 +685,28 @@ export class DatabaseStorage implements IStorage {
         .from(services)
         .where(eq(services.tecnico_id, technicianId))
         .orderBy(desc(services.data_agendamento));
-      return servicesList.map(service => mapDbToCamelCase(service, 'services'));
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por técnico:', error);
       return [];
@@ -493,45 +717,68 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
       
-      // Processar dados
-      const processedData = {
-        ...serviceData,
-        dataAgendamento: serviceData.data_agendamento 
-          ? new Date(serviceData.data_agendamento)
-          : new Date(),
-        dataConclusao: serviceData.data_conclusao 
-          ? new Date(serviceData.data_conclusao)
-          : undefined,
-        status: serviceData.status || 'AGENDADO',
-        prioridade: serviceData.prioridade || 'MEDIA',
-        custo: serviceData.custo || null,
-        descricaoProblema: serviceData.descricao_problema || '',
-        observacoes: serviceData.observacoes || ''
-      };
-      
       // Obter nome do técnico
       const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
       
-      const dbData = mapCamelToDb(processedData, 'services');
-      dbData.tecnico_nome = tecnicoNome;
+      // Processar dados
+      const processedData = {
+        tipo_servico: serviceData.tipoServico || 'PREVENTIVA',
+        maquina_id: serviceData.maquinaId,
+        tecnico_id: serviceData.tecnicoId,
+        tecnico_nome: tecnicoNome,
+        descricao_servico: serviceData.descricaoServico || '',
+        descricao_problema: serviceData.descricaoProblema || '',
+        data_agendamento: serviceData.dataAgendamento 
+          ? new Date(serviceData.dataAgendamento)
+          : new Date(),
+        data_conclusao: serviceData.dataConclusao 
+          ? new Date(serviceData.dataConclusao)
+          : undefined,
+        prioridade: serviceData.prioridade || 'MEDIA',
+        status: serviceData.status || 'AGENDADO',
+        custo: serviceData.custo || null,
+        observacoes: serviceData.observacoes || ''
+      };
       
-      console.log('📝 [STORAGE] Dados convertidos para banco:', JSON.stringify(dbData, null, 2));
+      console.log('📝 [STORAGE] Dados processados para banco:', JSON.stringify(processedData, null, 2));
       
       const [service] = await db.insert(services).values({
-        ...dbData,
+        ...processedData,
         updated_at: new Date()
       }).returning();
       
       // Adicionar ao histórico
       await this.addServiceHistory({
         serviceId: service.id,
-        status: service.status,
+        status: service.status || 'AGENDADO',
         observacao: "Serviço criado"
       });
       
       console.log('✅ [STORAGE] Serviço criado com ID:', service.id);
-      return mapDbToCamelCase(service, 'services');
+      
+      // Retornar no formato correto
+      return {
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
@@ -541,31 +788,75 @@ export class DatabaseStorage implements IStorage {
 
   async updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined> {
     try {
-      const dbData = mapCamelToDb(serviceData, 'services');
+      const updateData: any = {};
       
-      // Se técnico foi atualizado, obter novo nome
-      if (dbData.tecnico_id) {
-        const technician = await this.getTechnician(dbData.tecnico_id);
-        dbData.tecnico_nome = technician?.nome || "Desconhecido";
+      // Mapear campos do frontend para o banco
+      if (serviceData.tipoServico !== undefined) updateData.tipo_servico = serviceData.tipoServico;
+      if (serviceData.maquinaId !== undefined) updateData.maquina_id = serviceData.maquinaId;
+      if (serviceData.tecnicoId !== undefined) {
+        updateData.tecnico_id = serviceData.tecnicoId;
+        // Buscar nome do técnico se o ID mudou
+        const technician = await this.getTechnician(serviceData.tecnicoId);
+        updateData.tecnico_nome = technician?.nome || "Desconhecido";
       }
-
+      if (serviceData.descricaoServico !== undefined) updateData.descricao_servico = serviceData.descricaoServico;
+      if (serviceData.descricaoProblema !== undefined) updateData.descricao_problema = serviceData.descricaoProblema;
+      if (serviceData.dataAgendamento !== undefined) {
+        updateData.data_agendamento = new Date(serviceData.dataAgendamento);
+      }
+      if (serviceData.dataConclusao !== undefined) {
+        updateData.data_conclusao = serviceData.dataConclusao ? new Date(serviceData.dataConclusao) : null;
+      }
+      if (serviceData.prioridade !== undefined) updateData.prioridade = serviceData.prioridade;
+      if (serviceData.status !== undefined) updateData.status = serviceData.status;
+      if (serviceData.custo !== undefined) updateData.custo = serviceData.custo;
+      if (serviceData.observacoes !== undefined) updateData.observacoes = serviceData.observacoes;
+      
+      updateData.updated_at = new Date();
+      
+      console.log('📝 [STORAGE] Atualizando serviço:', id);
+      console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
+      
       const [service] = await db.update(services)
-        .set({
-          ...dbData,
-          updated_at: new Date()
-        })
+        .set(updateData)
         .where(eq(services.id, id))
         .returning();
       
-      if (service && dbData.status) {
+      if (!service) return undefined;
+      
+      // Adicionar ao histórico se status mudou
+      if (serviceData.status) {
         await this.addServiceHistory({
           serviceId: id,
-          status: dbData.status,
+          status: serviceData.status,
           observacao: "Status atualizado"
         });
       }
       
-      return service ? mapDbToCamelCase(service, 'services') : undefined;
+      console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
+      
+      // Retornar no formato correto
+      return {
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: service.data_agendamento 
+          ? new Date(service.data_agendamento).toISOString()
+          : new Date().toISOString(),
+        dataConclusao: service.data_conclusao
+          ? new Date(service.data_conclusao).toISOString()
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao atualizar serviço:', error);
       return undefined;

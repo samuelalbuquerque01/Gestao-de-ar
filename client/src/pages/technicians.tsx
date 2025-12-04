@@ -42,7 +42,6 @@ const technicianSchema = z.object({
 });
 
 export default function TechniciansPage() {
-  // CORREÇÃO: Use createTechnician em vez de addTechnician
   const { technicians, createTechnician, updateTechnician, deleteTechnician } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -66,14 +65,16 @@ export default function TechniciansPage() {
 
   const onSubmit = (data: z.infer<typeof technicianSchema>) => {
     const formattedData = {
-      ...data,
+      nome: data.nome,
+      especialidade: data.especialidade,
+      telefone: data.telefone,
+      email: data.email || '',
       status: data.status as 'ATIVO' | 'INATIVO'
     };
 
     if (editingTechnician) {
       updateTechnician(editingTechnician.id, formattedData);
     } else {
-      // CORREÇÃO: Use createTechnician em vez de addTechnician
       createTechnician(formattedData);
     }
     setIsDialogOpen(false);
@@ -83,7 +84,13 @@ export default function TechniciansPage() {
 
   const handleEdit = (tech: Technician) => {
     setEditingTechnician(tech);
-    form.reset(tech);
+    form.reset({
+      nome: tech.nome,
+      especialidade: tech.especialidade,
+      telefone: tech.telefone,
+      email: tech.email || '',
+      status: tech.status
+    });
     setIsDialogOpen(true);
   };
 
