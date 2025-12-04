@@ -229,18 +229,22 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar nova máquina (ATUALIZADA)
+  // POST criar nova máquina (CORRIGIDO)
   app.post('/api/machines', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Criando nova máquina...');
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Validação básica - usar nomes em INGLÊS do schema
-      const { codigo, model, brand } = req.body;
-      if (!codigo || !model || !brand) {
+      // Validação básica - usar nomes em PORTUGUÊS do frontend
+      const { codigo, modelo, marca } = req.body;
+      if (!codigo || !modelo || !marca) {
         return res.status(400).json({ 
           error: 'Código, modelo e marca são obrigatórios',
-          received: { codigo, model, brand }
+          received: { 
+            codigo: codigo || 'não fornecido',
+            modelo: modelo || 'não fornecido', 
+            marca: marca || 'não fornecido' 
+          }
         });
       }
       
@@ -250,21 +254,19 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Já existe uma máquina com este código' });
       }
       
-      // Preparar dados no formato CORRETO (nomes em inglês do schema)
+      // Preparar dados no formato CORRETO para o storage
       const machineData = {
         codigo: codigo,
-        model: model,
-        brand: brand,
-        type: req.body.type || 'SPLIT',
-        capacity: parseInt(req.body.capacity) || 9000,
-        voltage: req.body.voltage || 'V220',
-        locationType: req.body.locationType || 'SALA',
-        location: req.body.location || '',
-        locationFloor: req.body.locationFloor,
-        branch: req.body.branch || 'Matriz',
-        installationDate: req.body.installationDate 
-          ? new Date(req.body.installationDate) 
-          : new Date(),
+        modelo: modelo,
+        marca: marca,
+        tipo: req.body.tipo || 'SPLIT',
+        capacidadeBTU: parseInt(req.body.capacidadeBTU) || 9000,
+        voltagem: req.body.voltagem || 'V220',
+        localizacaoTipo: req.body.localizacaoTipo || 'SALA',
+        localizacaoDescricao: req.body.localizacaoDescricao || '',
+        localizacaoAndar: req.body.localizacaoAndar || 0,
+        filial: req.body.filial || 'Matriz',
+        dataInstalacao: req.body.dataInstalacao || new Date().toISOString().split('T')[0],
         status: req.body.status || 'ATIVO',
         observacoes: req.body.observacoes || ''
       };
@@ -295,7 +297,7 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar máquina (ATUALIZADA)
+  // PUT atualizar máquina (CORRIGIDO)
   app.put('/api/machines/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Atualizando máquina:', req.params.id);
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
@@ -303,11 +305,29 @@ export async function registerRoutes(
     try {
       // Preparar dados no formato CORRETO
       const machineData = {
-        ...req.body,
-        // Usar installationDate em vez de dataInstalacao
-        installationDate: req.body.installationDate ? new Date(req.body.installationDate) : undefined,
-        capacity: req.body.capacity ? parseInt(req.body.capacity) : undefined
+        codigo: req.body.codigo,
+        modelo: req.body.modelo,
+        marca: req.body.marca,
+        tipo: req.body.tipo,
+        capacidadeBTU: req.body.capacidadeBTU ? parseInt(req.body.capacidadeBTU) : undefined,
+        voltagem: req.body.voltagem,
+        localizacaoTipo: req.body.localizacaoTipo,
+        localizacaoDescricao: req.body.localizacaoDescricao,
+        localizacaoAndar: req.body.localizacaoAndar,
+        filial: req.body.filial,
+        dataInstalacao: req.body.dataInstalacao,
+        status: req.body.status,
+        observacoes: req.body.observacoes
       };
+      
+      // Remover campos undefined
+      Object.keys(machineData).forEach(key => {
+        if (machineData[key as keyof typeof machineData] === undefined) {
+          delete machineData[key as keyof typeof machineData];
+        }
+      });
+      
+      console.log('📝 [MACHINES] Dados para atualização:', JSON.stringify(machineData, null, 2));
       
       const machine = await storage.updateMachine(req.params.id, machineData);
       
@@ -380,7 +400,7 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo técnico (ATUALIZADA)
+  // POST criar novo técnico (CORRIGIDO)
   app.post('/api/technicians', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Criando novo técnico...');
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
@@ -420,15 +440,26 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar técnico (ATUALIZADA)
+  // PUT atualizar técnico (CORRIGIDO)
   app.put('/api/technicians/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Atualizando técnico:', req.params.id);
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
       const technicianData = {
-        ...req.body
+        nome: req.body.nome,
+        especialidade: req.body.especialidade,
+        telefone: req.body.telefone,
+        email: req.body.email,
+        status: req.body.status
       };
+      
+      // Remover campos undefined
+      Object.keys(technicianData).forEach(key => {
+        if (technicianData[key as keyof typeof technicianData] === undefined) {
+          delete technicianData[key as keyof typeof technicianData];
+        }
+      });
       
       const technician = await storage.updateTechnician(req.params.id, technicianData);
       
@@ -476,7 +507,7 @@ export async function registerRoutes(
   
   // ========== SERVICES ROUTES (CRUD COMPLETO) ==========
   
-  // GET todos os serviços (ATUALIZADA)
+  // GET todos os serviços (CORRIGIDO)
   app.get('/api/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getAllServices();
@@ -501,7 +532,7 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por máquina (ATUALIZADA)
+  // GET serviços por máquina (CORRIGIDO)
   app.get('/api/machines/:machineId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByMachine(req.params.machineId);
@@ -512,7 +543,7 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por técnico (ATUALIZADA)
+  // GET serviços por técnico (CORRIGIDO)
   app.get('/api/technicians/:technicianId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByTechnician(req.params.technicianId);
@@ -523,7 +554,7 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo serviço (ATUALIZADA)
+  // POST criar novo serviço (CORRIGIDO)
   app.post('/api/services', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Criando novo serviço...');
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
@@ -545,11 +576,11 @@ export async function registerRoutes(
         tecnicoId: tecnicoId,
         descricaoServico: descricaoServico,
         descricaoProblema: req.body.descricaoProblema || '',
-        dataAgendamento: dataAgendamento ? new Date(dataAgendamento) : new Date(),
-        dataConclusao: req.body.dataConclusao ? new Date(req.body.dataConclusao) : undefined,
+        dataAgendamento: dataAgendamento || new Date().toISOString(),
+        dataConclusao: req.body.dataConclusao,
         prioridade: req.body.prioridade || 'MEDIA',
         status: req.body.status || 'AGENDADO',
-        custo: req.body.custo || null,
+        custo: req.body.custo,
         observacoes: req.body.observacoes || ''
       };
       
@@ -574,17 +605,34 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar serviço (ATUALIZADA)
+  // PUT atualizar serviço (CORRIGIDO)
   app.put('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
       const serviceData = {
-        ...req.body,
-        dataAgendamento: req.body.dataAgendamento ? new Date(req.body.dataAgendamento) : undefined,
-        dataConclusao: req.body.dataConclusao ? new Date(req.body.dataConclusao) : undefined
+        tipoServico: req.body.tipoServico,
+        maquinaId: req.body.maquinaId,
+        tecnicoId: req.body.tecnicoId,
+        descricaoServico: req.body.descricaoServico,
+        descricaoProblema: req.body.descricaoProblema,
+        dataAgendamento: req.body.dataAgendamento,
+        dataConclusao: req.body.dataConclusao,
+        prioridade: req.body.prioridade,
+        status: req.body.status,
+        custo: req.body.custo,
+        observacoes: req.body.observacoes
       };
+      
+      // Remover campos undefined
+      Object.keys(serviceData).forEach(key => {
+        if (serviceData[key as keyof typeof serviceData] === undefined) {
+          delete serviceData[key as keyof typeof serviceData];
+        }
+      });
+      
+      console.log('📝 [SERVICES] Dados para atualização:', JSON.stringify(serviceData, null, 2));
       
       const service = await storage.updateService(req.params.id, serviceData);
       
@@ -700,6 +748,27 @@ export async function registerRoutes(
       service: 'Gestão de Ar Condicionado API',
       version: '1.0.0'
     });
+  });
+  
+  // Rota para limpar dados de teste (apenas desenvolvimento)
+  app.post('/api/dev/cleanup', authenticateToken, async (req, res) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: 'Apenas em desenvolvimento' });
+    }
+    
+    try {
+      // Limpar serviços
+      await db.delete(services);
+      // Limpar máquinas (exceto a de teste)
+      await db.delete(machines).where(sql`codigo != 'AR-001'`);
+      // Limpar técnicos (exceto o de teste)
+      await db.delete(technicians).where(sql`nome != 'Carlos Silva'`);
+      
+      res.json({ success: true, message: 'Dados de teste limpos' });
+    } catch (error) {
+      console.error('❌ [API] Erro ao limpar dados:', error);
+      res.status(500).json({ error: 'Erro ao limpar dados' });
+    }
   });
   
   return httpServer;

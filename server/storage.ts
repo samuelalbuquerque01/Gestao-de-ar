@@ -201,6 +201,21 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
+// Função auxiliar para validar e formatar datas
+function safeDateToISO(dateValue: any): string {
+  if (!dateValue) return new Date().toISOString();
+  
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      return new Date().toISOString();
+    }
+    return date.toISOString();
+  } catch (error) {
+    return new Date().toISOString();
+  }
+}
+
 export class DatabaseStorage implements IStorage {
   // ========== USERS ==========
   async getUser(id: string): Promise<User | undefined> {
@@ -366,9 +381,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: machine.installationDate 
-          ? new Date(machine.installationDate).toISOString() 
-          : new Date().toISOString(),
+        dataInstalacao: safeDateToISO(machine.installationDate),
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -399,9 +412,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: machine.installationDate 
-          ? new Date(machine.installationDate).toISOString() 
-          : new Date().toISOString(),
+        dataInstalacao: safeDateToISO(machine.installationDate),
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -429,9 +440,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: machine.installationDate 
-          ? new Date(machine.installationDate).toISOString() 
-          : new Date().toISOString(),
+        dataInstalacao: safeDateToISO(machine.installationDate),
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -490,9 +499,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: machine.installationDate 
-          ? new Date(machine.installationDate).toISOString() 
-          : new Date().toISOString(),
+        dataInstalacao: safeDateToISO(machine.installationDate),
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -501,8 +508,6 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
-      console.error('❌ [STORAGE] Código do erro:', error.code);
-      console.error('❌ [STORAGE] Detalhe:', error.detail);
       throw error;
     }
   }
@@ -556,9 +561,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: machine.installationDate 
-          ? new Date(machine.installationDate).toISOString() 
-          : new Date().toISOString(),
+        dataInstalacao: safeDateToISO(machine.installationDate),
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -595,11 +598,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
@@ -626,11 +627,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
@@ -660,11 +659,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
@@ -694,11 +691,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
@@ -766,11 +761,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
@@ -844,11 +837,9 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: service.data_agendamento 
-          ? new Date(service.data_agendamento).toISOString()
-          : new Date().toISOString(),
-        dataConclusao: service.data_conclusao
-          ? new Date(service.data_conclusao).toISOString()
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
           : undefined,
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
