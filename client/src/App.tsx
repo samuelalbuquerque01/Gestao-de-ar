@@ -1,5 +1,3 @@
-[file name]: client/src/App.tsx
-[file content begin]
 import React from 'react';
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -112,4 +110,3 @@ function App() {
 }
 
 export default App;
-[file content end]
