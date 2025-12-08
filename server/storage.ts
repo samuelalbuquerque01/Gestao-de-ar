@@ -52,7 +52,7 @@ export interface IStorage {
   }>;
 }
 
-// Função auxiliar para converter snake_case para camelCase COM CORREÇÕES
+// Função auxiliar para converter snake_case para camelCase
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
@@ -75,37 +75,18 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     delete result.updated_at;
   }
   
-  // CORREÇÃO CRÍTICA PARA MACHINES
   if (tableName === 'machines') {
-    // Converter campos do banco para nomes que o frontend espera
-    if (result.model !== undefined) result.modelo = result.model;
-    if (result.brand !== undefined) result.marca = result.brand;
-    if (result.type !== undefined) result.tipo = result.type;
-    if (result.capacity !== undefined) result.capacidadeBTU = result.capacity;
-    if (result.voltage !== undefined) result.voltagem = result.voltage;
-    if (result.locationType !== undefined) result.localizacaoTipo = result.locationType;
-    if (result.location !== undefined) result.localizacaoDescricao = result.location;
-    if (result.locationFloor !== undefined) result.localizacaoAndar = result.locationFloor;
-    if (result.branch !== undefined) result.filial = result.branch;
-    if (result.installationDate !== undefined) result.dataInstalacao = result.installationDate;
-    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
-    if (result.createdAt !== undefined) result.createdAt = result.createdAt;
-    if (result.updatedAt !== undefined) result.updatedAt = result.updatedAt;
+    if (result.location_type) result.locationType = result.location_type;
+    if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
+    if (result.installation_date) result.installationDate = result.installation_date;
+    if (result.created_at) result.createdAt = result.created_at;
+    if (result.updated_at) result.updatedAt = result.updated_at;
     
-    // Preservar status como está
-    if (result.status !== undefined) result.status = result.status;
-    
-    // Remover campos do banco para evitar confusão
-    delete result.model;
-    delete result.brand;
-    delete result.type;
-    delete result.capacity;
-    delete result.voltage;
-    delete result.locationType;
-    delete result.location;
-    delete result.locationFloor;
-    delete result.branch;
-    delete result.installationDate;
+    delete result.location_type;
+    delete result.location_floor;
+    delete result.installation_date;
+    delete result.created_at;
+    delete result.updated_at;
   }
   
   if (tableName === 'services') {
@@ -146,7 +127,7 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para converter camelCase para snake_case COM CORREÇÕES
+// Função auxiliar para converter camelCase para snake_case
 function mapCamelToDb(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
@@ -168,37 +149,16 @@ function mapCamelToDb(data: any, tableName: string): any {
     delete result.updatedAt;
   }
   
-  // CORREÇÃO CRÍTICA PARA MACHINES
   if (tableName === 'machines') {
-    // Converter campos do frontend para nomes do banco
-    if (result.modelo !== undefined) result.model = result.modelo;
-    if (result.marca !== undefined) result.brand = result.marca;
-    if (result.tipo !== undefined) result.type = result.tipo;
-    if (result.capacidadeBTU !== undefined) result.capacity = Number(result.capacidadeBTU);
-    if (result.voltagem !== undefined) result.voltage = result.voltagem;
-    if (result.localizacaoTipo !== undefined) result.locationType = result.localizacaoTipo;
-    if (result.localizacaoDescricao !== undefined) result.location = result.localizacaoDescricao;
-    if (result.localizacaoAndar !== undefined) result.locationFloor = result.localizacaoAndar;
-    if (result.filial !== undefined) result.branch = result.filial;
-    if (result.dataInstalacao !== undefined) result.installationDate = result.dataInstalacao;
-    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
+    if (result.locationType) result.location_type = result.locationType;
+    if (result.locationFloor !== undefined) result.location_floor = result.locationFloor;
+    if (result.installationDate) result.installation_date = result.installationDate;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     
-    // Status já está no formato correto
-    if (result.status !== undefined) result.status = result.status;
-    
-    // Remover campos do frontend
-    delete result.modelo;
-    delete result.marca;
-    delete result.tipo;
-    delete result.capacidadeBTU;
-    delete result.voltagem;
-    delete result.localizacaoTipo;
-    delete result.localizacaoDescricao;
-    delete result.localizacaoAndar;
-    delete result.filial;
-    delete result.dataInstalacao;
+    delete result.locationType;
+    delete result.locationFloor;
+    delete result.installationDate;
     delete result.createdAt;
     delete result.updatedAt;
   }
@@ -405,33 +365,30 @@ export class DatabaseStorage implements IStorage {
   // ========== MACHINES ==========
   async getMachine(id: string): Promise<Machine | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando máquina por ID:', id);
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
+      if (!machine) return undefined;
       
-      if (!machine) {
-        console.log('⚠️  [STORAGE] Máquina não encontrada');
-        return undefined;
-      }
-      
-      console.log('📋 [STORAGE] Máquina encontrada no banco:', {
+      return {
+        ...mapDbToCamelCase(machine, 'machines'),
         id: machine.id,
-        codigo: machine.codigo,
-        model: machine.model,
-        brand: machine.brand
-      });
-      
-      const mappedMachine = mapDbToCamelCase(machine, 'machines');
-      console.log('📋 [STORAGE] Máquina mapeada:', {
-        id: mappedMachine.id,
-        codigo: mappedMachine.codigo,
-        modelo: mappedMachine.modelo,
-        marca: mappedMachine.marca
-      });
-      
-      return mappedMachine;
-    } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao buscar máquina:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar máquina:', error);
       return undefined;
     }
   }
@@ -440,16 +397,27 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('🔍 [STORAGE] Buscando máquina por código:', codigo);
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
+      if (!machine) return undefined;
       
-      if (!machine) {
-        console.log('⚠️  [STORAGE] Máquina não encontrada por código');
-        return undefined;
-      }
-      
-      const mappedMachine = mapDbToCamelCase(machine, 'machines');
-      console.log('✅ [STORAGE] Máquina encontrada por código:', mappedMachine.codigo);
-      
-      return mappedMachine;
+      return {
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error.message);
       return undefined;
@@ -458,37 +426,28 @@ export class DatabaseStorage implements IStorage {
 
   async getAllMachines(): Promise<Machine[]> {
     try {
-      console.log('🔍 [STORAGE] Buscando todas as máquinas...');
-      
       const machinesList = await db.select().from(machines).orderBy(machines.codigo);
-      
-      console.log('📊 [STORAGE] Máquinas encontradas no banco:', machinesList.length);
-      
-      if (machinesList.length > 0) {
-        console.log('📋 [STORAGE] Primeira máquina no banco:', {
-          id: machinesList[0].id,
-          codigo: machinesList[0].codigo,
-          model: machinesList[0].model,
-          brand: machinesList[0].brand,
-          type: machinesList[0].type
-        });
-      }
-      
-      const mappedMachines = machinesList.map(machine => {
-        const mapped = mapDbToCamelCase(machine, 'machines');
-        console.log('📝 [STORAGE] Mapeando:', {
-          original: { model: machine.model, brand: machine.brand },
-          mapped: { modelo: mapped.modelo, marca: mapped.marca }
-        });
-        return mapped;
-      });
-      
-      console.log('✅ [STORAGE] Máquinas mapeadas:', mappedMachines.length);
-      
-      return mappedMachines;
-    } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao buscar máquinas:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
+      return machinesList.map(machine => ({
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar máquinas:', error);
       return [];
     }
   }
@@ -497,8 +456,26 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
       
-      // Converter para formato do banco
-      const dbData = mapCamelToDb(machineData, 'machines');
+      // Processar dados - usar nomes em inglês do schema
+      const processedData = {
+        codigo: machineData.codigo,
+        model: machineData.modelo || '',
+        brand: machineData.marca || '',
+        type: machineData.tipo || 'SPLIT',
+        capacity: Number(machineData.capacidadeBTU) || 9000,
+        voltage: machineData.voltagem || 'V220',
+        locationType: machineData.localizacaoTipo || 'SALA',
+        location: machineData.localizacaoDescricao || '',
+        locationFloor: machineData.localizacaoAndar || 0,
+        branch: machineData.filial || 'Matriz',
+        installationDate: machineData.dataInstalacao 
+          ? new Date(machineData.dataInstalacao)
+          : new Date(),
+        status: machineData.status || 'ATIVO',
+        observacoes: machineData.observacoes || ''
+      };
+      
+      const dbData = mapCamelToDb(processedData, 'machines');
       
       console.log('📝 [STORAGE] Dados convertidos para banco:', JSON.stringify(dbData, null, 2));
       
@@ -508,22 +485,26 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       
       console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
-      console.log('📋 [STORAGE] Dados criados no banco:', {
+      
+      // Retornar no formato correto para o frontend
+      return {
         id: machine.id,
-        codigo: machine.codigo,
-        model: machine.model,
-        brand: machine.brand
-      });
-      
-      const mappedMachine = mapDbToCamelCase(machine, 'machines');
-      console.log('📋 [STORAGE] Máquina mapeada para retorno:', {
-        id: mappedMachine.id,
-        codigo: mappedMachine.codigo,
-        modelo: mappedMachine.modelo,
-        marca: mappedMachine.marca
-      });
-      
-      return mappedMachine;
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
@@ -533,52 +514,71 @@ export class DatabaseStorage implements IStorage {
 
   async updateMachine(id: string, machineData: Partial<InsertMachine>): Promise<Machine | undefined> {
     try {
+      // Preparar dados para atualização
+      const updateData: any = {};
+      
+      // Mapear campos do frontend para o banco
+      if (machineData.codigo !== undefined) updateData.codigo = machineData.codigo;
+      if (machineData.modelo !== undefined) updateData.model = machineData.modelo;
+      if (machineData.marca !== undefined) updateData.brand = machineData.marca;
+      if (machineData.tipo !== undefined) updateData.type = machineData.tipo;
+      if (machineData.capacidadeBTU !== undefined) updateData.capacity = Number(machineData.capacidadeBTU);
+      if (machineData.voltagem !== undefined) updateData.voltage = machineData.voltagem;
+      if (machineData.localizacaoTipo !== undefined) updateData.locationType = machineData.localizacaoTipo;
+      if (machineData.localizacaoDescricao !== undefined) updateData.location = machineData.localizacaoDescricao;
+      if (machineData.localizacaoAndar !== undefined) updateData.locationFloor = machineData.localizacaoAndar;
+      if (machineData.filial !== undefined) updateData.branch = machineData.filial;
+      if (machineData.dataInstalacao !== undefined) {
+        updateData.installationDate = new Date(machineData.dataInstalacao);
+      }
+      if (machineData.status !== undefined) updateData.status = machineData.status;
+      if (machineData.observacoes !== undefined) updateData.observacoes = machineData.observacoes;
+      
+      updateData.updated_at = new Date();
+      
       console.log('📝 [STORAGE] Atualizando máquina:', id);
-      console.log('📝 [STORAGE] Dados recebidos:', JSON.stringify(machineData, null, 2));
-      
-      const dbData = mapCamelToDb(machineData, 'machines');
-      
-      // Garantir que updated_at seja atualizado
-      dbData.updated_at = new Date();
-      
-      console.log('📝 [STORAGE] Dados para atualização no banco:', JSON.stringify(dbData, null, 2));
+      console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
       
       const [machine] = await db.update(machines)
-        .set(dbData)
+        .set(updateData)
         .where(eq(machines.id, id))
         .returning();
       
-      if (!machine) {
-        console.log('⚠️  [STORAGE] Máquina não encontrada para atualização');
-        return undefined;
-      }
+      if (!machine) return undefined;
       
-      console.log('✅ [STORAGE] Máquina atualizada');
+      console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
       
-      const mappedMachine = mapDbToCamelCase(machine, 'machines');
-      return mappedMachine;
-    } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao atualizar máquina:', error.message);
+      // Retornar no formato correto
+      return {
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      };
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao atualizar máquina:', error);
       return undefined;
     }
   }
 
   async deleteMachine(id: string): Promise<boolean> {
     try {
-      console.log('🗑️  [STORAGE] Deletando máquina:', id);
-      
       const result = await db.delete(machines).where(eq(machines.id, id));
-      const deleted = result.rowCount > 0;
-      
-      if (deleted) {
-        console.log('✅ [STORAGE] Máquina deletada');
-      } else {
-        console.log('⚠️  [STORAGE] Máquina não encontrada para deletar');
-      }
-      
-      return deleted;
-    } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao deletar máquina:', error.message);
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao deletar máquina:', error);
       return false;
     }
   }
@@ -725,8 +725,8 @@ export class DatabaseStorage implements IStorage {
         descricao_servico: serviceData.descricaoServico || '',
         descricao_problema: serviceData.descricaoProblema || '',
         data_agendamento: serviceData.dataAgendamento && !isNaN(new Date(serviceData.dataAgendamento).getTime())
-          ? new Date(serviceData.dataAgendamento)
-          : new Date(),
+  ? new Date(serviceData.dataAgendamento)
+  : new Date(),
         data_conclusao: serviceData.dataConclusao 
           ? new Date(serviceData.dataConclusao)
           : undefined,
@@ -794,14 +794,14 @@ export class DatabaseStorage implements IStorage {
       }
       if (serviceData.descricaoServico !== undefined) updateData.descricao_servico = serviceData.descricaoServico;
       if (serviceData.descricaoProblema !== undefined) updateData.descricao_problema = serviceData.descricaoProblema;
-      if (serviceData.dataAgendamento !== undefined) {
-        const date = new Date(serviceData.dataAgendamento);
-        if (!isNaN(date.getTime())) {
-          updateData.data_agendamento = date;
-        } else {
-          console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
-        }
-      }
+     if (serviceData.dataAgendamento !== undefined) {
+  const date = new Date(serviceData.dataAgendamento);
+  if (!isNaN(date.getTime())) {
+    updateData.data_agendamento = date;
+  } else {
+    console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
+  }
+}
       if (serviceData.dataConclusao !== undefined) {
         updateData.data_conclusao = serviceData.dataConclusao ? new Date(serviceData.dataConclusao) : null;
       }
