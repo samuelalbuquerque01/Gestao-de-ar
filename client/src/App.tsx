@@ -39,7 +39,9 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   
   return (
     <Layout>
-      <Component />
+      <DataProvider> {/* ← ADICIONADO AQUI! */}
+        <Component />
+      </DataProvider>
     </Layout>
   );
 }
@@ -91,7 +93,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {/* DataProvider SÓ envolve as rotas protegidas */}
         <Router />
         <Toaster />
       </AuthProvider>
