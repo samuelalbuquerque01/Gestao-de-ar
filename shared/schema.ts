@@ -75,8 +75,8 @@ export const machines = pgTable("machines", {
   installationDate: timestamp("installation_date").notNull(),
   status: machineStatusEnum("status").default('ATIVO').notNull(),
   observacoes: text("observacoes"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const services = pgTable("services", {
@@ -119,26 +119,39 @@ export const insertUserSchema = z.object({
   phone: z.string().optional(),
 });
 
-export const insertTechnicianSchema = createInsertSchema(technicians).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
+// Schema para máquinas que corresponde ao frontend
+export const insertMachineSchema = z.object({
+  codigo: z.string().min(1, "Código é obrigatório"),
+  modelo: z.string().min(1, "Modelo é obrigatório"),
+  marca: z.string().min(1, "Marca é obrigatória"),
+  tipo: z.enum(['SPLIT', 'WINDOW', 'CASSETE', 'PISO_TETO', 'PORTATIL', 'INVERTER']),
+  capacidadeBTU: z.coerce.number().min(1000, "Capacidade inválida"),
+  voltagem: z.enum(['V110', 'V220', 'BIVOLT']),
+  localizacaoTipo: z.enum(['SALA', 'QUARTO', 'ESCRITORIO', 'SALA_REUNIAO', 'OUTRO']),
+  localizacaoDescricao: z.string().min(1, "Localização é obrigatória"),
+  localizacaoAndar: z.coerce.number().optional(),
+  filial: z.string().min(1, "Filial é obrigatória"),
+  dataInstalacao: z.string().min(1, "Data de instalação é obrigatória"),
+  status: z.enum(['ATIVO', 'INATIVO', 'MANUTENCAO', 'DEFEITO']),
+  observacoes: z.string().optional(),
 });
 
-export const insertMachineSchema = createInsertSchema(machines).omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
+export const insertTechnicianSchema = z.object({
+  nome: z.string().min(1, "Nome é obrigatório"),
+  especialidade: z.string().min(1, "Especialidade é obrigatória"),
+  telefone: z.string().min(1, "Telefone é obrigatório"),
+  email: z.string().email("Email inválido").optional().or(z.literal('')),
+  status: z.enum(['ATIVO', 'INATIVO']).optional().default('ATIVO')
 });
 
 export const insertServiceSchema = z.object({
-  tipo_servico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
-  maquina_id: z.string().min(1, "Máquina é obrigatória"),
-  tecnico_id: z.string().min(1, "Técnico é obrigatório"),
-  descricao_servico: z.string().min(1, "Descrição do serviço é obrigatória"),
-  descricao_problema: z.string().optional(),
-  data_agendamento: z.string().or(z.date()),
-  data_conclusao: z.string().or(z.date()).optional(),
+  tipoServico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
+  maquinaId: z.string().min(1, "Máquina é obrigatória"),
+  tecnicoId: z.string().min(1, "Técnico é obrigatório"),
+  descricaoServico: z.string().min(1, "Descrição do serviço é obrigatória"),
+  descricaoProblema: z.string().optional(),
+  dataAgendamento: z.string().or(z.date()),
+  dataConclusao: z.string().or(z.date()).optional(),
   prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).optional(),
   status: z.enum(['AGENDADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO', 'PENDENTE']).optional(),
   custo: z.string().optional(),
@@ -152,16 +165,49 @@ export const insertServiceHistorySchema = createInsertSchema(serviceHistory).omi
 
 // ========== TYPES ==========
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type User = typeof users.$inferSelect & {
+  password?: string; // Para compatibilidade com o frontend
+};
 
 export type InsertTechnician = z.infer<typeof insertTechnicianSchema>;
-export type Technician = typeof technicians.$inferSelect;
+export type Technician = typeof technicians.$inferSelect & {
+  email?: string;
+};
 
 export type InsertMachine = z.infer<typeof insertMachineSchema>;
-export type Machine = typeof machines.$inferSelect;
+export type Machine = {
+  id: string;
+  codigo: string;
+  modelo: string;
+  marca: string;
+  tipo: 'SPLIT' | 'WINDOW' | 'CASSETE' | 'PISO_TETO' | 'PORTATIL' | 'INVERTER';
+  capacidadeBTU: number;
+  voltagem: 'V110' | 'V220' | 'BIVOLT';
+  localizacaoTipo: 'SALA' | 'QUARTO' | 'ESCRITORIO' | 'SALA_REUNIAO' | 'OUTRO';
+  localizacaoDescricao: string;
+  localizacaoAndar?: number;
+  filial: string;
+  dataInstalacao: string;
+  status: 'ATIVO' | 'INATIVO' | 'MANUTENCAO' | 'DEFEITO';
+  observacoes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type InsertService = z.infer<typeof insertServiceSchema>;
-export type Service = typeof services.$inferSelect;
+export type Service = typeof services.$inferSelect & {
+  tipoServico?: string;
+  maquinaId?: string;
+  tecnicoId?: string;
+  tecnicoNome?: string;
+  descricaoServico?: string;
+  descricaoProblema?: string;
+  dataAgendamento?: string;
+  dataConclusao?: string;
+  custo?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 export type InsertServiceHistory = z.infer<typeof insertServiceHistorySchema>;
 export type ServiceHistory = typeof serviceHistory.$inferSelect;
@@ -180,3 +226,11 @@ export type PaginatedResponse<T> = ApiResponse<{
   limit: number;
   totalPages: number;
 }>;
+
+// Tipos para o frontend
+export type MachineType = 'SPLIT' | 'WINDOW' | 'CASSETE' | 'PISO_TETO' | 'PORTATIL' | 'INVERTER';
+export type LocationType = 'SALA' | 'QUARTO' | 'ESCRITORIO' | 'SALA_REUNIAO' | 'OUTRO';
+export type MachineStatus = 'ATIVO' | 'INATIVO' | 'MANUTENCAO' | 'DEFEITO';
+export type ServiceType = 'PREVENTIVA' | 'CORRETIVA' | 'INSTALACAO' | 'LIMPEZA' | 'VISTORIA';
+export type ServiceStatus = 'AGENDADO' | 'EM_ANDAMENTO' | 'CONCLUIDO' | 'CANCELADO' | 'PENDENTE';
+export type Priority = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
