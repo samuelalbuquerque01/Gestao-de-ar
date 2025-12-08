@@ -1,4 +1,4 @@
-[file name]: App.tsx
+[file name]: client/src/App.tsx
 [file content begin]
 import React from 'react';
 import { Switch, Route, Redirect } from "wouter";
@@ -14,10 +14,10 @@ import Dashboard from "@/pages/dashboard";
 import MachinesPage from "@/pages/machines";
 import ServicesPage from "@/pages/services";
 import TechniciansPage from "@/pages/technicians";
+import ReportsPage from "@/pages/reports";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
-import ReportsPage from "@/pages/reports"; 
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -42,7 +42,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   
   return (
     <Layout>
-      <DataProvider> {/* ← ADICIONADO AQUI! */}
+      <DataProvider>
         <Component />
       </DataProvider>
     </Layout>
@@ -78,11 +78,15 @@ function Router() {
           </Route>
           
           <Route path="/relatorios">
-            <ProtectedRoute component={ReportsPage} /> {/* ← ADICIONE ESTA LINHA */}
+            <ProtectedRoute component={ReportsPage} />
           </Route>
           
-          <Route path="/relatorios">
-            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Relatórios em Desenvolvimento</div>} />
+          <Route path="/configuracoes">
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Configurações em Desenvolvimento</div>} />
+          </Route>
+          
+          <Route path="/perfil">
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Perfil em Desenvolvimento</div>} />
           </Route>
         </>
       ) : (
