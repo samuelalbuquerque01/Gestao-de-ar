@@ -30,36 +30,26 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   Legend
 } from 'recharts';
 import { 
-  Download, 
   Filter, 
   Calendar, 
   FileText, 
-  TrendingUp, 
-  AlertTriangle,
+  TrendingUp,
   CheckCircle,
   Clock,
-  Wrench,
-  Fan,
   Search,
-  Printer,
   BarChart3,
   PieChart as PieChartIcon,
-  CalendarDays,
   Building,
   Users,
   Loader2,
   FileDown,
-  Home,
   Activity
 } from 'lucide-react';
-import { format, subDays, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, subMonths, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -96,7 +86,6 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
     width = height * ratio;
   }
 
-  
   pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
   pdf.text(reportTitle, 15, 15);
@@ -107,11 +96,9 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   
   pdf.setLineWidth(0.5);
   pdf.line(15, 25, pageWidth - 15, 25);
-  
 
   pdf.addImage(imgData, 'PNG', 10, 30, width, height);
-  
- 
+
   const pageCount = pdf.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
@@ -123,9 +110,8 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 };
 
 export default function ReportsPage() {
-  const { machines, services, technicians } = useData();
+  const { machines, services } = useData();
   const { toast } = useToast();
-  const [reportType, setReportType] = useState('overview');
   const [dateRange, setDateRange] = useState('last30days');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -135,10 +121,8 @@ export default function ReportsPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
- 
-  const branches = Array.from(new Set(machines.map(m => m.branch).filter(Boolean)));
+  const branches = Array.from(new Set(machines.map(m => m.filial).filter(Boolean)));
 
- 
   useEffect(() => {
     const today = new Date();
     let start, end;
@@ -180,22 +164,25 @@ export default function ReportsPage() {
     }
   }, [dateRange, startDate, endDate]);
 
- 
   const filteredServices = services.filter(service => {
     try {
+      if (!service.dataAgendamento) return false;
+      
       const serviceDate = parseISO(service.dataAgendamento);
+      if (!isValid(serviceDate)) return false;
+      
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
 
+      if (!isValid(start) || !isValid(end)) return false;
+      
       const dateInRange = serviceDate >= start && serviceDate <= end;
       
       const machine = machines.find(m => m.id === service.maquinaId);
-      const branchMatch = branchFilter === 'all' || machine?.branch === branchFilter;
+      const branchMatch = branchFilter === 'all' || machine?.filial === branchFilter;
       
-     
       const statusMatch = statusFilter === 'all' || service.status === statusFilter;
-      
       
       const searchMatch = !searchTerm || 
         service.descricaoServico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -229,12 +216,11 @@ export default function ReportsPage() {
 
   const servicesByBranch = filteredServices.reduce((acc, service) => {
     const machine = machines.find(m => m.id === service.maquinaId);
-    const branch = machine?.branch || 'Não especificada';
+    const branch = machine?.filial || 'Não especificada';
     acc[branch] = (acc[branch] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
- 
   const typeChartData = Object.entries(servicesByType).map(([name, value]) => ({ name, value }));
   const statusChartData = Object.entries(servicesByStatus).map(([name, value]) => ({ name, value }));
   const technicianChartData = Object.entries(servicesByTechnician)
@@ -243,10 +229,8 @@ export default function ReportsPage() {
     .slice(0, 10);
   const branchChartData = Object.entries(servicesByBranch).map(([name, value]) => ({ name, value }));
 
- 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-  
   const totalServices = filteredServices.length;
   const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
   const pendingServices = filteredServices.filter(s => 
@@ -257,13 +241,20 @@ export default function ReportsPage() {
   const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
- 
   const handleGeneratePDF = async () => {
     if (!reportRef.current) return;
     
     setIsGeneratingPDF(true);
     try {
-      const reportTitle = `Relatório de Serviços - ${format(new Date(startDate), 'dd/MM/yyyy', { locale: ptBR })} a ${format(new Date(endDate), 'dd/MM/yyyy', { locale: ptBR })}`;
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      
+      const reportTitle = `Relatório de Serviços - ${
+        isValid(startDateObj) ? format(startDateObj, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida'
+      } a ${
+        isValid(endDateObj) ? format(endDateObj, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida'
+      }`;
+      
       await generatePDF(reportRef.current, reportTitle);
       
       toast({
@@ -281,6 +272,19 @@ export default function ReportsPage() {
     } finally {
       setIsGeneratingPDF(false);
     }
+  };
+
+  const formatDateSafe = (dateString: string) => {
+    try {
+      const date = parseISO(dateString);
+      return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
+    } catch {
+      return 'Data inválida';
+    }
+  };
+
+  const formatCurrentDate = (date: Date) => {
+    return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
   return (
@@ -405,7 +409,7 @@ export default function ReportsPage() {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {format(new Date(startDate), "dd/MM/yyyy", { locale: ptBR })} a {format(new Date(endDate), "dd/MM/yyyy", { locale: ptBR })}
+                {formatCurrentDate(new Date(startDate))} a {formatCurrentDate(new Date(endDate))}
               </span>
               {branchFilter !== 'all' && (
                 <span className="flex items-center gap-1">
@@ -427,7 +431,7 @@ export default function ReportsPage() {
             <h1 className="text-2xl font-bold">Neuropsicocentro - Relatório de Serviços</h1>
             <p className="text-muted-foreground">Sistema de Gestão de Ar Condicionado</p>
             <div className="mt-2 text-sm">
-              Período: {format(new Date(startDate), "dd/MM/yyyy", { locale: ptBR })} a {format(new Date(endDate), "dd/MM/yyyy", { locale: ptBR })}
+              Período: {formatCurrentDate(new Date(startDate))} a {formatCurrentDate(new Date(endDate))}
               {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
@@ -581,7 +585,7 @@ export default function ReportsPage() {
                       return (
                         <TableRow key={service.id}>
                           <TableCell>
-                            {format(parseISO(service.dataAgendamento), "dd/MM/yyyy", { locale: ptBR })}
+                            {formatDateSafe(service.dataAgendamento)}
                           </TableCell>
                           <TableCell className="font-medium">
                             {machine?.codigo || 'N/A'} - {machine?.modelo || 'Desconhecido'}
@@ -606,7 +610,7 @@ export default function ReportsPage() {
                               {service.status || 'AGENDADO'}
                             </Badge>
                           </TableCell>
-                          <TableCell>{machine?.branch || 'N/A'}</TableCell>
+                          <TableCell>{machine?.filial || 'N/A'}</TableCell>
                         </TableRow>
                       );
                     })
@@ -644,7 +648,7 @@ export default function ReportsPage() {
                       </div>
                     </div>
                     <Badge variant="outline">
-                      {((value / totalServices) * 100).toFixed(1)}%
+                      {totalServices > 0 ? ((value / totalServices) * 100).toFixed(1) : 0}%
                     </Badge>
                   </div>
                 ))}
@@ -663,27 +667,32 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {technicianChartData.map(({ name, value }, index) => (
-                  <div key={name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-sm">
-                        {index + 1}
+                {technicianChartData.map(({ name, value }, index) => {
+                  const maxValue = Math.max(...technicianChartData.map(t => t.value));
+                  const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                  
+                  return (
+                    <div key={name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium">{name}</p>
+                          <p className="text-sm text-muted-foreground">{value} serviços realizados</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{name}</p>
-                        <p className="text-sm text-muted-foreground">{value} serviços realizados</p>
+                      <div className="w-32">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="w-32">
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${(value / Math.max(...technicianChartData.map(t => t.value))) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
