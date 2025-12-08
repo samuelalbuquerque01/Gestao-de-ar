@@ -1,3 +1,5 @@
+[file name]: App.tsx
+[file content begin]
 import React from 'react';
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -15,6 +17,7 @@ import TechniciansPage from "@/pages/technicians";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
+import ReportsPage from "@/pages/reports"; 
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -75,6 +78,10 @@ function Router() {
           </Route>
           
           <Route path="/relatorios">
+            <ProtectedRoute component={ReportsPage} /> {/* ← ADICIONE ESTA LINHA */}
+          </Route>
+          
+          <Route path="/relatorios">
             <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Relatórios em Desenvolvimento</div>} />
           </Route>
         </>
@@ -101,3 +108,4 @@ function App() {
 }
 
 export default App;
+[file content end]
