@@ -1,5 +1,3 @@
-[file name]: pages/reports.tsx
-[file content begin]
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +64,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 
-// Para gerar PDF (vamos importar dinamicamente para não aumentar o bundle inicial)
 const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   const html2canvas = (await import('html2canvas')).default;
   const jsPDF = (await import('jspdf')).default;
@@ -99,7 +96,7 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
     width = height * ratio;
   }
 
-  // Adicionar título
+  
   pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
   pdf.text(reportTitle, 15, 15);
@@ -111,10 +108,10 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   pdf.setLineWidth(0.5);
   pdf.line(15, 25, pageWidth - 15, 25);
   
-  // Adicionar imagem do relatório
+
   pdf.addImage(imgData, 'PNG', 10, 30, width, height);
   
-  // Adicionar número da página
+ 
   const pageCount = pdf.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
@@ -138,10 +135,10 @@ export default function ReportsPage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Obter todas as filiais únicas
+ 
   const branches = Array.from(new Set(machines.map(m => m.branch).filter(Boolean)));
 
-  // Obter datas baseadas no filtro
+ 
   useEffect(() => {
     const today = new Date();
     let start, end;
@@ -183,7 +180,7 @@ export default function ReportsPage() {
     }
   }, [dateRange, startDate, endDate]);
 
-  // Filtrar dados
+ 
   const filteredServices = services.filter(service => {
     try {
       const serviceDate = parseISO(service.dataAgendamento);
@@ -193,14 +190,13 @@ export default function ReportsPage() {
 
       const dateInRange = serviceDate >= start && serviceDate <= end;
       
-      // Filtrar por filial se aplicável
       const machine = machines.find(m => m.id === service.maquinaId);
       const branchMatch = branchFilter === 'all' || machine?.branch === branchFilter;
       
-      // Filtrar por status
+     
       const statusMatch = statusFilter === 'all' || service.status === statusFilter;
       
-      // Filtrar por termo de busca
+      
       const searchMatch = !searchTerm || 
         service.descricaoServico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.tecnicoNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -213,7 +209,6 @@ export default function ReportsPage() {
     }
   });
 
-  // Dados para gráficos
   const servicesByType = filteredServices.reduce((acc, service) => {
     const type = service.tipoServico || 'OUTRO';
     acc[type] = (acc[type] || 0) + 1;
@@ -239,7 +234,7 @@ export default function ReportsPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Converter para arrays para gráficos
+ 
   const typeChartData = Object.entries(servicesByType).map(([name, value]) => ({ name, value }));
   const statusChartData = Object.entries(servicesByStatus).map(([name, value]) => ({ name, value }));
   const technicianChartData = Object.entries(servicesByTechnician)
@@ -248,10 +243,10 @@ export default function ReportsPage() {
     .slice(0, 10);
   const branchChartData = Object.entries(servicesByBranch).map(([name, value]) => ({ name, value }));
 
-  // Cores para gráficos
+ 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-  // Métricas principais
+  
   const totalServices = filteredServices.length;
   const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
   const pendingServices = filteredServices.filter(s => 
@@ -262,7 +257,7 @@ export default function ReportsPage() {
   const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Gerar PDF
+ 
   const handleGeneratePDF = async () => {
     if (!reportRef.current) return;
     
@@ -290,7 +285,6 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho e Filtros */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Relatórios</h1>
@@ -314,7 +308,6 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Filtros */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -428,9 +421,7 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Conteúdo do Relatório (será exportado para PDF) */}
       <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-lg border">
-        {/* Cabeçalho do Relatório (visível apenas no PDF) */}
         <div className="pdf-header hidden print:block">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold">Neuropsicocentro - Relatório de Serviços</h1>
@@ -446,7 +437,6 @@ export default function ReportsPage() {
           <Separator className="mb-4" />
         </div>
 
-        {/* Métricas Principais */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -501,7 +491,6 @@ export default function ReportsPage() {
           </Card>
         </div>
 
-        {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -555,7 +544,6 @@ export default function ReportsPage() {
           </Card>
         </div>
 
-        {/* Tabela de Serviços Detalhada */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -634,7 +622,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Resumo por Filial */}
         {branchChartData.length > 0 && (
           <Card>
             <CardHeader>
@@ -666,7 +653,6 @@ export default function ReportsPage() {
           </Card>
         )}
 
-        {/* Top Técnicos */}
         {technicianChartData.length > 0 && (
           <Card>
             <CardHeader>
@@ -703,14 +689,12 @@ export default function ReportsPage() {
           </Card>
         )}
 
-        {/* Rodapé do PDF */}
         <div className="pdf-footer hidden print:block mt-8 pt-4 border-t text-xs text-muted-foreground text-center">
           <p>Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro</p>
           <p className="mt-1">Para mais informações, entre em contato com a administração</p>
         </div>
       </div>
 
-      {/* Aviso para Desktop */}
       <div className="print:hidden">
         <Card className="border-dashed">
           <CardContent className="pt-6">
@@ -730,4 +714,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-[file content end]
