@@ -17,11 +17,25 @@ import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
+    console.log('🔒 [APP] Usuário não autenticado, redirecionando para login');
     return <Redirect to="/login" />;
   }
+  
+  console.log('✅ [APP] Usuário autenticado, renderizando componente');
   
   return (
     <Layout>
@@ -31,32 +45,41 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 }
 
 function Router() {
+  const { isAuthenticated } = useAuth();
+  
   return (
     <Switch>
       {/* Public Routes */}
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       
-      {/* Protected Routes */}
-      <Route path="/">
-        <ProtectedRoute component={Dashboard} />
-      </Route>
-      
-      <Route path="/maquinas">
-        <ProtectedRoute component={MachinesPage} />
-      </Route>
-      
-      <Route path="/servicos">
-        <ProtectedRoute component={ServicesPage} />
-      </Route>
-      
-      <Route path="/tecnicos">
-        <ProtectedRoute component={TechniciansPage} />
-      </Route>
-      
-      <Route path="/relatorios">
-        <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Relatórios em Desenvolvimento</div>} />
-      </Route>
+      {/* Protected Routes - SÓ se autenticado */}
+      {isAuthenticated ? (
+        <>
+          <Route path="/">
+            <ProtectedRoute component={Dashboard} />
+          </Route>
+          
+          <Route path="/maquinas">
+            <ProtectedRoute component={MachinesPage} />
+          </Route>
+          
+          <Route path="/servicos">
+            <ProtectedRoute component={ServicesPage} />
+          </Route>
+          
+          <Route path="/tecnicos">
+            <ProtectedRoute component={TechniciansPage} />
+          </Route>
+          
+          <Route path="/relatorios">
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Relatórios em Desenvolvimento</div>} />
+          </Route>
+        </>
+      ) : (
+        // Se não autenticado, redireciona todas as rotas para login
+        <Route><Redirect to="/login" /></Route>
+      )}
       
       {/* 404 */}
       <Route component={NotFound} />
@@ -68,10 +91,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <DataProvider>
-          <Toaster />
-          <Router />
-        </DataProvider>
+        {/* DataProvider SÓ envolve as rotas protegidas */}
+        <Router />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

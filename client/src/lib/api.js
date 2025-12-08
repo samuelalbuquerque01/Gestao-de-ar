@@ -1,4 +1,3 @@
-// api.js - FRONTEND
 import axios from 'axios';
 
 // COM PROXY: Use caminho relativo
@@ -19,9 +18,15 @@ api.interceptors.request.use(
     console.log(`📤 [API] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`);
     
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && token !== 'undefined' && token.length > 10) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('🔑 Token adicionado');
+      console.log('🔑 Token adicionado às requisições');
+    } else {
+      console.log('⚠️ [API] Token inválido ou ausente no localStorage:', {
+        temToken: !!token,
+        token: token?.substring(0, 20) + '...',
+        length: token?.length
+      });
     }
     
     return config;
@@ -41,19 +46,25 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       console.error(`❌ [API] Erro ${error.response.status} em ${error.config?.url || 'URL desconhecida'}:`);
-      console.error(`📋 [API] Dados da resposta:`, error.response.data);
       
-      if (error.response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        console.log('🔒 Token removido (401 Unauthorized)');
-      }
-      
-      if (error.response.status === 404) {
-        console.error('🔍 [API] Rota não encontrada. Verifique:');
-        console.error('   1. Backend está rodando na porta correta?');
-        console.error('   2. Proxy está configurado corretamente?');
-        console.error('   3. A rota existe no backend?');
+      if (error.response.status === 401 || error.response.status === 403) {
+        console.log('🔒 Token inválido detectado (401/403)');
+        
+        // Só remove e redireciona se NÃO estiver na página de login/register
+        if (!window.location.pathname.includes('/login') && 
+            !window.location.pathname.includes('/register')) {
+          console.log('🗑️ Removendo token inválido...');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          
+          // Pequeno delay antes de redirecionar
+          setTimeout(() => {
+            console.log('🔄 Redirecionando para login...');
+            window.location.href = '/login';
+          }, 300);
+        } else {
+          console.log('ℹ️ [API] Já está na página de login, mantendo erro...');
+        }
       }
     } else if (error.request) {
       console.error('❌ [API] Sem resposta do servidor - URL:', error.config?.url);

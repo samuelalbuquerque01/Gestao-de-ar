@@ -28,14 +28,66 @@ interface DataContextType {
   dashboardStats: any;
   isLoadingStats: boolean;
   errorStats: any;
-  refetchAll: () => void;
+  refetchAll: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// Função auxiliar para verificar token
+const checkToken = () => {
+  const token = localStorage.getItem('token');
+  const isValid = token && token !== 'undefined' && token.length > 10;
+  console.log('🔍 [DATA] Verificando token:', {
+    temToken: !!token,
+    isValid,
+    length: token?.length
+  });
+  return isValid;
+};
+
+// Função para esperar token válido
+const waitForValidToken = async (maxWait = 3000) => {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWait) {
+    if (checkToken()) {
+      console.log('✅ [DATA] Token válido encontrado após', Date.now() - startTime, 'ms');
+      return true;
+    }
+    console.log('⏳ [DATA] Aguardando token válido...');
+    await new Promise(resolve => setTimeout(resolve, 200)); // Espera 200ms
+  }
+  
+  console.log('❌ [DATA] Timeout aguardando token válido');
+  return false;
+};
+
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [machinesInitialLoad, setMachinesInitialLoad] = useState(true);
+  const [hasValidToken, setHasValidToken] = useState(false);
+
+  // Verificar token quando o componente monta
+  useEffect(() => {
+    const tokenCheck = async () => {
+      const isValid = await waitForValidToken(2000);
+      setHasValidToken(isValid);
+      if (!isValid) {
+        console.log('⚠️ [DATA] Sem token válido, não carregando dados');
+      }
+    };
+    
+    tokenCheck();
+    
+    // Listener para mudanças no localStorage
+    const handleStorageChange = () => {
+      console.log('📝 [DATA] localStorage alterado, verificando token...');
+      setHasValidToken(checkToken());
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // ========== TÉCNICOS ==========
   const { 
@@ -47,6 +99,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['technicians'],
     queryFn: async () => {
       try {
+        // Espera por token válido
+        if (!checkToken()) {
+          const hasToken = await waitForValidToken(1000);
+          if (!hasToken) {
+            console.log('❌ [DATA] Sem token para buscar técnicos');
+            return [];
+          }
+        }
+        
         console.log('📊 [DATA] Buscando técnicos...');
         const response = await api.get('/technicians');
         console.log('✅ [DATA] Técnicos recebidos:', response.data.data?.length || 0);
@@ -56,7 +117,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return [];
       }
     },
-    retry: 2,
+    retry: false, // IMPORTANTE: não retentar automaticamente
+    enabled: hasValidToken, // SÓ EXECUTA SE TIVER TOKEN VÁLIDO
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -107,6 +169,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['machines'],
     queryFn: async () => {
       try {
+        // ESPERA 300ms para garantir que tudo está pronto
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Verifica token novamente
+        if (!checkToken()) {
+          console.log('⚠️ [DATA] Token inválido ao buscar máquinas, tentando novamente...');
+          const hasToken = await waitForValidToken(1500);
+          if (!hasToken) {
+            console.log('❌ [DATA] Abortando busca de máquinas - sem token');
+            return [];
+          }
+        }
+        
         console.log('📊 [DATA] Buscando máquinas...');
         const startTime = Date.now();
         const response = await api.get('/machines');
@@ -129,8 +204,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return [];
       }
     },
-    retry: 3,
-    retryDelay: 1000,
+    retry: false, // IMPORTANTE: não retentar automaticamente
+    enabled: hasValidToken, // SÓ EXECUTA SE TIVER TOKEN VÁLIDO
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 15,
     refetchOnWindowFocus: true,
@@ -222,6 +297,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['services'],
     queryFn: async () => {
       try {
+        // Espera por token válido
+        if (!checkToken()) {
+          const hasToken = await waitForValidToken(1000);
+          if (!hasToken) {
+            console.log('❌ [DATA] Sem token para buscar serviços');
+            return [];
+          }
+        }
+        
         console.log('📊 [DATA] Buscando serviços...');
         const response = await api.get('/services');
         console.log('✅ [DATA] Serviços recebidos:', response.data.data?.length || 0);
@@ -231,7 +315,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return [];
       }
     },
-    retry: 2,
+    retry: false,
+    enabled: hasValidToken,
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -283,6 +368,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       try {
+        // Espera por token válido
+        if (!checkToken()) {
+          const hasToken = await waitForValidToken(1000);
+          if (!hasToken) {
+            console.log('❌ [DATA] Sem token para buscar estatísticas');
+            return {};
+          }
+        }
+        
         console.log('📊 [DATA] Buscando estatísticas...');
         const response = await api.get('/dashboard/stats');
         console.log('✅ [DATA] Estatísticas recebidas');
@@ -292,18 +386,33 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return {};
       }
     },
-    retry: 2,
+    retry: false,
+    enabled: hasValidToken,
     staleTime: 1000 * 60,
     cacheTime: 1000 * 60 * 5,
   });
 
   // Função para refetch de tudo
-  const refetchAll = () => {
+  const refetchAll = async () => {
     console.log('🔄 [DATA] Refetch de todos os dados...');
-    refetchTechnicians();
-    refetchMachines();
-    refetchServices();
-    refetchStats();
+    
+    // Verifica token antes de refetch
+    if (!checkToken()) {
+      console.log('⚠️ [DATA] Token inválido ao tentar refetch');
+      return;
+    }
+    
+    try {
+      await Promise.all([
+        refetchTechnicians(),
+        refetchMachines(),
+        refetchServices(),
+        refetchStats()
+      ]);
+      console.log('✅ [DATA] Todos os dados refetchados com sucesso');
+    } catch (error) {
+      console.error('❌ [DATA] Erro ao fazer refetch:', error);
+    }
   };
 
   const value: DataContextType = {
