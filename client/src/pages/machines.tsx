@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Edit2, Trash2, MapPin, Power, Building2 } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, MapPin, Power, Building2, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -52,10 +52,11 @@ const machineSchema = z.object({
 });
 
 export default function MachinesPage() {
-  const { machines, createMachine, updateMachine, deleteMachine } = useData();
+  const { machines, isLoadingMachines, isLoadingMachinesInitial, createMachine, updateMachine, deleteMachine } = useData();
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const filteredMachines = machines.filter(m => 
     m.codigo.toLowerCase().includes(filter.toLowerCase()) ||
@@ -83,7 +84,7 @@ export default function MachinesPage() {
     }
   });
 
-  const onSubmit = (data: z.infer<typeof machineSchema>) => {
+  const onSubmit = async (data: z.infer<typeof machineSchema>) => {
     const formattedData = {
       ...data,
       tipo: data.tipo as MachineType,
@@ -92,14 +93,18 @@ export default function MachinesPage() {
       status: data.status as MachineStatus
     };
 
-    if (editingMachine) {
-      updateMachine(editingMachine.id, formattedData);
-    } else {
-      createMachine(formattedData);
+    try {
+      if (editingMachine) {
+        await updateMachine(editingMachine.id, formattedData);
+      } else {
+        await createMachine(formattedData);
+      }
+      setIsDialogOpen(false);
+      setEditingMachine(null);
+      form.reset();
+    } catch (error) {
+      console.error('Erro ao salvar máquina:', error);
     }
-    setIsDialogOpen(false);
-    setEditingMachine(null);
-    form.reset();
   };
 
   const handleEdit = (machine: Machine) => {
@@ -131,12 +136,62 @@ export default function MachinesPage() {
     setIsDialogOpen(true);
   };
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta máquina?')) return;
+    
+    setIsDeleting(id);
+    try {
+      await deleteMachine(id);
+    } catch (error) {
+      console.error('Erro ao deletar máquina:', error);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   const statusColors: Record<string, string> = {
     'ATIVO': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
     'INATIVO': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
     'MANUTENCAO': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
     'DEFEITO': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
   };
+
+  // Loading state para máquinas
+  if (isLoadingMachinesInitial) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div>
+            <h3 className="text-lg font-medium">Carregando máquinas</h3>
+            <p className="text-sm text-muted-foreground">Por favor, aguarde...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingMachines && machines.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Máquinas</h1>
+            <p className="text-muted-foreground">Gerencie o inventário de ar condicionados.</p>
+          </div>
+          <Button disabled className="gap-2 shadow-md">
+            <Plus className="h-4 w-4" /> Nova Máquina
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-20 bg-muted/30 animate-pulse rounded-lg"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -409,28 +464,28 @@ export default function MachinesPage() {
         </Button>
       </div>
 
-      <div className="rounded-md border bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>Código</TableHead>
-              <TableHead>Equipamento</TableHead>
-              <TableHead className="hidden md:table-cell">Localização</TableHead>
-              <TableHead className="hidden md:table-cell">Filial</TableHead>
-              <TableHead className="hidden sm:table-cell">Capacidade</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredMachines.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  Nenhuma máquina encontrada.
-                </TableCell>
+      {filteredMachines.length === 0 ? (
+        <div className="text-center py-12 border rounded-lg bg-card">
+          <p className="text-muted-foreground">
+            {filter ? 'Nenhuma máquina encontrada com esse filtro.' : 'Nenhuma máquina cadastrada.'}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Código</TableHead>
+                <TableHead>Equipamento</TableHead>
+                <TableHead className="hidden md:table-cell">Localização</TableHead>
+                <TableHead className="hidden md:table-cell">Filial</TableHead>
+                <TableHead className="hidden sm:table-cell">Capacidade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
-            ) : (
-              filteredMachines.map((machine) => (
+            </TableHeader>
+            <TableBody>
+              {filteredMachines.map((machine) => (
                 <TableRow key={machine.id} className="group hover:bg-muted/50 transition-colors">
                   <TableCell className="font-medium font-mono text-primary">
                     {machine.codigo}
@@ -471,20 +526,36 @@ export default function MachinesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(machine)} title="Editar">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEdit(machine)} 
+                        title="Editar"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteMachine(machine.id)} title="Excluir">
-                        <Trash2 className="w-4 h-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10" 
+                        onClick={() => handleDelete(machine.id)} 
+                        title="Excluir"
+                        disabled={isDeleting === machine.id}
+                      >
+                        {isDeleting === machine.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

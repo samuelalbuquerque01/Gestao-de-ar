@@ -1,7 +1,7 @@
 import React from 'react';
 import { useData, ServiceStatus, MachineStatus } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Fan, Wrench, AlertTriangle, CheckCircle2, Clock, Activity } from 'lucide-react';
+import { Fan, Wrench, AlertTriangle, CheckCircle2, Clock, Activity, Loader2 } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -19,7 +19,22 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Dashboard() {
-  const { machines, services } = useData();
+  const { machines, services, dashboardStats, isLoadingMachines, isLoadingMachinesInitial } = useData();
+
+  // Mostrar loading enquanto carrega
+  if (isLoadingMachinesInitial) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div>
+            <h3 className="text-lg font-medium">Carregando dashboard</h3>
+            <p className="text-sm text-muted-foreground">Aguarde enquanto carregamos os dados...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Stats Calculations
   const activeMachines = machines.filter(m => m.status === 'ATIVO').length;
