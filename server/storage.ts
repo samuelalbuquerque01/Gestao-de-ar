@@ -1,3 +1,5 @@
+// ========== STORAGE COMPLETO ATUALIZADO ==========
+
 import { 
   type User, type InsertUser,
   type Technician, type InsertTechnician,
@@ -9,7 +11,7 @@ import { db } from "./db";
 import { 
   users, technicians, machines, services, serviceHistory 
 } from "@shared/schema";
-import { eq, and, desc, like, sql, count } from "drizzle-orm";
+import { eq, and, desc, like, sql, count, gte, lte, between, sum, avg } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -29,6 +31,8 @@ export interface IStorage {
   getMachine(id: string): Promise<Machine | undefined>;
   getMachineByCodigo(codigo: string): Promise<Machine | undefined>;
   getAllMachines(): Promise<Machine[]>;
+  getMachinesByStatus(status: string): Promise<Machine[]>;
+  getMachinesByBranch(branch: string): Promise<Machine[]>;
   createMachine(machine: InsertMachine): Promise<Machine>;
   updateMachine(id: string, machine: Partial<InsertMachine>): Promise<Machine | undefined>;
   deleteMachine(id: string): Promise<boolean>;
@@ -38,9 +42,18 @@ export interface IStorage {
   getAllServices(): Promise<Service[]>;
   getServicesByMachine(machineId: string): Promise<Service[]>;
   getServicesByTechnician(technicianId: string): Promise<Service[]>;
+  getServicesByDateRange(startDate: Date, endDate: Date): Promise<Service[]>;
+  getServicesByStatus(status: string): Promise<Service[]>;
+  getServicesByType(serviceType: string): Promise<Service[]>;
+  getCompletedServices(startDate?: Date, endDate?: Date): Promise<Service[]>;
+  getServicesWithCosts(startDate?: Date, endDate?: Date): Promise<Service[]>;
   createService(service: InsertService): Promise<Service>;
   updateService(id: string, service: Partial<InsertService>): Promise<Service | undefined>;
   deleteService(id: string): Promise<boolean>;
+  
+  // Service History
+  addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory>;
+  getServiceHistory(serviceId: string): Promise<ServiceHistory[]>;
   
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -49,7 +62,45 @@ export interface IStorage {
     defectMachines: number;
     pendingServices: number;
     completedServices: number;
+    totalCost: number;
+    avgServiceCost: number;
   }>;
+  
+  // Reports
+  getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
+  getTechnicianPerformance(startDate?: Date, endDate?: Date): Promise<Array<{
+    technicianId: string;
+    technicianName: string;
+    completedServices: number;
+    totalServices: number;
+    avgCompletionTime: number;
+    totalCost: number;
+  }>>;
+  getMonthlyServiceStats(year?: number): Promise<Array<{
+    month: string;
+    totalServices: number;
+    completedServices: number;
+    pendingServices: number;
+    totalCost: number;
+  }>>;
+  getBranchStats(): Promise<Array<{
+    branch: string;
+    machineCount: number;
+    activeMachines: number;
+    totalServices: number;
+    totalCost: number;
+  }>>;
+  getCostAnalysis(startDate?: Date, endDate?: Date): Promise<{
+    byType: Array<{ type: string; count: number; totalCost: number; avgCost: number }>;
+    byTechnician: Array<{ technicianName: string; count: number; totalCost: number; avgCost: number }>;
+    byBranch: Array<{ branch: string; count: number; totalCost: number; avgCost: number }>;
+    byPriority: Array<{ priority: string; count: number; totalCost: number; avgCost: number }>;
+  }>;
+  getMachineMaintenanceHistory(machineId: string): Promise<Array<{
+    service: Service;
+    daysSinceLastService: number;
+    totalCost: number;
+  }>>;
 }
 
 // Função auxiliar para converter snake_case para camelCase
@@ -452,6 +503,70 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getMachinesByStatus(status: string): Promise<Machine[]> {
+    try {
+      const machinesList = await db.select()
+        .from(machines)
+        .where(eq(machines.status, status))
+        .orderBy(machines.codigo);
+      
+      return machinesList.map(machine => ({
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar máquinas por status:', error);
+      return [];
+    }
+  }
+
+  async getMachinesByBranch(branch: string): Promise<Machine[]> {
+    try {
+      const machinesList = await db.select()
+        .from(machines)
+        .where(eq(machines.branch, branch))
+        .orderBy(machines.codigo);
+      
+      return machinesList.map(machine => ({
+        ...mapDbToCamelCase(machine, 'machines'),
+        id: machine.id,
+        codigo: machine.codigo || '',
+        modelo: machine.model || '',
+        marca: machine.brand || '',
+        tipo: machine.type || 'SPLIT',
+        capacidadeBTU: machine.capacity || 9000,
+        voltagem: machine.voltage || 'V220',
+        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoDescricao: machine.location || '',
+        localizacaoAndar: machine.locationFloor || 0,
+        filial: machine.branch || 'Matriz',
+        dataInstalacao: safeDateToISO(machine.installationDate),
+        status: machine.status || 'ATIVO',
+        observacoes: machine.observacoes || '',
+        createdAt: machine.createdAt || new Date(),
+        updatedAt: machine.updatedAt || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar máquinas por filial:', error);
+      return [];
+    }
+  }
+
   async createMachine(machineData: InsertMachine): Promise<Machine> {
     try {
       console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
@@ -708,6 +823,196 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getServicesByDateRange(startDate: Date, endDate: Date): Promise<Service[]> {
+    try {
+      const servicesList = await db.select()
+        .from(services)
+        .where(
+          and(
+            gte(services.data_agendamento, startDate),
+            lte(services.data_agendamento, endDate)
+          )
+        )
+        .orderBy(desc(services.data_agendamento));
+      
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar serviços por data:', error);
+      return [];
+    }
+  }
+
+  async getServicesByStatus(status: string): Promise<Service[]> {
+    try {
+      const servicesList = await db.select()
+        .from(services)
+        .where(eq(services.status, status))
+        .orderBy(desc(services.data_agendamento));
+      
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar serviços por status:', error);
+      return [];
+    }
+  }
+
+  async getServicesByType(serviceType: string): Promise<Service[]> {
+    try {
+      const servicesList = await db.select()
+        .from(services)
+        .where(eq(services.tipo_servico, serviceType))
+        .orderBy(desc(services.data_agendamento));
+      
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar serviços por tipo:', error);
+      return [];
+    }
+  }
+
+  async getCompletedServices(startDate?: Date, endDate?: Date): Promise<Service[]> {
+    try {
+      let query = db.select()
+        .from(services)
+        .where(eq(services.status, 'CONCLUIDO'));
+      
+      if (startDate && endDate) {
+        query = query.where(
+          and(
+            gte(services.data_agendamento, startDate),
+            lte(services.data_agendamento, endDate)
+          )
+        );
+      }
+      
+      const servicesList = await query.orderBy(desc(services.data_agendamento));
+      
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar serviços concluídos:', error);
+      return [];
+    }
+  }
+
+  async getServicesWithCosts(startDate?: Date, endDate?: Date): Promise<Service[]> {
+    try {
+      let query = db.select()
+        .from(services)
+        .where(sql`${services.custo} IS NOT NULL`);
+      
+      if (startDate && endDate) {
+        query = query.where(
+          and(
+            gte(services.data_agendamento, startDate),
+            lte(services.data_agendamento, endDate)
+          )
+        );
+      }
+      
+      const servicesList = await query.orderBy(desc(services.data_agendamento));
+      
+      return servicesList.map(service => ({
+        ...mapDbToCamelCase(service, 'services'),
+        id: service.id,
+        tipoServico: service.tipo_servico || 'PREVENTIVA',
+        maquinaId: service.maquina_id || '',
+        tecnicoId: service.tecnico_id || '',
+        tecnicoNome: service.tecnico_nome || 'Desconhecido',
+        descricaoServico: service.descricao_servico || '',
+        descricaoProblema: service.descricao_problema || '',
+        dataAgendamento: safeDateToISO(service.data_agendamento),
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : undefined,
+        prioridade: service.prioridade || 'MEDIA',
+        status: service.status || 'AGENDADO',
+        custo: service.custo ? service.custo.toString() : '',
+        observacoes: service.observacoes || '',
+        createdAt: service.created_at || new Date(),
+        updatedAt: service.updated_at || new Date()
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar serviços com custos:', error);
+      return [];
+    }
+  }
+
   async createService(serviceData: InsertService): Promise<Service> {
     try {
       console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
@@ -725,8 +1030,8 @@ export class DatabaseStorage implements IStorage {
         descricao_servico: serviceData.descricaoServico || '',
         descricao_problema: serviceData.descricaoProblema || '',
         data_agendamento: serviceData.dataAgendamento && !isNaN(new Date(serviceData.dataAgendamento).getTime())
-  ? new Date(serviceData.dataAgendamento)
-  : new Date(),
+          ? new Date(serviceData.dataAgendamento)
+          : new Date(),
         data_conclusao: serviceData.dataConclusao 
           ? new Date(serviceData.dataConclusao)
           : undefined,
@@ -794,14 +1099,14 @@ export class DatabaseStorage implements IStorage {
       }
       if (serviceData.descricaoServico !== undefined) updateData.descricao_servico = serviceData.descricaoServico;
       if (serviceData.descricaoProblema !== undefined) updateData.descricao_problema = serviceData.descricaoProblema;
-     if (serviceData.dataAgendamento !== undefined) {
-  const date = new Date(serviceData.dataAgendamento);
-  if (!isNaN(date.getTime())) {
-    updateData.data_agendamento = date;
-  } else {
-    console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
-  }
-}
+      if (serviceData.dataAgendamento !== undefined) {
+        const date = new Date(serviceData.dataAgendamento);
+        if (!isNaN(date.getTime())) {
+          updateData.data_agendamento = date;
+        } else {
+          console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
+        }
+      }
       if (serviceData.dataConclusao !== undefined) {
         updateData.data_conclusao = serviceData.dataConclusao ? new Date(serviceData.dataConclusao) : null;
       }
@@ -902,6 +1207,8 @@ export class DatabaseStorage implements IStorage {
     defectMachines: number;
     pendingServices: number;
     completedServices: number;
+    totalCost: number;
+    avgServiceCost: number;
   }> {
     try {
       // Contar máquinas por status
@@ -926,12 +1233,22 @@ export class DatabaseStorage implements IStorage {
         .from(services)
         .where(eq(services.status, 'CONCLUIDO'));
       
+      // Calcular custos
+      const [costResult] = await db.select({ 
+        total: sum(services.custo),
+        avg: avg(services.custo)
+      })
+        .from(services)
+        .where(sql`${services.custo} IS NOT NULL`);
+      
       return {
         activeMachines: activeResult?.count || 0,
         maintenanceMachines: maintenanceResult?.count || 0,
         defectMachines: defectResult?.count || 0,
         pendingServices: pendingResult?.count || 0,
         completedServices: completedResult?.count || 0,
+        totalCost: costResult?.total ? parseFloat(costResult.total) : 0,
+        avgServiceCost: costResult?.avg ? parseFloat(costResult.avg) : 0
       };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar estatísticas:', error);
@@ -941,7 +1258,300 @@ export class DatabaseStorage implements IStorage {
         defectMachines: 0,
         pendingServices: 0,
         completedServices: 0,
+        totalCost: 0,
+        avgServiceCost: 0
       };
+    }
+  }
+
+  // ========== REPORTS ==========
+  async getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>> {
+    try {
+      let query = db.select({
+        tipo_servico: services.tipo_servico,
+        count: count()
+      })
+      .from(services)
+      .groupBy(services.tipo_servico);
+      
+      if (startDate && endDate) {
+        query = query.where(
+          and(
+            gte(services.data_agendamento, startDate),
+            lte(services.data_agendamento, endDate)
+          )
+        );
+      }
+      
+      const result = await query;
+      
+      const stats: Record<string, number> = {};
+      result.forEach(row => {
+        stats[row.tipo_servico] = row.count || 0;
+      });
+      
+      return stats;
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar estatísticas de tipos de serviço:', error);
+      return {};
+    }
+  }
+
+  async getTechnicianPerformance(startDate?: Date, endDate?: Date): Promise<Array<{
+    technicianId: string;
+    technicianName: string;
+    completedServices: number;
+    totalServices: number;
+    avgCompletionTime: number;
+    totalCost: number;
+  }>> {
+    try {
+      let baseQuery = db.select({
+        tecnico_id: services.tecnico_id,
+        tecnico_nome: services.tecnico_nome,
+        totalServices: count(),
+        completedServices: sql<number>`COUNT(CASE WHEN ${services.status} = 'CONCLUIDO' THEN 1 END)`,
+        totalCost: sum(services.custo),
+        avgCompletionTime: sql<number>`AVG(
+          EXTRACT(EPOCH FROM (${services.data_conclusao} - ${services.data_agendamento})) / 86400
+        )`
+      })
+      .from(services)
+      .groupBy(services.tecnico_id, services.tecnico_nome);
+      
+      if (startDate && endDate) {
+        baseQuery = baseQuery.where(
+          and(
+            gte(services.data_agendamento, startDate),
+            lte(services.data_agendamento, endDate)
+          )
+        );
+      }
+      
+      const result = await baseQuery;
+      
+      return result.map(row => ({
+        technicianId: row.tecnico_id,
+        technicianName: row.tecnico_nome,
+        completedServices: row.completedServices || 0,
+        totalServices: row.totalServices || 0,
+        avgCompletionTime: row.avgCompletionTime ? parseFloat(row.avgCompletionTime) : 0,
+        totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar desempenho de técnicos:', error);
+      return [];
+    }
+  }
+
+  async getMonthlyServiceStats(year?: number): Promise<Array<{
+    month: string;
+    totalServices: number;
+    completedServices: number;
+    pendingServices: number;
+    totalCost: number;
+  }>> {
+    try {
+      const currentYear = year || new Date().getFullYear();
+      
+      const result = await db.select({
+        month: sql<string>`TO_CHAR(${services.data_agendamento}, 'YYYY-MM')`,
+        totalServices: count(),
+        completedServices: sql<number>`COUNT(CASE WHEN ${services.status} = 'CONCLUIDO' THEN 1 END)`,
+        pendingServices: sql<number>`COUNT(CASE WHEN ${services.status} IN ('AGENDADO', 'EM_ANDAMENTO', 'PENDENTE') THEN 1 END)`,
+        totalCost: sum(services.custo)
+      })
+      .from(services)
+      .where(sql`EXTRACT(YEAR FROM ${services.data_agendamento}) = ${currentYear}`)
+      .groupBy(sql`TO_CHAR(${services.data_agendamento}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${services.data_agendamento}, 'YYYY-MM')`);
+      
+      return result.map(row => ({
+        month: row.month,
+        totalServices: row.totalServices || 0,
+        completedServices: row.completedServices || 0,
+        pendingServices: row.pendingServices || 0,
+        totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar estatísticas mensais:', error);
+      return [];
+    }
+  }
+
+  async getBranchStats(): Promise<Array<{
+    branch: string;
+    machineCount: number;
+    activeMachines: number;
+    totalServices: number;
+    totalCost: number;
+  }>> {
+    try {
+      const result = await db.select({
+        branch: machines.branch,
+        machineCount: count(machines.id),
+        activeMachines: sql<number>`COUNT(CASE WHEN ${machines.status} = 'ATIVO' THEN 1 END)`,
+        totalServices: count(services.id),
+        totalCost: sum(services.custo)
+      })
+      .from(machines)
+      .leftJoin(services, eq(machines.id, services.maquina_id))
+      .groupBy(machines.branch)
+      .orderBy(machines.branch);
+      
+      return result.map(row => ({
+        branch: row.branch || 'Não especificada',
+        machineCount: row.machineCount || 0,
+        activeMachines: row.activeMachines || 0,
+        totalServices: row.totalServices || 0,
+        totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
+      }));
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar estatísticas por filial:', error);
+      return [];
+    }
+  }
+
+  async getCostAnalysis(startDate?: Date, endDate?: Date): Promise<{
+    byType: Array<{ type: string; count: number; totalCost: number; avgCost: number }>;
+    byTechnician: Array<{ technicianName: string; count: number; totalCost: number; avgCost: number }>;
+    byBranch: Array<{ branch: string; count: number; totalCost: number; avgCost: number }>;
+    byPriority: Array<{ priority: string; count: number; totalCost: number; avgCost: number }>;
+  }> {
+    try {
+      let whereClause = sql`${services.custo} IS NOT NULL`;
+      
+      if (startDate && endDate) {
+        whereClause = sql`${whereClause} AND ${services.data_agendamento} >= ${startDate} AND ${services.data_agendamento} <= ${endDate}`;
+      }
+      
+      // Por tipo
+      const byTypeResult = await db.select({
+        type: services.tipo_servico,
+        count: count(),
+        totalCost: sum(services.custo),
+        avgCost: avg(services.custo)
+      })
+      .from(services)
+      .where(whereClause)
+      .groupBy(services.tipo_servico);
+      
+      // Por técnico
+      const byTechnicianResult = await db.select({
+        technicianName: services.tecnico_nome,
+        count: count(),
+        totalCost: sum(services.custo),
+        avgCost: avg(services.custo)
+      })
+      .from(services)
+      .where(whereClause)
+      .groupBy(services.tecnico_nome)
+      .orderBy(sql`${sum(services.custo)} DESC`);
+      
+      // Por filial
+      const byBranchResult = await db.select({
+        branch: machines.branch,
+        count: count(services.id),
+        totalCost: sum(services.custo),
+        avgCost: avg(services.custo)
+      })
+      .from(services)
+      .leftJoin(machines, eq(services.maquina_id, machines.id))
+      .where(whereClause)
+      .groupBy(machines.branch)
+      .orderBy(sql`${sum(services.custo)} DESC`);
+      
+      // Por prioridade
+      const byPriorityResult = await db.select({
+        priority: services.prioridade,
+        count: count(),
+        totalCost: sum(services.custo),
+        avgCost: avg(services.custo)
+      })
+      .from(services)
+      .where(whereClause)
+      .groupBy(services.prioridade);
+      
+      return {
+        byType: byTypeResult.map(row => ({
+          type: row.type,
+          count: row.count || 0,
+          totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
+          avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
+        })),
+        byTechnician: byTechnicianResult.map(row => ({
+          technicianName: row.technicianName || 'Desconhecido',
+          count: row.count || 0,
+          totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
+          avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
+        })),
+        byBranch: byBranchResult.map(row => ({
+          branch: row.branch || 'Não especificada',
+          count: row.count || 0,
+          totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
+          avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
+        })),
+        byPriority: byPriorityResult.map(row => ({
+          priority: row.priority || 'MEDIA',
+          count: row.count || 0,
+          totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
+          avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
+        }))
+      };
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro na análise de custos:', error);
+      return {
+        byType: [],
+        byTechnician: [],
+        byBranch: [],
+        byPriority: []
+      };
+    }
+  }
+
+  async getMachineMaintenanceHistory(machineId: string): Promise<Array<{
+    service: Service;
+    daysSinceLastService: number;
+    totalCost: number;
+  }>> {
+    try {
+      const servicesList = await this.getServicesByMachine(machineId);
+      
+      if (servicesList.length === 0) {
+        return [];
+      }
+      
+      // Ordenar por data
+      const sortedServices = servicesList.sort((a, b) => 
+        new Date(b.dataAgendamento).getTime() - new Date(a.dataAgendamento).getTime()
+      );
+      
+      const result = [];
+      let lastServiceDate: Date | null = null;
+      let totalCost = 0;
+      
+      for (const service of sortedServices) {
+        const serviceDate = new Date(service.dataAgendamento);
+        const daysSince = lastServiceDate 
+          ? Math.floor((lastServiceDate.getTime() - serviceDate.getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        
+        const cost = parseFloat(service.custo) || 0;
+        totalCost += cost;
+        
+        result.push({
+          service,
+          daysSinceLastService: daysSince,
+          totalCost
+        });
+        
+        lastServiceDate = serviceDate;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar histórico de manutenção da máquina:', error);
+      return [];
     }
   }
 }
