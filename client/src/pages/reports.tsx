@@ -57,216 +57,121 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
-// Função para criar uma versão simplificada do HTML para PDF
-const createSimpleHTMLForPDF = (reportContent: HTMLElement, reportTitle: string, startDate: string, endDate: string, branchFilter: string) => {
-  // Clone o conteúdo
-  const simpleContent = reportContent.cloneNode(true) as HTMLElement;
-  
-  // Remove todos os elementos complexos que podem causar problemas
-  const elementsToRemove = [
-    '.pdf-header',
-    '.pdf-footer',
-    'style',
-    'script',
-    'link[rel="stylesheet"]',
-    '[class*="okl"]',
-    '[style*="okl"]',
-    '[class*="var(--"]',
-    '[style*="var(--"]'
-  ];
-  
-  elementsToRemove.forEach(selector => {
-    simpleContent.querySelectorAll(selector).forEach(el => el.remove());
-  });
-  
-  // Remove todas as classes e atributos de estilo
-  simpleContent.querySelectorAll('*').forEach((el: any) => {
-    if (el.removeAttribute) {
-      el.removeAttribute('class');
-      el.removeAttribute('style');
-    }
-    
-    // Aplica estilos básicos inline
-    if (el.style) {
-      el.style.fontFamily = 'Arial, Helvetica, sans-serif';
-      el.style.color = '#000000';
-      el.style.backgroundColor = 'transparent';
-      el.style.border = 'none';
-      el.style.boxShadow = 'none';
-    }
-  });
-  
-  // Cria um container HTML simples
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>${reportTitle}</title>
-        <style>
-          * { 
-            font-family: Arial, Helvetica, sans-serif !important; 
-            color: #000000 !important;
-            background-color: transparent !important;
-          }
-          body { margin: 20px; padding: 0; }
-          .report-title { 
-            font-size: 24px; 
-            font-weight: bold; 
-            text-align: center;
-            margin-bottom: 10px;
-          }
-          .report-subtitle { 
-            font-size: 14px; 
-            text-align: center;
-            color: #666666 !important;
-            margin-bottom: 20px;
-          }
-          .report-header {
-            border-bottom: 2px solid #000000;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-          }
-          .stats-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 30px;
-          }
-          .stat-card {
-            flex: 1;
-            min-width: 200px;
-            border: 1px solid #cccccc;
-            border-radius: 4px;
-            padding: 15px;
-            text-align: center;
-          }
-          .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0;
-          }
-          .stat-label {
-            font-size: 12px;
-            color: #666666 !important;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-          }
-          th {
-            background-color: #f5f5f5 !important;
-            border: 1px solid #cccccc;
-            padding: 8px;
-            text-align: left;
-            font-weight: bold;
-          }
-          td {
-            border: 1px solid #cccccc;
-            padding: 8px;
-          }
-          .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-          }
-          .badge-completed { background-color: #d1fae5 !important; color: #065f46 !important; }
-          .badge-canceled { background-color: #fee2e2 !important; color: #991b1b !important; }
-          .badge-pending { background-color: #dbeafe !important; color: #1e40af !important; }
-          .page-break { page-break-after: always; }
-          @media print {
-            .no-print { display: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="report-header">
-          <div class="report-title">Neuropsicocentro - Relatório de Serviços</div>
-          <div class="report-subtitle">Sistema de Gestão de Ar Condicionado</div>
-          <div style="text-align: center; font-size: 12px; color: #666666 !important;">
-            Período: ${format(new Date(startDate), "dd/MM/yyyy", { locale: ptBR })} a ${format(new Date(endDate), "dd/MM/yyyy", { locale: ptBR })}
-            ${branchFilter !== 'all' ? ` • Filial: ${branchFilter}` : ''}
-          </div>
-          <div style="text-align: center; font-size: 11px; color: #999999 !important; margin-top: 5px;">
-            Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </div>
-        </div>
-        
-        ${simpleContent.innerHTML}
-        
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #cccccc; font-size: 10px; text-align: center; color: #999999 !important;">
-          <p>Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro</p>
-          <p>Para mais informações, entre em contato com a administração</p>
-        </div>
-      </body>
-    </html>
-  `;
-  
-  return html;
-};
-
-const generatePDF = async (reportContent: HTMLElement, reportTitle: string, startDate: string, endDate: string, branchFilter: string) => {
+const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   try {
-    console.log('🖨️ [PDF] Iniciando geração do PDF...');
-    
-    // Cria HTML simplificado sem estilos problemáticos
-    const simpleHTML = createSimpleHTMLForPDF(reportContent, reportTitle, startDate, endDate, branchFilter);
-    
-    // Cria um iframe oculto para renderizar o HTML simplificado
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.width = '210mm'; // Largura A4
-    iframe.style.height = '297mm'; // Altura A4
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    
-    // Escreve o HTML no iframe
-    iframe.contentDocument?.write(simpleHTML);
-    iframe.contentDocument?.close();
-    
-    // Aguarda o carregamento
-    await new Promise(resolve => {
-      iframe.onload = resolve;
-      // Fallback timeout
-      setTimeout(resolve, 1000);
-    });
-    
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
     
-    // Usa o body do iframe para capturar
-    const iframeBody = iframe.contentDocument?.body;
-    if (!iframeBody) throw new Error('Não foi possível acessar o conteúdo do PDF');
+    console.log('🖨️ [PDF] Iniciando geração do PDF...');
     
-    // Configuração MÍNIMA do html2canvas
-    const canvas = await html2canvas(iframeBody, {
-      scale: 1,
+    // Criar um elemento temporário com estilos simplificados
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.top = '0';
+    tempDiv.style.width = '800px'; // Largura fixa para PDF
+    tempDiv.style.backgroundColor = '#ffffff';
+    tempDiv.style.padding = '20px';
+    document.body.appendChild(tempDiv);
+    
+    // Clonar o conteúdo original
+    const clonedContent = reportContent.cloneNode(true) as HTMLElement;
+    
+    // Função para limpar estilos problemáticos
+    const cleanElementStyles = (element: HTMLElement) => {
+      // Salvar classes importantes
+      const importantClasses = ['card', 'table', 'badge', 'chart'];
+      const hasImportantClass = importantClasses.some(cls => 
+        element.className?.toLowerCase().includes(cls)
+      );
+      
+      // Se não tiver classe importante, limpar completamente
+      if (!hasImportantClass) {
+        element.removeAttribute('class');
+        element.removeAttribute('style');
+      } else {
+        // Para elementos importantes, simplificar os estilos
+        const currentStyle = element.getAttribute('style') || '';
+        // Remover qualquer referência a oklab/oklch
+        const cleanStyle = currentStyle
+          .replace(/oklab\([^)]*\)/g, '#000000')
+          .replace(/oklch\([^)]*\)/g, '#000000')
+          .replace(/var\([^)]*\)/g, '#000000');
+        element.setAttribute('style', cleanStyle);
+      }
+      
+      // Limpar estilos de todos os filhos
+      Array.from(element.children).forEach(child => {
+        if (child instanceof HTMLElement) {
+          cleanElementStyles(child);
+        }
+      });
+    };
+    
+    // Aplicar limpeza ao conteúdo clonado
+    cleanElementStyles(clonedContent);
+    
+    // Adicionar estilos básicos para PDF
+    clonedContent.style.fontFamily = 'Arial, sans-serif';
+    clonedContent.style.color = '#000000';
+    clonedContent.style.backgroundColor = '#ffffff';
+    
+    // Adicionar título do relatório
+    const titleDiv = document.createElement('div');
+    titleDiv.innerHTML = `
+      <h1 style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #000000;">
+        ${reportTitle}
+      </h1>
+      <p style="text-align: center; color: #666666; margin-bottom: 20px; font-size: 14px;">
+        Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+      </p>
+      <hr style="border: 1px solid #cccccc; margin-bottom: 30px;">
+    `;
+    
+    tempDiv.appendChild(titleDiv);
+    tempDiv.appendChild(clonedContent);
+    
+    // Adicionar rodapé
+    const footerDiv = document.createElement('div');
+    footerDiv.innerHTML = `
+      <hr style="border: 1px solid #cccccc; margin-top: 40px; margin-bottom: 20px;">
+      <p style="text-align: center; font-size: 11px; color: #999999;">
+        Relatório gerado pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro
+      </p>
+    `;
+    tempDiv.appendChild(footerDiv);
+    
+    // Gerar PDF com configuração mínima
+    const canvas = await html2canvas(tempDiv, {
+      scale: 1.5,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
       removeContainer: true,
-      allowTaint: false,
+      allowTaint: true,
       foreignObjectRendering: false,
-      ignoreElements: (element) => false,
-      onclone: (clonedDoc) => {
-        // Remove qualquer estilo remanescente
-        const allElements = clonedDoc.querySelectorAll('*');
-        allElements.forEach(el => {
-          if (el instanceof HTMLElement) {
-            el.style.cssText = '';
+      imageTimeout: 30000,
+      onclone: (doc) => {
+        // Remover qualquer estilo problemático remanescente
+        const allElements = doc.querySelectorAll('*');
+        allElements.forEach((el: any) => {
+          if (el.style) {
+            // Garantir que não há cores problemáticas
+            const style = el.getAttribute('style') || '';
+            if (style.includes('oklab') || style.includes('oklch')) {
+              el.setAttribute('style', style.replace(/okl[abch]+\([^)]*\)/g, '#000000'));
+            }
           }
         });
       }
     });
-
+    
+    // Limpar elemento temporário
+    document.body.removeChild(tempDiv);
+    
     console.log('✅ [PDF] Canvas criado');
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.9); // Usa JPEG com 90% de qualidade
+    
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -276,47 +181,25 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string, star
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     
-    // Ajusta a imagem para caber na página
-    const imgWidth = pageWidth - 20;
+    // Calcular dimensões da imagem
+    const imgWidth = pageWidth - 20; // Margens de 10mm
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-    let yPos = 10;
-    const maxHeight = pageHeight - 20;
+    // Adicionar imagem ao PDF
+    pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
     
-    if (imgHeight <= maxHeight) {
-      // Cabe em uma página
-      pdf.addImage(imgData, 'JPEG', 10, yPos, imgWidth, imgHeight);
-    } else {
-      // Divide em múltiplas páginas
-      let remainingHeight = imgHeight;
-      let currentPage = 1;
-      
-      while (remainingHeight > 0) {
-        const pageImgHeight = Math.min(remainingHeight, maxHeight);
-        
-        pdf.addImage(
-          imgData, 
-          'JPEG', 
-          10, 
-          10, 
-          imgWidth, 
-          imgHeight,
-          undefined,
-          undefined,
-          -((imgHeight - remainingHeight) * (pageWidth - 20) / imgWidth)
-        );
-        
-        remainingHeight -= pageImgHeight;
-        
-        if (remainingHeight > 0) {
-          pdf.addPage();
-          currentPage++;
-        }
-      }
+    // Adicionar número de páginas
+    const pageCount = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(
+        `Página ${i} de ${pageCount}`,
+        pageWidth - 30,
+        pageHeight - 10
+      );
     }
-
-    // Remove o iframe
-    document.body.removeChild(iframe);
 
     console.log('✅ [PDF] PDF gerado com sucesso');
     pdf.save(`${reportTitle.replace(/\s+/g, '_')}_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
@@ -324,15 +207,16 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string, star
     return true;
   } catch (error: any) {
     console.error('❌ [PDF] Erro ao gerar PDF:', error);
-    console.error('❌ [PDF] Mensagem:', error.message);
     
-    // Fallback: método alternativo sem html2canvas
+    // Fallback: PDF simples com texto
     if (error.message.includes('okl') || error.message.includes('color')) {
       try {
-        await generateSimpleTextPDF(reportTitle, startDate, endDate, branchFilter);
+        console.log('🔄 [PDF] Tentando método alternativo...');
+        await generateSimplePDF(reportTitle);
         return true;
       } catch (fallbackError) {
-        throw new Error('Não foi possível gerar o PDF. Tente exportar os dados em CSV.');
+        console.error('❌ [PDF] Fallback também falhou:', fallbackError);
+        throw new Error('Não foi possível gerar o PDF com gráficos. Tente a exportação em CSV.');
       }
     }
     
@@ -340,69 +224,28 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string, star
   }
 };
 
-// Método de fallback: PDF baseado em texto
-const generateSimpleTextPDF = async (reportTitle: string, startDate: string, endDate: string, branchFilter: string) => {
+// Método alternativo simples (fallback)
+const generateSimplePDF = async (reportTitle: string) => {
   const jsPDF = (await import('jspdf')).default;
   
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
+  const pdf = new jsPDF();
   
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  let yPos = 20;
-  
-  // Título
-  pdf.setFontSize(18);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Neuropsicocentro - Relatório de Serviços', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 10;
+  // Adicionar título
+  pdf.setFontSize(20);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text('Relatório de Serviços', 20, 20);
   
   pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('Sistema de Gestão de Ar Condicionado', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 10;
-  
-  // Período
-  pdf.setFontSize(10);
-  pdf.text(`Período: ${format(new Date(startDate), "dd/MM/yyyy", { locale: ptBR })} a ${format(new Date(endDate), "dd/MM/yyyy", { locale: ptBR })}`, 20, yPos);
-  if (branchFilter !== 'all') {
-    pdf.text(`Filial: ${branchFilter}`, pageWidth - 20, yPos, { align: 'right' });
-  }
-  yPos += 10;
-  
-  pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 20, yPos);
-  yPos += 15;
-  
-  // Linha divisória
-  pdf.setLineWidth(0.5);
-  pdf.line(20, yPos, pageWidth - 20, yPos);
-  yPos += 10;
-  
-  // Mensagem informativa
-  pdf.setFontSize(11);
-  pdf.text('Relatório de serviços disponível apenas em formato digital.', 20, yPos);
-  yPos += 7;
-  pdf.text('Para visualizar gráficos e tabelas detalhadas, acesse o sistema online.', 20, yPos);
-  yPos += 15;
+  pdf.setTextColor(100, 100, 100);
+  pdf.text(`Título: ${reportTitle}`, 20, 30);
+  pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 20, 40);
   
   pdf.setFontSize(10);
-  pdf.text('Para exportar os dados completos:', 20, yPos);
-  yPos += 7;
-  pdf.text('1. Acesse a página de relatórios no sistema', 25, yPos);
-  yPos += 5;
-  pdf.text('2. Utilize os filtros para selecionar o período desejado', 25, yPos);
-  yPos += 5;
-  pdf.text('3. Clique em "Exportar CSV" para baixar os dados', 25, yPos);
-  yPos += 15;
+  pdf.text('Para visualizar o relatório completo com gráficos e tabelas,', 20, 60);
+  pdf.text('acesse a página de relatórios no sistema web.', 20, 65);
+  pdf.text('Use a opção "Exportar CSV" para obter os dados brutos.', 20, 75);
   
-  // Footer
-  pdf.setFontSize(8);
-  pdf.text('Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro', pageWidth / 2, 280, { align: 'center' });
-  pdf.text('Para mais informações, entre em contato com a administração', pageWidth / 2, 285, { align: 'center' });
-  
-  pdf.save(`${reportTitle.replace(/\s+/g, '_')}_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
+  pdf.save(`${reportTitle.replace(/\s+/g, '_')}_simplificado_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
 };
 
 export default function ReportsPage() {
@@ -550,7 +393,7 @@ export default function ReportsPage() {
         isValid(endDateObj) ? format(endDateObj, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida'
       }`;
       
-      await generatePDF(reportRef.current, reportTitle, startDate, endDate, branchFilter);
+      await generatePDF(reportRef.current, reportTitle);
       
       toast({
         title: "PDF gerado com sucesso!",
@@ -666,17 +509,17 @@ export default function ReportsPage() {
 
       {/* Mensagens de erro/status */}
       {error && (
-        <Card className="bg-red-50 border-red-200">
+        <Card className="bg-destructive/10 border-destructive/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
               <div>
-                <p className="font-medium text-red-700">Erro ao carregar relatórios</p>
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="font-medium text-destructive">Erro ao carregar relatórios</p>
+                <p className="text-sm text-destructive/80">{error}</p>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="mt-2 border-red-300 text-red-700 hover:bg-red-50"
+                  className="mt-2"
                   onClick={handleRefreshReports}
                 >
                   Tentar novamente
@@ -689,17 +532,17 @@ export default function ReportsPage() {
 
       {/* Indicador de carregamento */}
       {isLoading && (
-        <Card className="border-blue-200">
+        <Card>
           <CardContent className="pt-6 flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-3" />
-            <p className="text-blue-700">Carregando relatórios...</p>
+            <Loader2 className="h-6 w-6 animate-spin text-primary mr-3" />
+            <p>Carregando relatórios...</p>
           </CardContent>
         </Card>
       )}
 
-      <Card className="border-gray-200">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-800">
+          <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
             Filtros do Relatório
           </CardTitle>
@@ -707,9 +550,9 @@ export default function ReportsPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="dateRange" className="text-gray-700">Período</Label>
+              <Label htmlFor="dateRange">Período</Label>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger className="border-gray-300">
+                <SelectTrigger>
                   <SelectValue placeholder="Selecione o período" />
                 </SelectTrigger>
                 <SelectContent>
@@ -727,30 +570,28 @@ export default function ReportsPage() {
             {dateRange === 'custom' && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="startDate" className="text-gray-700">Data Inicial</Label>
+                  <Label htmlFor="startDate">Data Inicial</Label>
                   <Input 
                     type="date" 
                     value={startDate} 
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="border-gray-300"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate" className="text-gray-700">Data Final</Label>
+                  <Label htmlFor="endDate">Data Final</Label>
                   <Input 
                     type="date" 
                     value={endDate} 
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="border-gray-300"
                   />
                 </div>
               </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="branchFilter" className="text-gray-700">Filial</Label>
+              <Label htmlFor="branchFilter">Filial</Label>
               <Select value={branchFilter} onValueChange={setBranchFilter}>
-                <SelectTrigger className="border-gray-300">
+                <SelectTrigger>
                   <SelectValue placeholder="Todas as filiais" />
                 </SelectTrigger>
                 <SelectContent>
@@ -763,9 +604,9 @@ export default function ReportsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="statusFilter" className="text-gray-700">Status</Label>
+              <Label htmlFor="statusFilter">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-gray-300">
+                <SelectTrigger>
                   <SelectValue placeholder="Todos os status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -781,7 +622,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="mt-4">
-            <Label htmlFor="search" className="flex items-center gap-2 mb-2 text-gray-700">
+            <Label htmlFor="search" className="flex items-center gap-2 mb-2">
               <Search className="h-4 w-4" />
               Buscar
             </Label>
@@ -789,11 +630,10 @@ export default function ReportsPage() {
               placeholder="Buscar por técnico, máquina ou descrição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border-gray-300"
             />
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -806,103 +646,320 @@ export default function ReportsPage() {
                 </span>
               )}
             </div>
-            <Badge variant="outline" className="border-gray-300 text-gray-700">
+            <Badge variant="outline">
               {filteredServices.length} {filteredServices.length === 1 ? 'serviço' : 'serviços'} encontrados
             </Badge>
           </div>
         </CardContent>
       </Card>
 
-      <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-lg border border-gray-300 pdf-content">
-        {/* Este conteúdo será convertido para PDF */}
+      {/* Conteúdo do relatório que será convertido para PDF */}
+      <div ref={reportRef} className="space-y-6 bg-card p-6 rounded-lg border">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-foreground">Neuropsicocentro - Relatório de Serviços</h2>
+          <p className="text-muted-foreground">Sistema de Gestão de Ar Condicionado</p>
+          <div className="mt-2 text-sm text-muted-foreground">
+            Período: {formatCurrentDate(new Date(startDate))} a {formatCurrentDate(new Date(endDate))}
+            {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
+          </div>
+        </div>
+
         {!isLoading && filteredServices.length > 0 && (
           <>
-            <div className="stats-container">
-              <div className="stat-card">
-                <div className="text-gray-600">Total de Serviços</div>
-                <div className="stat-value">{totalServices}</div>
-                <div className="stat-label">no período selecionado</div>
-              </div>
-              
-              <div className="stat-card">
-                <div className="text-gray-600">Taxa de Conclusão</div>
-                <div className="stat-value">{completionRate.toFixed(1)}%</div>
-                <div className="stat-label">{completedServices} de {totalServices} concluídos</div>
-              </div>
-              
-              <div className="stat-card">
-                <div className="text-gray-600">Serviços Pendentes</div>
-                <div className="stat-value">{pendingServices}</div>
-                <div className="stat-label">aguardando execução</div>
-              </div>
-              
-              <div className="stat-card">
-                <div className="text-gray-600">Média Diária</div>
-                <div className="stat-value">{averageServicesPerDay.toFixed(1)}</div>
-                <div className="stat-label">serviços por dia</div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Serviços</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-primary">{totalServices}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    no período selecionado
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">{completionRate.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {completedServices} de {totalServices} serviços concluídos
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Serviços Pendentes</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-amber-600">{pendingServices}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    aguardando execução
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Média Diária</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-600">{averageServicesPerDay.toFixed(1)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    serviços por dia
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Máquina</th>
-                  <th>Técnico</th>
-                  <th>Tipo</th>
-                  <th>Descrição</th>
-                  <th>Status</th>
-                  <th>Filial</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedServices.map((service) => {
-                  const machine = machines.find(m => m.id === service.maquinaId);
-                  return (
-                    <tr key={service.id}>
-                      <td>{formatDateSafe(service.dataAgendamento)}</td>
-                      <td>{service.machineCodigo || machine?.codigo || 'N/A'} - {service.machineModelo || machine?.modelo || 'Desconhecido'}</td>
-                      <td>{service.tecnicoNome || 'Desconhecido'}</td>
-                      <td>{service.tipoServico || 'N/A'}</td>
-                      <td>{service.descricaoServico || 'Sem descrição'}</td>
-                      <td>
-                        <span className={`badge ${
-                          service.status === 'CONCLUIDO' ? 'badge-completed' :
-                          service.status === 'CANCELADO' ? 'badge-canceled' :
-                          'badge-pending'
-                        }`}>
-                          {service.status || 'AGENDADO'}
-                        </span>
-                      </td>
-                      <td>{service.machineFilial || machine?.filial || 'N/A'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {typeChartData.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <Card className="shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Serviços por Tipo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={typeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="name" stroke="#6b7280" />
+                        <YAxis stroke="#6b7280" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px'
+                          }}
+                        />
+                        <Bar 
+                          dataKey="count" 
+                          fill="#3b82f6" 
+                          name="Quantidade" 
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {statusChartData.length > 0 && (
+                  <Card className="shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PieChartIcon className="h-5 w-5" />
+                        Distribuição por Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={statusChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, count }) => `${name}: ${count}`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {statusChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px'
+                            }}
+                          />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Detalhamento dos Serviços
+                </CardTitle>
+                <CardDescription>
+                  Lista completa de serviços no período selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Máquina</TableHead>
+                        <TableHead>Técnico</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Filial</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayedServices.map((service) => {
+                        const machine = machines.find(m => m.id === service.maquinaId);
+                        return (
+                          <TableRow key={service.id}>
+                            <TableCell>
+                              {formatDateSafe(service.dataAgendamento)}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {service.machineCodigo || machine?.codigo || 'N/A'} - {service.machineModelo || machine?.modelo || 'Desconhecido'}
+                            </TableCell>
+                            <TableCell>{service.tecnicoNome || 'Desconhecido'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {service.tipoServico || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">
+                              {service.descricaoServico || 'Sem descrição'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  service.status === 'CONCLUIDO' ? 'default' :
+                                  service.status === 'CANCELADO' ? 'destructive' :
+                                  'secondary'
+                                }
+                              >
+                                {service.status || 'AGENDADO'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{service.machineFilial || machine?.filial || 'N/A'}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredServices.length > 50 && (
+                  <div className="mt-4 text-center text-sm text-muted-foreground">
+                    Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {branchChartData.length > 0 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Serviços por Filial
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {branchChartData.map(({ name, count }, index) => (
+                      <div key={name} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Building className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{name}</p>
+                            <p className="text-sm text-muted-foreground">{count} serviços</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">
+                          {totalServices > 0 ? ((count / totalServices) * 100).toFixed(1) : 0}%
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {technicianChartData.length > 0 && (
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Top Técnicos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {technicianChartData.map(({ name, count }, index) => {
+                      const maxValue = Math.max(...technicianChartData.map(t => t.count));
+                      const percentage = maxValue > 0 ? (count / maxValue) * 100 : 0;
+                      
+                      return (
+                        <div key={name} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-sm">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium">{name}</p>
+                              <p className="text-sm text-muted-foreground">{count} serviços realizados</p>
+                            </div>
+                          </div>
+                          <div className="w-48">
+                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full transition-all duration-500"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
 
         {!isLoading && filteredServices.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-gray-600 mb-4">Nenhum serviço encontrado</div>
-            <div className="text-sm text-gray-500">
-              Não há serviços no período selecionado com os filtros aplicados.
-            </div>
-          </div>
+          <Card>
+            <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Nenhum serviço encontrado</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Não há serviços no período selecionado com os filtros aplicados.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
       <div className="print:hidden">
-        <Card className="border-dashed border-gray-300">
+        <Card className="border-dashed">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <FileDown className="h-5 w-5 text-blue-600" />
+              <FileDown className="h-5 w-5 text-primary" />
               <div>
-                <p className="font-medium text-gray-800">Dica: Exporte para PDF</p>
-                <p className="text-sm text-gray-600">
-                  Clique em "Exportar PDF" para baixar um relatório completo. 
-                  Se encontrar problemas, utilize a função de exportação em CSV.
+                <p className="font-medium">Dica: Exporte para PDF</p>
+                <p className="text-sm text-muted-foreground">
+                  Clique em "Exportar PDF" para baixar um relatório completo com todos os dados e gráficos.
                 </p>
               </div>
             </div>
