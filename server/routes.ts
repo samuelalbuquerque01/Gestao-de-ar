@@ -943,10 +943,9 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   // ========== ROTAS DE RELATÓRIOS ==========
 
 // Rota para gerar relatórios (similar à do frontend)
-// Rota para gerar relatórios (CORRIGIDA COM DEBUG)
 app.get('/api/reports/summary', authenticateToken, async (req, res) => {
   try {
-    console.log('📊 [REPORTS API] Iniciando geração de relatório...');
+    console.log('📊 [REPORTS] Gerando relatório...');
     
     const {
       startDate,
@@ -958,7 +957,7 @@ app.get('/api/reports/summary', authenticateToken, async (req, res) => {
       serviceType
     } = req.query;
     
-    console.log('🔍 [REPORTS API] Filtros recebidos:', {
+    console.log('📋 [REPORTS] Filtros:', {
       startDate,
       endDate,
       branchFilter,
@@ -972,19 +971,8 @@ app.get('/api/reports/summary', authenticateToken, async (req, res) => {
     const allServices = await storage.getAllServices();
     const allMachines = await storage.getAllMachines();
     
-    console.log('📈 [REPORTS API] Total de serviços no banco:', allServices.length);
-    console.log('📈 [REPORTS API] Total de máquinas no banco:', allMachines.length);
-    
-    // Debug: Mostrar filiais disponíveis
-    const filiaisDisponiveis = Array.from(new Set(allMachines.map(m => m.filial)));
-    console.log('🏢 [REPORTS API] Filiais disponíveis nas máquinas:', filiaisDisponiveis);
-    console.log('🔍 [REPORTS API] Filtrando por filial:', branchFilter);
-    
     // Filtrar serviços
     let filteredServices = allServices;
-    
-    // Debug antes do filtro
-    console.log('🔍 [REPORTS API] Serviços antes do filtro:', allServices.length);
     
     // Filtrar por data
     if (startDate && endDate) {
@@ -992,85 +980,214 @@ app.get('/api/reports/summary', authenticateToken, async (req, res) => {
       const end = new Date(endDate as string);
       end.setHours(23, 59, 59, 999);
       
-      console.log('📅 [REPORTS API] Período de data:', start, 'até', end);
-      
       filteredServices = filteredServices.filter(service => {
         const serviceDate = new Date(service.dataAgendamento);
         return serviceDate >= start && serviceDate <= end;
       });
-      console.log('📅 [REPORTS API] Após filtro de data:', filteredServices.length);
     }
     
-    // Filtrar por filial - AQUI ESTÁ O PROBLEMA!
+    // Filtrar por filial
     if (branchFilter && branchFilter !== 'all') {
-      console.log('🏢 [REPORTS API] Aplicando filtro de filial:', branchFilter);
-      
-      // Debug: Verificar máquinas
-      if (allMachines.length > 0) {
-        console.log('🔍 [REPORTS API] Primeiras 3 máquinas:', allMachines.slice(0, 3).map(m => ({
-          id: m.id,
-          filial: m.filial
-        })));
-      }
-      
-      // Debug: Verificar serviços
-      if (filteredServices.length > 0) {
-        console.log('🔍 [REPORTS API] Primeiros 3 serviços:', filteredServices.slice(0, 3).map(s => ({
-          id: s.id,
-          maquinaId: s.maquinaId,
-          tipoServico: s.tipoServico
-        })));
-      }
-      
       filteredServices = filteredServices.filter(service => {
         const machine = allMachines.find(m => m.id === service.maquinaId);
-        const match = machine?.filial === branchFilter;
-        
-        // Debug por serviço (apenas se não encontrar)
-        if (!machine) {
-          console.log(`❌ [REPORTS API] Serviço ${service.id}: Máquina não encontrada`);
-        } else if (!match) {
-          console.log(`❌ [REPORTS API] Serviço ${service.id}: Filial da máquina "${machine.filial}" não corresponde ao filtro "${branchFilter}"`);
-        }
-        
-        return match;
+        return machine?.filial === branchFilter;
       });
-      
-      console.log('🏢 [REPORTS API] Após filtro de filial:', filteredServices.length);
     }
     
-    // FILTRO DE STATUS (mantenha o original)
+    // Filtrar por status
     if (statusFilter && statusFilter !== 'all') {
       filteredServices = filteredServices.filter(service => 
         service.status === statusFilter
       );
     }
     
-    // FILTRO DE TÉCNICO (mantenha o original)
+    // Filtrar por técnico
     if (technicianId) {
       filteredServices = filteredServices.filter(service => 
         service.tecnicoId === technicianId
       );
     }
     
-    // FILTRO DE MÁQUINA (mantenha o original)
+    // Filtrar por máquina
     if (machineId) {
       filteredServices = filteredServices.filter(service => 
         service.maquinaId === machineId
       );
     }
     
-    // FILTRO DE TIPO DE SERVIÇO (mantenha o original)
+    // Filtrar por tipo de serviço
     if (serviceType) {
       filteredServices = filteredServices.filter(service => 
         service.tipoServico === serviceType
       );
     }
     
-    console.log('✅ [REPORTS API] Total de serviços após todos os filtros:', filteredServices.length);
+    // Gerar estatísticas
+    const servicesByType = filteredServices.reduce((acc, service) => {
+      const type = service.tipoServico || 'OUTRO';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
     
-    // CONTINUE COM O RESTO DO SEU CÓDIGO ORIGINAL AQUI...
-    // (o resto do código que gera as estatísticas, gráficos, etc.)
+    const servicesByStatus = filteredServices.reduce((acc, service) => {
+      const status = service.status || 'AGENDADO';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const servicesByTechnician = filteredServices.reduce((acc, service) => {
+      const tech = service.tecnicoNome || 'Desconhecido';
+      acc[tech] = (acc[tech] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const servicesByBranch = filteredServices.reduce((acc, service) => {
+      const machine = allMachines.find(m => m.id === service.maquinaId);
+      const branch = machine?.filial || 'Não especificada';
+      acc[branch] = (acc[branch] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const totalServices = filteredServices.length;
+    const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
+    const pendingServices = filteredServices.filter(s => 
+      s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
+    ).length;
+    const canceledServices = filteredServices.filter(s => s.status === 'CANCELADO').length;
+    
+    const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
+    
+    // Calcular custos
+    const totalCost = filteredServices.reduce((sum, service) => {
+      const cost = parseFloat(service.custo) || 0;
+      return sum + cost;
+    }, 0);
+    
+    const avgCostPerService = totalServices > 0 ? totalCost / totalServices : 0;
+    
+    // Encontrar técnico mais ativo
+    const topTechnicians = Object.entries(servicesByTechnician)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Encontrar máquinas com mais serviços
+    const servicesByMachine = filteredServices.reduce((acc, service) => {
+      const machine = allMachines.find(m => m.id === service.maquinaId);
+      const machineName = machine ? `${machine.codigo} - ${machine.modelo}` : 'Desconhecida';
+      acc[machineName] = (acc[machineName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const topMachines = Object.entries(servicesByMachine)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Estatísticas por mês
+    const servicesByMonth = filteredServices.reduce((acc, service) => {
+      const date = new Date(service.dataAgendamento);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          label: monthLabel,
+          completed: 0,
+          pending: 0,
+          total: 0
+        };
+      }
+      
+      acc[monthKey].total++;
+      if (service.status === 'CONCLUIDO') {
+        acc[monthKey].completed++;
+      } else if (service.status === 'AGENDADO' || service.status === 'EM_ANDAMENTO' || service.status === 'PENDENTE') {
+        acc[monthKey].pending++;
+      }
+      
+      return acc;
+    }, {} as Record<string, { label: string; completed: number; pending: number; total: number }>);
+    
+    const monthlyData = Object.values(servicesByMonth)
+      .sort((a, b) => {
+        const [aYear, aMonth] = a.label.split('/');
+        const [bYear, bMonth] = b.label.split('/');
+        return new Date(parseInt(aYear), aMonth.charCodeAt(0) - 97).getTime() - 
+               new Date(parseInt(bYear), bMonth.charCodeAt(0) - 97).getTime();
+      });
+    
+    // Serviços urgentes/críticos
+    const urgentServices = filteredServices.filter(s => 
+      s.prioridade === 'URGENTE' || s.prioridade === 'ALTA'
+    ).length;
+    
+    const response = {
+      summary: {
+        totalServices,
+        completedServices,
+        pendingServices,
+        canceledServices,
+        completionRate: parseFloat(completionRate.toFixed(2)),
+        totalCost: parseFloat(totalCost.toFixed(2)),
+        avgCostPerService: parseFloat(avgCostPerService.toFixed(2)),
+        urgentServices
+      },
+      breakdown: {
+        byType: Object.entries(servicesByType).map(([name, count]) => ({ name, count })),
+        byStatus: Object.entries(servicesByStatus).map(([name, count]) => ({ name, count })),
+        byBranch: Object.entries(servicesByBranch).map(([name, count]) => ({ name, count })),
+        monthlyData,
+        topTechnicians,
+        topMachines
+      },
+      services: filteredServices.map(service => {
+        const machine = allMachines.find(m => m.id === service.maquinaId);
+        return {
+          id: service.id,
+          tipoServico: service.tipoServico,
+          descricaoServico: service.descricaoServico,
+          dataAgendamento: service.dataAgendamento,
+          dataConclusao: service.dataConclusao,
+          tecnicoNome: service.tecnicoNome,
+          status: service.status,
+          prioridade: service.prioridade,
+          custo: service.custo,
+          machineCodigo: machine?.codigo,
+          machineModelo: machine?.modelo,
+          machineFilial: machine?.filial,
+          machineLocalizacao: machine?.localizacaoDescricao
+        };
+      }),
+      filters: {
+        startDate,
+        endDate,
+        branchFilter,
+        statusFilter,
+        technicianId,
+        machineId,
+        serviceType
+      }
+    };
+    
+    console.log('✅ [REPORTS] Relatório gerado:', {
+      totalServices: response.summary.totalServices,
+      filtros: response.filters
+    });
+    
+    res.json({
+      success: true,
+      data: response
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [REPORTS] Erro ao gerar relatório:', error);
+    res.status(500).json({ 
+      error: 'Erro ao gerar relatório',
+      message: error.message 
+    });
+  }
+});
 
 // Rota para exportar relatório em CSV
 app.get('/api/reports/export/csv', authenticateToken, async (req, res) => {
