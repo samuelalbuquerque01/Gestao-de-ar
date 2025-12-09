@@ -202,11 +202,17 @@ export default function ReportsPage() {
     loadReports();
   }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  // Dados para exibição (usando API ou fallback local)
+  // ========== CORREÇÃO PRINCIPAL AQUI ==========
+  // Usar SOMENTE dados da API de relatórios, não os dados brutos do useData()
   const filteredServices = reportData?.services || [];
-  const servicesData = reportData?.services || services; // Fallback para dados locais
 
-  // Estatísticas da API ou calculadas localmente
+  console.log('📊 [REPORTS] Dados da API:', {
+    totalDaAPI: reportData?.summary?.totalServices,
+    servicosDaAPI: filteredServices.length,
+    servicosCompletosDoSistema: services.length
+  });
+
+  // Estatísticas da API ou calculadas localmente APENAS dos serviços filtrados
   const totalServices = reportData?.summary?.totalServices || filteredServices.length;
   const completedServices = reportData?.summary?.completedServices || filteredServices.filter(s => s.status === 'CONCLUIDO').length;
   const pendingServices = reportData?.summary?.pendingServices || filteredServices.filter(s => 
@@ -218,7 +224,7 @@ export default function ReportsPage() {
     (totalServices > 0 ? (completedServices / totalServices) * 100 : 0);
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Dados para gráficos
+  // Dados para gráficos - usar APENAS serviços filtrados
   const typeChartData = reportData?.breakdown?.byType || 
     Object.entries(
       filteredServices.reduce((acc, service) => {
@@ -331,8 +337,9 @@ export default function ReportsPage() {
     return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
-  // Serviços filtrados para a tabela
-  const displayedServices = servicesData
+  // ========== CORREÇÃO CRÍTICA AQUI ==========
+  // Serviços filtrados para a tabela - usar APENAS filteredServices
+  const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
         const machine = machines.find(m => m.id === service.maquinaId);
@@ -728,9 +735,9 @@ export default function ReportsPage() {
                 </TableBody>
               </Table>
             </div>
-            {servicesData.length > 50 && (
+            {displayedServices.length > 50 && (
               <div className="mt-4 text-center text-sm text-muted-foreground">
-                Mostrando 50 de {servicesData.length} serviços. Exporte o PDF para ver todos.
+                Mostrando 50 de {displayedServices.length} serviços. Exporte o PDF para ver todos.
               </div>
             )}
           </CardContent>
