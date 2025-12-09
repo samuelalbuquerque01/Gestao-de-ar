@@ -115,7 +115,12 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 export default function ReportsPage() {
   const { machines } = useData();
   const { toast } = useToast();
-  const { fetchReports, reportData, isLoading: isLoadingReports, error: reportError } = useReports();
+  const { 
+    fetchReports, 
+    reportData, 
+    isLoading: isLoadingReports, 
+    error: reportError 
+  } = useReports();
   
   const [dateRange, setDateRange] = useState('last30days');
   const [startDate, setStartDate] = useState('');
@@ -165,10 +170,9 @@ export default function ReportsPage() {
         end = endDate || format(today, 'yyyy-MM-dd');
     }
 
-    // SEMPRE atualize as datas
     setStartDate(start);
     setEndDate(end);
-  }, [dateRange, startDate, endDate]);
+  }, [dateRange]);
 
   // Efeito para buscar relatórios quando os filtros mudam
   useEffect(() => {
@@ -202,42 +206,40 @@ export default function ReportsPage() {
     loadReports();
   }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  // ========== DEBUG 1: VERIFICAR DADOS DA API ==========
-  console.log('🔍 [DEBUG 1] reportData recebido:', {
-    temReportData: !!reportData,
-    estrutura: reportData ? Object.keys(reportData) : 'vazio',
-    dataExiste: !!reportData?.data,
-    servicesExistem: !!reportData?.data?.services,
-    servicesLength: reportData?.data?.services?.length,
-    summary: reportData?.data?.summary
-  });
-
-  // ========== DADOS DA API DE RELATÓRIOS ==========
-  // IMPORTANTE: A API retorna { success: true, data: { ... } }
-  // Portanto precisamos de reportData?.data?.services
-  const filteredServices = reportData?.data?.services || [];
-
-  // ========== DEBUG 2: VERIFICAR FILTERED SERVICES ==========
-  console.log('🔍 [DEBUG 2] filteredServices:', {
-    filteredServicesLength: filteredServices.length,
-    primeiroServico: filteredServices[0],
-    todosServicos: filteredServices
-  });
-
-  // Estatísticas da API
-  const totalServices = reportData?.data?.summary?.totalServices || 0;
-  const completedServices = reportData?.data?.summary?.completedServices || 0;
-  const pendingServices = reportData?.data?.summary?.pendingServices || 0;
-  const canceledServices = reportData?.data?.summary?.canceledServices || 0;
+  // ========== DADOS DA API ==========
+  const filteredServices = reportData?.services || [];
+  const summary = reportData?.summary || {
+    totalServices: 0,
+    completedServices: 0,
+    pendingServices: 0,
+    canceledServices: 0,
+    completionRate: 0,
+    totalCost: 0,
+    avgCostPerService: 0,
+    urgentServices: 0
+  };
   
-  const completionRate = reportData?.data?.summary?.completionRate || 0;
+  const breakdown = reportData?.breakdown || {
+    byType: [],
+    byStatus: [],
+    byBranch: [],
+    monthlyData: [],
+    topTechnicians: [],
+    topMachines: []
+  };
+
+  const totalServices = summary.totalServices;
+  const completedServices = summary.completedServices;
+  const pendingServices = summary.pendingServices;
+  const canceledServices = summary.canceledServices;
+  const completionRate = summary.completionRate;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
   // Dados para gráficos
-  const typeChartData = reportData?.data?.breakdown?.byType || [];
-  const statusChartData = reportData?.data?.breakdown?.byStatus || [];
-  const branchChartData = reportData?.data?.breakdown?.byBranch || [];
-  const technicianChartData = reportData?.data?.breakdown?.topTechnicians || [];
+  const typeChartData = breakdown.byType;
+  const statusChartData = breakdown.byStatus;
+  const branchChartData = breakdown.byBranch;
+  const technicianChartData = breakdown.topTechnicians;
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -327,28 +329,8 @@ export default function ReportsPage() {
     })
     .slice(0, 50);
 
-  // ========== DEBUG 3: VERIFICAR DISPLAYED SERVICES ==========
-  console.log('🔍 [DEBUG 3] displayedServices:', {
-    displayedServicesLength: displayedServices.length,
-    searchTerm: searchTerm,
-    temDados: displayedServices.length > 0,
-    primeiro: displayedServices[0],
-    segundo: displayedServices[1]
-  });
-
   const isLoading = isLoadingReports;
   const error = reportError || localError;
-
-  // ========== DEBUG 4: VERIFICAR RENDERIZAÇÃO ==========
-  console.log('🔍 [DEBUG 4] Estado final:', {
-    isLoading,
-    filteredServicesLength: filteredServices.length,
-    displayedServicesLength: displayedServices.length,
-    tabelaVazia: displayedServices.length === 0,
-    mensagem: displayedServices.length === 0 ? 
-      (isLoading ? 'Carregando...' : 'Nenhum serviço encontrado') : 
-      `Mostrando ${displayedServices.length} serviços`
-  });
 
   return (
     <div className="space-y-6">
@@ -551,259 +533,279 @@ export default function ReportsPage() {
           <Separator className="mb-4" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Serviços</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalServices}</div>
-              <p className="text-xs text-muted-foreground">
-                no período selecionado
-              </p>
-            </CardContent>
-          </Card>
+        {!isLoading && filteredServices.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total de Serviços</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{totalServices}</div>
+                  <p className="text-xs text-muted-foreground">
+                    no período selecionado
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{completionRate.toFixed(1)}%</div>
-              <p className="text-xs text-muted-foreground">
-                {completedServices} de {totalServices} serviços concluídos
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Taxa de Conclusão</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{completionRate.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    {completedServices} de {totalServices} serviços concluídos
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Serviços Pendentes</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{pendingServices}</div>
-              <p className="text-xs text-muted-foreground">
-                aguardando execução
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Serviços Pendentes</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{pendingServices}</div>
+                  <p className="text-xs text-muted-foreground">
+                    aguardando execução
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Média Diária</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{averageServicesPerDay.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">
-                serviços por dia
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Serviços por Tipo
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={typeChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8884d8" name="Quantidade" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChartIcon className="h-5 w-5" />
-                Distribuição por Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={statusChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {statusChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Detalhamento dos Serviços
-            </CardTitle>
-            <CardDescription>
-              Lista completa de serviços no período selecionado
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Máquina</TableHead>
-                    <TableHead>Técnico</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Filial</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedServices.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {isLoading ? 'Carregando serviços...' : 'Nenhum serviço encontrado com os filtros aplicados'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    displayedServices.map((service) => {
-                      const machine = machines.find(m => m.id === service.maquinaId);
-                      return (
-                        <TableRow key={service.id}>
-                          <TableCell>
-                            {formatDateSafe(service.dataAgendamento)}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {machine?.codigo || 'N/A'} - {machine?.modelo || 'Desconhecido'}
-                          </TableCell>
-                          <TableCell>{service.tecnicoNome || 'Desconhecido'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {service.tipoServico || 'N/A'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {service.descricaoServico || 'Sem descrição'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={
-                                service.status === 'CONCLUIDO' ? 'default' :
-                                service.status === 'CANCELADO' ? 'destructive' :
-                                'secondary'
-                              }
-                            >
-                              {service.status || 'AGENDADO'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{machine?.filial || 'N/A'}</TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Média Diária</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{averageServicesPerDay.toFixed(1)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    serviços por dia
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-            {filteredServices.length > 50 && (
-              <div className="mt-4 text-center text-sm text-muted-foreground">
-                Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
+
+            {typeChartData.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Serviços por Tipo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={typeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#8884d8" name="Quantidade" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {statusChartData.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PieChartIcon className="h-5 w-5" />
+                        Distribuição por Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={statusChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, count }) => `${name}: ${count}`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {statusChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {branchChartData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Serviços por Filial
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {branchChartData.map(({ name, value }, index) => (
-                  <div key={name} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Building className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{name}</p>
-                        <p className="text-sm text-muted-foreground">{value} serviços</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline">
-                      {totalServices > 0 ? ((value / totalServices) * 100).toFixed(1) : 0}%
-                    </Badge>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Detalhamento dos Serviços
+                </CardTitle>
+                <CardDescription>
+                  Lista completa de serviços no período selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Máquina</TableHead>
+                        <TableHead>Técnico</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Filial</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayedServices.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            Nenhum serviço encontrado com os filtros aplicados
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        displayedServices.map((service) => {
+                          const machine = machines.find(m => m.id === service.maquinaId);
+                          return (
+                            <TableRow key={service.id}>
+                              <TableCell>
+                                {formatDateSafe(service.dataAgendamento)}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {service.machineCodigo || machine?.codigo || 'N/A'} - {service.machineModelo || machine?.modelo || 'Desconhecido'}
+                              </TableCell>
+                              <TableCell>{service.tecnicoNome || 'Desconhecido'}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {service.tipoServico || 'N/A'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate">
+                                {service.descricaoServico || 'Sem descrição'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={
+                                    service.status === 'CONCLUIDO' ? 'default' :
+                                    service.status === 'CANCELADO' ? 'destructive' :
+                                    'secondary'
+                                  }
+                                >
+                                  {service.status || 'AGENDADO'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{service.machineFilial || machine?.filial || 'N/A'}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {filteredServices.length > 50 && (
+                  <div className="mt-4 text-center text-sm text-muted-foreground">
+                    Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            {branchChartData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Serviços por Filial
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {branchChartData.map(({ name, count }, index) => (
+                      <div key={name} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Building className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{name}</p>
+                            <p className="text-sm text-muted-foreground">{count} serviços</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">
+                          {totalServices > 0 ? ((count / totalServices) * 100).toFixed(1) : 0}%
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {technicianChartData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Top Técnicos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {technicianChartData.map(({ name, count }, index) => {
+                      const maxValue = Math.max(...technicianChartData.map(t => t.count));
+                      const percentage = maxValue > 0 ? (count / maxValue) * 100 : 0;
+                      
+                      return (
+                        <div key={name} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-sm">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium">{name}</p>
+                              <p className="text-sm text-muted-foreground">{count} serviços realizados</p>
+                            </div>
+                          </div>
+                          <div className="w-32">
+                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
 
-        {technicianChartData.length > 0 && (
+        {!isLoading && filteredServices.length === 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Top 10 Técnicos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {technicianChartData.map(({ name, value }, index) => {
-                  const maxValue = Math.max(...technicianChartData.map(t => t.value));
-                  const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-                  
-                  return (
-                    <div key={name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium">{name}</p>
-                          <p className="text-sm text-muted-foreground">{value} serviços realizados</p>
-                        </div>
-                      </div>
-                      <div className="w-32">
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">Nenhum serviço encontrado</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Não há serviços no período selecionado com os filtros aplicados.
+              </p>
             </CardContent>
           </Card>
         )}

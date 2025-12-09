@@ -80,8 +80,9 @@ export interface RealTimeStats {
 export const useReports = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
-  const fetchReports = useCallback(async (filters: ReportFilters): Promise<ReportData | null> => {
+  const fetchReports = useCallback(async (filters: ReportFilters) => {
     setIsLoading(true);
     setError(null);
     
@@ -101,15 +102,30 @@ export const useReports = () => {
       
       const response = await api.get(`/reports/summary?${queryParams}`);
       
+      console.log('📊 [REPORTS] Resposta completa:', response.data);
+      
       if (response.data.success && response.data.data) {
         console.log('✅ [REPORTS] Relatório recebido com sucesso');
+        console.log('📊 [REPORTS] Serviços recebidos:', response.data.data.services?.length);
+        
+        // ATUALIZA O ESTADO
+        setReportData(response.data.data);
+        
         return response.data.data;
       } else {
         throw new Error('Formato de resposta inválido');
       }
     } catch (err: any) {
       console.error('❌ [REPORTS] Erro ao buscar relatórios:', err);
-      setError(err.message || 'Erro ao buscar relatórios');
+      
+      let errorMessage = 'Erro ao buscar relatórios';
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
@@ -156,7 +172,6 @@ export const useReports = () => {
         responseType: 'blob'
       });
       
-      // Criar link para download
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -178,6 +193,7 @@ export const useReports = () => {
     fetchReports,
     fetchRealTimeStats,
     exportToCSV,
+    reportData,
     isLoading,
     error,
   };
