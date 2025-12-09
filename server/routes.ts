@@ -1713,6 +1713,5 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   
   return recommendations;
 }
+
   
-  return httpServer;
-}

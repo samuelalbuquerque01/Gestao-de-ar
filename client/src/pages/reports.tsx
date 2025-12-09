@@ -46,13 +46,16 @@ import {
   Users,
   Loader2,
   FileDown,
-  Activity
+  Activity,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth, subMonths, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useReports } from '@/lib/reports';
 
 const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   const html2canvas = (await import('html2canvas')).default;
@@ -112,6 +115,8 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 export default function ReportsPage() {
   const { machines, services } = useData();
   const { toast } = useToast();
+  const { fetchReports, reportData, isLoading: isLoadingReports, error: reportError } = useReports();
+  
   const [dateRange, setDateRange] = useState('last30days');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -119,10 +124,12 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
 
   const branches = Array.from(new Set(machines.map(m => m.filial).filter(Boolean)));
 
+  // Efeito para definir datas iniciais
   useEffect(() => {
     const today = new Date();
     let start, end;
@@ -158,88 +165,101 @@ export default function ReportsPage() {
         end = endDate || format(today, 'yyyy-MM-dd');
     }
 
-    if (dateRange !== 'custom') {
-      setStartDate(start);
-      setEndDate(end);
-    }
+    // SEMPRE atualize as datas
+    setStartDate(start);
+    setEndDate(end);
   }, [dateRange, startDate, endDate]);
 
-  const filteredServices = services.filter(service => {
-    try {
-      if (!service.dataAgendamento) return false;
-      
-      const serviceDate = parseISO(service.dataAgendamento);
-      if (!isValid(serviceDate)) return false;
-      
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
+  // Efeito para buscar relatórios quando os filtros mudam
+  useEffect(() => {
+    const loadReports = async () => {
+      if (!startDate || !endDate) {
+        console.log('⏳ [REPORTS] Aguardando datas...');
+        return;
+      }
 
-      if (!isValid(start) || !isValid(end)) return false;
-      
-      const dateInRange = serviceDate >= start && serviceDate <= end;
-      
-      const machine = machines.find(m => m.id === service.maquinaId);
-      const branchMatch = branchFilter === 'all' || machine?.filial === branchFilter;
-      
-      const statusMatch = statusFilter === 'all' || service.status === statusFilter;
-      
-      const searchMatch = !searchTerm || 
-        service.descricaoServico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.tecnicoNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        machine?.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        machine?.modelo?.toLowerCase().includes(searchTerm.toLowerCase());
+      console.log('🔄 [REPORTS] Buscando relatórios com filtros:', {
+        startDate,
+        endDate,
+        branchFilter,
+        statusFilter
+      });
 
-      return dateInRange && branchMatch && statusMatch && searchMatch;
-    } catch (error) {
-      return false;
-    }
-  });
+      try {
+        setLocalError(null);
+        await fetchReports({
+          startDate,
+          endDate,
+          branchFilter,
+          statusFilter
+        });
+      } catch (error: any) {
+        console.error('❌ [REPORTS] Erro ao carregar relatórios:', error);
+        setLocalError(error.message || 'Erro ao carregar relatórios');
+      }
+    };
 
-  const servicesByType = filteredServices.reduce((acc, service) => {
-    const type = service.tipoServico || 'OUTRO';
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+    loadReports();
+  }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  const servicesByStatus = filteredServices.reduce((acc, service) => {
-    const status = service.status || 'AGENDADO';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Dados para exibição (usando API ou fallback local)
+  const filteredServices = reportData?.services || [];
+  const servicesData = reportData?.services || services; // Fallback para dados locais
 
-  const servicesByTechnician = filteredServices.reduce((acc, service) => {
-    const tech = service.tecnicoNome || 'Desconhecido';
-    acc[tech] = (acc[tech] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Estatísticas da API ou calculadas localmente
+  const totalServices = reportData?.summary?.totalServices || filteredServices.length;
+  const completedServices = reportData?.summary?.completedServices || filteredServices.filter(s => s.status === 'CONCLUIDO').length;
+  const pendingServices = reportData?.summary?.pendingServices || filteredServices.filter(s => 
+    s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
+  ).length;
+  const canceledServices = reportData?.summary?.canceledServices || filteredServices.filter(s => s.status === 'CANCELADO').length;
+  
+  const completionRate = reportData?.summary?.completionRate || 
+    (totalServices > 0 ? (completedServices / totalServices) * 100 : 0);
+  const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  const servicesByBranch = filteredServices.reduce((acc, service) => {
-    const machine = machines.find(m => m.id === service.maquinaId);
-    const branch = machine?.filial || 'Não especificada';
-    acc[branch] = (acc[branch] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Dados para gráficos
+  const typeChartData = reportData?.breakdown?.byType || 
+    Object.entries(
+      filteredServices.reduce((acc, service) => {
+        const type = service.tipoServico || 'OUTRO';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([name, value]) => ({ name, value }));
 
-  const typeChartData = Object.entries(servicesByType).map(([name, value]) => ({ name, value }));
-  const statusChartData = Object.entries(servicesByStatus).map(([name, value]) => ({ name, value }));
-  const technicianChartData = Object.entries(servicesByTechnician)
+  const statusChartData = reportData?.breakdown?.byStatus ||
+    Object.entries(
+      filteredServices.reduce((acc, service) => {
+        const status = service.status || 'AGENDADO';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([name, value]) => ({ name, value }));
+
+  const branchChartData = reportData?.breakdown?.byBranch ||
+    Object.entries(
+      filteredServices.reduce((acc, service) => {
+        const machine = machines.find(m => m.id === service.maquinaId);
+        const branch = machine?.filial || 'Não especificada';
+        acc[branch] = (acc[branch] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([name, value]) => ({ name, value }));
+
+  const technicianChartData = reportData?.breakdown?.topTechnicians ||
+    Object.entries(
+      filteredServices.reduce((acc, service) => {
+        const tech = service.tecnicoNome || 'Desconhecido';
+        acc[tech] = (acc[tech] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    )
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 10);
-  const branchChartData = Object.entries(servicesByBranch).map(([name, value]) => ({ name, value }));
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
-  const totalServices = filteredServices.length;
-  const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
-  const pendingServices = filteredServices.filter(s => 
-    s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
-  ).length;
-  const canceledServices = filteredServices.filter(s => s.status === 'CANCELADO').length;
-  
-  const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
-  const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
   const handleGeneratePDF = async () => {
     if (!reportRef.current) return;
@@ -274,6 +294,30 @@ export default function ReportsPage() {
     }
   };
 
+  const handleRefreshReports = async () => {
+    try {
+      setLocalError(null);
+      await fetchReports({
+        startDate,
+        endDate,
+        branchFilter,
+        statusFilter
+      });
+      toast({
+        title: "Relatório atualizado!",
+        description: "Os dados foram atualizados com sucesso.",
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error('Erro ao atualizar relatório:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o relatório.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const formatDateSafe = (dateString: string) => {
     try {
       const date = parseISO(dateString);
@@ -287,6 +331,25 @@ export default function ReportsPage() {
     return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
+  // Serviços filtrados para a tabela
+  const displayedServices = servicesData
+    .filter(service => {
+      if (searchTerm) {
+        const machine = machines.find(m => m.id === service.maquinaId);
+        return (
+          service.descricaoServico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          service.tecnicoNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine?.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          machine?.modelo?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      return true;
+    })
+    .slice(0, 50);
+
+  const isLoading = isLoadingReports;
+  const error = reportError || localError;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -296,6 +359,20 @@ export default function ReportsPage() {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshReports}
+            disabled={isLoading}
+            className="gap-2"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {isLoading ? 'Carregando...' : 'Atualizar'}
+          </Button>
+          
           <Button 
             variant="outline" 
             onClick={handleGeneratePDF}
@@ -311,6 +388,39 @@ export default function ReportsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Mensagens de erro/status */}
+      {error && (
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div>
+                <p className="font-medium text-destructive">Erro ao carregar relatórios</p>
+                <p className="text-sm text-destructive/80">{error}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={handleRefreshReports}
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Indicador de carregamento */}
+      {isLoading && (
+        <Card>
+          <CardContent className="pt-6 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary mr-3" />
+            <p>Carregando relatórios...</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -573,14 +683,14 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServices.length === 0 ? (
+                  {displayedServices.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Nenhum serviço encontrado com os filtros aplicados
+                        {isLoading ? 'Carregando serviços...' : 'Nenhum serviço encontrado com os filtros aplicados'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredServices.slice(0, 50).map((service) => {
+                    displayedServices.map((service) => {
                       const machine = machines.find(m => m.id === service.maquinaId);
                       return (
                         <TableRow key={service.id}>
@@ -618,9 +728,9 @@ export default function ReportsPage() {
                 </TableBody>
               </Table>
             </div>
-            {filteredServices.length > 50 && (
+            {servicesData.length > 50 && (
               <div className="mt-4 text-center text-sm text-muted-foreground">
-                Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
+                Mostrando 50 de {servicesData.length} serviços. Exporte o PDF para ver todos.
               </div>
             )}
           </CardContent>
