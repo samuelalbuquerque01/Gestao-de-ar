@@ -113,7 +113,7 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 };
 
 export default function ReportsPage() {
-  const { machines, services } = useData();
+  const { machines } = useData();
   const { toast } = useToast();
   const { fetchReports, reportData, isLoading: isLoadingReports, error: reportError } = useReports();
   
@@ -202,68 +202,31 @@ export default function ReportsPage() {
     loadReports();
   }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  // ========== CORREÇÃO PRINCIPAL AQUI ==========
-  // Usar SOMENTE dados da API de relatórios, não os dados brutos do useData()
+  // ========== DADOS DA API DE RELATÓRIOS ==========
   const filteredServices = reportData?.services || [];
 
+  // Debug para verificar dados
   console.log('📊 [REPORTS] Dados da API:', {
     totalDaAPI: reportData?.summary?.totalServices,
     servicosDaAPI: filteredServices.length,
-    servicosCompletosDoSistema: services.length
+    branchFilter,
+    statusFilter
   });
 
-  // Estatísticas da API ou calculadas localmente APENAS dos serviços filtrados
-  const totalServices = reportData?.summary?.totalServices || filteredServices.length;
-  const completedServices = reportData?.summary?.completedServices || filteredServices.filter(s => s.status === 'CONCLUIDO').length;
-  const pendingServices = reportData?.summary?.pendingServices || filteredServices.filter(s => 
-    s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
-  ).length;
-  const canceledServices = reportData?.summary?.canceledServices || filteredServices.filter(s => s.status === 'CANCELADO').length;
+  // Estatísticas da API
+  const totalServices = reportData?.summary?.totalServices || 0;
+  const completedServices = reportData?.summary?.completedServices || 0;
+  const pendingServices = reportData?.summary?.pendingServices || 0;
+  const canceledServices = reportData?.summary?.canceledServices || 0;
   
-  const completionRate = reportData?.summary?.completionRate || 
-    (totalServices > 0 ? (completedServices / totalServices) * 100 : 0);
+  const completionRate = reportData?.summary?.completionRate || 0;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Dados para gráficos - usar APENAS serviços filtrados
-  const typeChartData = reportData?.breakdown?.byType || 
-    Object.entries(
-      filteredServices.reduce((acc, service) => {
-        const type = service.tipoServico || 'OUTRO';
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, value]) => ({ name, value }));
-
-  const statusChartData = reportData?.breakdown?.byStatus ||
-    Object.entries(
-      filteredServices.reduce((acc, service) => {
-        const status = service.status || 'AGENDADO';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, value]) => ({ name, value }));
-
-  const branchChartData = reportData?.breakdown?.byBranch ||
-    Object.entries(
-      filteredServices.reduce((acc, service) => {
-        const machine = machines.find(m => m.id === service.maquinaId);
-        const branch = machine?.filial || 'Não especificada';
-        acc[branch] = (acc[branch] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, value]) => ({ name, value }));
-
-  const technicianChartData = reportData?.breakdown?.topTechnicians ||
-    Object.entries(
-      filteredServices.reduce((acc, service) => {
-        const tech = service.tecnicoNome || 'Desconhecido';
-        acc[tech] = (acc[tech] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    )
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 10);
+  // Dados para gráficos
+  const typeChartData = reportData?.breakdown?.byType || [];
+  const statusChartData = reportData?.breakdown?.byStatus || [];
+  const branchChartData = reportData?.breakdown?.byBranch || [];
+  const technicianChartData = reportData?.breakdown?.topTechnicians || [];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -337,8 +300,7 @@ export default function ReportsPage() {
     return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
-  // ========== CORREÇÃO CRÍTICA AQUI ==========
-  // Serviços filtrados para a tabela - usar APENAS filteredServices
+  // Serviços filtrados para a tabela - CORREÇÃO CRÍTICA AQUI
   const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
@@ -735,9 +697,9 @@ export default function ReportsPage() {
                 </TableBody>
               </Table>
             </div>
-            {displayedServices.length > 50 && (
+            {filteredServices.length > 50 && (
               <div className="mt-4 text-center text-sm text-muted-foreground">
-                Mostrando 50 de {displayedServices.length} serviços. Exporte o PDF para ver todos.
+                Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
               </div>
             )}
           </CardContent>
