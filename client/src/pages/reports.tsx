@@ -202,31 +202,42 @@ export default function ReportsPage() {
     loadReports();
   }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  // ========== DADOS DA API DE RELATÓRIOS ==========
-  const filteredServices = reportData?.services || [];
+  // ========== DEBUG 1: VERIFICAR DADOS DA API ==========
+  console.log('🔍 [DEBUG 1] reportData recebido:', {
+    temReportData: !!reportData,
+    estrutura: reportData ? Object.keys(reportData) : 'vazio',
+    dataExiste: !!reportData?.data,
+    servicesExistem: !!reportData?.data?.services,
+    servicesLength: reportData?.data?.services?.length,
+    summary: reportData?.data?.summary
+  });
 
-  // Debug para verificar dados
-  console.log('📊 [REPORTS] Dados da API:', {
-    totalDaAPI: reportData?.summary?.totalServices,
-    servicosDaAPI: filteredServices.length,
-    branchFilter,
-    statusFilter
+  // ========== DADOS DA API DE RELATÓRIOS ==========
+  // IMPORTANTE: A API retorna { success: true, data: { ... } }
+  // Portanto precisamos de reportData?.data?.services
+  const filteredServices = reportData?.data?.services || [];
+
+  // ========== DEBUG 2: VERIFICAR FILTERED SERVICES ==========
+  console.log('🔍 [DEBUG 2] filteredServices:', {
+    filteredServicesLength: filteredServices.length,
+    primeiroServico: filteredServices[0],
+    todosServicos: filteredServices
   });
 
   // Estatísticas da API
-  const totalServices = reportData?.summary?.totalServices || 0;
-  const completedServices = reportData?.summary?.completedServices || 0;
-  const pendingServices = reportData?.summary?.pendingServices || 0;
-  const canceledServices = reportData?.summary?.canceledServices || 0;
+  const totalServices = reportData?.data?.summary?.totalServices || 0;
+  const completedServices = reportData?.data?.summary?.completedServices || 0;
+  const pendingServices = reportData?.data?.summary?.pendingServices || 0;
+  const canceledServices = reportData?.data?.summary?.canceledServices || 0;
   
-  const completionRate = reportData?.summary?.completionRate || 0;
+  const completionRate = reportData?.data?.summary?.completionRate || 0;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
   // Dados para gráficos
-  const typeChartData = reportData?.breakdown?.byType || [];
-  const statusChartData = reportData?.breakdown?.byStatus || [];
-  const branchChartData = reportData?.breakdown?.byBranch || [];
-  const technicianChartData = reportData?.breakdown?.topTechnicians || [];
+  const typeChartData = reportData?.data?.breakdown?.byType || [];
+  const statusChartData = reportData?.data?.breakdown?.byStatus || [];
+  const branchChartData = reportData?.data?.breakdown?.byBranch || [];
+  const technicianChartData = reportData?.data?.breakdown?.topTechnicians || [];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -300,7 +311,7 @@ export default function ReportsPage() {
     return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
-  // Serviços filtrados para a tabela - CORREÇÃO CRÍTICA AQUI
+  // Serviços filtrados para a tabela
   const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
@@ -316,8 +327,28 @@ export default function ReportsPage() {
     })
     .slice(0, 50);
 
+  // ========== DEBUG 3: VERIFICAR DISPLAYED SERVICES ==========
+  console.log('🔍 [DEBUG 3] displayedServices:', {
+    displayedServicesLength: displayedServices.length,
+    searchTerm: searchTerm,
+    temDados: displayedServices.length > 0,
+    primeiro: displayedServices[0],
+    segundo: displayedServices[1]
+  });
+
   const isLoading = isLoadingReports;
   const error = reportError || localError;
+
+  // ========== DEBUG 4: VERIFICAR RENDERIZAÇÃO ==========
+  console.log('🔍 [DEBUG 4] Estado final:', {
+    isLoading,
+    filteredServicesLength: filteredServices.length,
+    displayedServicesLength: displayedServices.length,
+    tabelaVazia: displayedServices.length === 0,
+    mensagem: displayedServices.length === 0 ? 
+      (isLoading ? 'Carregando...' : 'Nenhum serviço encontrado') : 
+      `Mostrando ${displayedServices.length} serviços`
+  });
 
   return (
     <div className="space-y-6">
