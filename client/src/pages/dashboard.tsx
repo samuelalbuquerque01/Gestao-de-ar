@@ -15,7 +15,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Função auxiliar para validar e formatar datas com segurança - VERSÃO CORRIGIDA
@@ -32,7 +32,7 @@ const safeDateFormat = (dateValue: any): string => {
     const date = new Date(dateValue);
     
     // Verificar se é válido
-    if (isNaN(date.getTime())) {
+    if (!isValid(date) || isNaN(date.getTime())) {
       return 'Data não informada';
     }
     
@@ -49,7 +49,7 @@ const safeDateCompare = (dateValue: any): number => {
   
   try {
     const date = new Date(dateValue);
-    return isNaN(date.getTime()) ? 0 : date.getTime();
+    return isValid(date) && !isNaN(date.getTime()) ? date.getTime() : 0;
   } catch (error) {
     return 0;
   }

@@ -378,7 +378,62 @@ async function initDatabase() {
       console.log('⚠️  Não foi possível criar foreign keys:', error.message);
     }
     
-    // 5. Criar dados de teste se necessário
+    // 5. Verificar e corrigir datas inválidas
+    console.log('\n🔧 Verificando e corrigindo datas inválidas...');
+    
+    try {
+      // Corrigir datas inválidas em machines
+      const invalidMachineDates = await client.query(`
+        SELECT id, installation_date 
+        FROM machines 
+        WHERE installation_date IS NULL 
+           OR installation_date = 'Invalid Date'
+           OR installation_date = ''
+           OR installation_date::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      `);
+      
+      if (invalidMachineDates.rows.length > 0) {
+        console.log(`🔧 Encontradas ${invalidMachineDates.rows.length} máquinas com datas inválidas, corrigindo...`);
+        
+        for (const row of invalidMachineDates.rows) {
+          await client.query(`
+            UPDATE machines 
+            SET installation_date = CURRENT_TIMESTAMP 
+            WHERE id = $1
+          `, [row.id]);
+        }
+        
+        console.log('✅ Datas inválidas em machines corrigidas');
+      }
+      
+      // Corrigir datas inválidas em services
+      const invalidServiceDates = await client.query(`
+        SELECT id, data_agendamento 
+        FROM services 
+        WHERE data_agendamento IS NULL 
+           OR data_agendamento = 'Invalid Date'
+           OR data_agendamento = ''
+           OR data_agendamento::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      `);
+      
+      if (invalidServiceDates.rows.length > 0) {
+        console.log(`🔧 Encontrados ${invalidServiceDates.rows.length} serviços com datas inválidas, corrigindo...`);
+        
+        for (const row of invalidServiceDates.rows) {
+          await client.query(`
+            UPDATE services 
+            SET data_agendamento = CURRENT_TIMESTAMP 
+            WHERE id = $1
+          `, [row.id]);
+        }
+        
+        console.log('✅ Datas inválidas em services corrigidas');
+      }
+    } catch (error: any) {
+      console.log('⚠️  Não foi possível corrigir datas inválidas:', error.message);
+    }
+    
+    // 6. Criar dados de teste se necessário
     console.log('\n🧪 Verificando dados de teste...');
     
     const checkTechCount = await client.query(`SELECT COUNT(*) as count FROM technicians;`);

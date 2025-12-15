@@ -252,107 +252,90 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
+// Função auxiliar para converter qualquer valor para Date
+function anyToDate(dateValue: any): Date | null {
+  if (dateValue === null || dateValue === undefined || dateValue === '') {
+    return null;
+  }
+  
+  try {
+    // Se já for Date válido, retornar como está
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+      return dateValue;
+    }
+    
+    // Se for Date inválido
+    if (dateValue instanceof Date && isNaN(dateValue.getTime())) {
+      return null;
+    }
+    
+    // Se for string
+    if (typeof dateValue === 'string') {
+      const cleanStr = dateValue.trim();
+      if (cleanStr === '' || cleanStr.toLowerCase() === 'null' || cleanStr.toLowerCase() === 'invalid date') {
+        return null;
+      }
+      
+      // Remover caracteres problemáticos
+      const sanitizedStr = cleanStr.replace(/["']/g, '');
+      const date = new Date(sanitizedStr);
+      return !isNaN(date.getTime()) ? date : null;
+    }
+    
+    // Se for número (timestamp)
+    if (typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      return !isNaN(date.getTime()) ? date : null;
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.error('❌ [anyToDate] Erro ao converter para Date:', error);
+    return null;
+  }
+}
+
 // Função auxiliar para validar e formatar datas - VERSÃO CORRIGIDA E SIMPLIFICADA
 function safeDateToISO(dateValue: any): string {
-  console.log('🔍 [safeDateToISO] Processando:', dateValue);
-  console.log('🔍 [safeDateToISO] Tipo:', typeof dateValue);
-  
-  if (!dateValue) {
-    console.log('⚠️  [safeDateToISO] Valor nulo/vazio, retornando string vazia');
+  if (dateValue === null || dateValue === undefined) {
     return '';
   }
   
   try {
-    // Se já for uma string ISO válida, retornar como está
+    // Se for string vazia ou "null"
     if (typeof dateValue === 'string') {
       const trimmed = dateValue.trim();
-      
-      // Se for string vazia
-      if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
-        console.log('⚠️  [safeDateToISO] String vazia, retornando vazio');
+      if (trimmed === '' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'invalid date') {
         return '';
       }
       
       // Testar se já é uma data ISO válida
       const testDate = new Date(trimmed);
       if (!isNaN(testDate.getTime())) {
-        console.log('✅ [safeDateToISO] Já é ISO válido, retornando:', trimmed);
-        return trimmed;
+        return testDate.toISOString();
       }
       
-      // Tentar parsear como data local
-      const localDate = new Date(trimmed);
-      if (!isNaN(localDate.getTime())) {
-        const isoString = localDate.toISOString();
-        console.log('✅ [safeDateToISO] Convertido para ISO:', isoString);
-        return isoString;
-      }
-      
-      console.log('❌ [safeDateToISO] Não é uma data válida:', trimmed);
       return '';
     }
     
-    // Se for um objeto Date
+    // Se for Date inválido
+    if (dateValue instanceof Date && isNaN(dateValue.getTime())) {
+      return '';
+    }
+    
+    // Se for Date válido
     if (dateValue instanceof Date) {
-      if (isNaN(dateValue.getTime())) {
-        console.log('❌ [safeDateToISO] Date inválido');
-        return '';
-      }
-      const isoString = dateValue.toISOString();
-      console.log('✅ [safeDateToISO] Date convertido para ISO:', isoString);
-      return isoString;
+      return dateValue.toISOString();
     }
     
-    // Tentar converter para Date
+    // Para outros tipos
     const date = new Date(dateValue);
-    if (isNaN(date.getTime())) {
-      console.log('❌ [safeDateToISO] Não foi possível converter para Date:', dateValue);
-      return '';
-    }
-    
-    const isoString = date.toISOString();
-    console.log('✅ [safeDateToISO] Convertido para ISO:', isoString);
-    return isoString;
+    return !isNaN(date.getTime()) ? date.toISOString() : '';
     
   } catch (error) {
     console.error('❌ [safeDateToISO] Erro:', error);
     return '';
-  }
-}
-
-// Função auxiliar para converter qualquer valor para Date
-function anyToDate(dateValue: any): Date | null {
-  if (!dateValue) {
-    return null;
-  }
-  
-  try {
-    // Se já for Date, retornar como está
-    if (dateValue instanceof Date) {
-      return isNaN(dateValue.getTime()) ? null : dateValue;
-    }
-    
-    // Se for string
-    if (typeof dateValue === 'string') {
-      const cleanStr = dateValue.trim();
-      if (cleanStr === '' || cleanStr === 'null') {
-        return null;
-      }
-      
-      const date = new Date(cleanStr);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    
-    // Se for número (timestamp)
-    if (typeof dateValue === 'number') {
-      const date = new Date(dateValue);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    
-    return null;
-    
-  } catch (error) {
-    return null;
   }
 }
 
@@ -507,6 +490,15 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
       if (!machine) return undefined;
       
+      // Tratar data de instalação
+      let dataInstalacao = '';
+      if (machine.installation_date) {
+        const date = anyToDate(machine.installation_date);
+        if (date) {
+          dataInstalacao = date.toISOString();
+        }
+      }
+      
       return {
         ...mapDbToCamelCase(machine, 'machines'),
         id: machine.id,
@@ -520,7 +512,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
+        dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -538,6 +530,15 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
       if (!machine) return undefined;
       
+      // Tratar data de instalação
+      let dataInstalacao = '';
+      if (machine.installation_date) {
+        const date = anyToDate(machine.installation_date);
+        if (date) {
+          dataInstalacao = date.toISOString();
+        }
+      }
+      
       return {
         ...mapDbToCamelCase(machine, 'machines'),
         id: machine.id,
@@ -551,7 +552,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
+        dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -566,25 +567,41 @@ export class DatabaseStorage implements IStorage {
   async getAllMachines(): Promise<Machine[]> {
     try {
       const machinesList = await db.select().from(machines).orderBy(machines.codigo);
-      return machinesList.map(machine => ({
-        ...mapDbToCamelCase(machine, 'machines'),
-        id: machine.id,
-        codigo: machine.codigo || '',
-        modelo: machine.model || '',
-        marca: machine.brand || '',
-        tipo: machine.type || 'SPLIT',
-        capacidadeBTU: machine.capacity || 9000,
-        voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
-        localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
-        filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
-        status: machine.status || 'ATIVO',
-        observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
-      }));
+      
+      return machinesList.map(machine => {
+        // Tratar data de instalação com cuidado
+        let dataInstalacao = '';
+        try {
+          if (machine.installation_date) {
+            const date = anyToDate(machine.installation_date);
+            if (date) {
+              dataInstalacao = date.toISOString();
+            }
+          }
+        } catch (error) {
+          console.error(`❌ [STORAGE] Erro ao processar dataInstalacao da máquina ${machine.id}:`, error);
+        }
+        
+        return {
+          ...mapDbToCamelCase(machine, 'machines'),
+          id: machine.id,
+          codigo: machine.codigo || '',
+          modelo: machine.model || '',
+          marca: machine.brand || '',
+          tipo: machine.type || 'SPLIT',
+          capacidadeBTU: machine.capacity || 9000,
+          voltagem: machine.voltage || 'V220',
+          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoDescricao: machine.location || '',
+          localizacaoAndar: machine.locationFloor || 0,
+          filial: machine.branch || 'Matriz',
+          dataInstalacao: dataInstalacao,
+          status: machine.status || 'ATIVO',
+          observacoes: machine.observacoes || '',
+          createdAt: machine.createdAt || new Date(),
+          updatedAt: machine.updatedAt || new Date()
+        };
+      });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquinas:', error);
       return [];
@@ -598,25 +615,36 @@ export class DatabaseStorage implements IStorage {
         .where(eq(machines.status, status))
         .orderBy(machines.codigo);
       
-      return machinesList.map(machine => ({
-        ...mapDbToCamelCase(machine, 'machines'),
-        id: machine.id,
-        codigo: machine.codigo || '',
-        modelo: machine.model || '',
-        marca: machine.brand || '',
-        tipo: machine.type || 'SPLIT',
-        capacidadeBTU: machine.capacity || 9000,
-        voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
-        localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
-        filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
-        status: machine.status || 'ATIVO',
-        observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
-      }));
+      return machinesList.map(machine => {
+        // Tratar data de instalação
+        let dataInstalacao = '';
+        if (machine.installation_date) {
+          const date = anyToDate(machine.installation_date);
+          if (date) {
+            dataInstalacao = date.toISOString();
+          }
+        }
+        
+        return {
+          ...mapDbToCamelCase(machine, 'machines'),
+          id: machine.id,
+          codigo: machine.codigo || '',
+          modelo: machine.model || '',
+          marca: machine.brand || '',
+          tipo: machine.type || 'SPLIT',
+          capacidadeBTU: machine.capacity || 9000,
+          voltagem: machine.voltage || 'V220',
+          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoDescricao: machine.location || '',
+          localizacaoAndar: machine.locationFloor || 0,
+          filial: machine.branch || 'Matriz',
+          dataInstalacao: dataInstalacao,
+          status: machine.status || 'ATIVO',
+          observacoes: machine.observacoes || '',
+          createdAt: machine.createdAt || new Date(),
+          updatedAt: machine.updatedAt || new Date()
+        };
+      });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquinas por status:', error);
       return [];
@@ -630,25 +658,36 @@ export class DatabaseStorage implements IStorage {
         .where(eq(machines.branch, branch))
         .orderBy(machines.codigo);
       
-      return machinesList.map(machine => ({
-        ...mapDbToCamelCase(machine, 'machines'),
-        id: machine.id,
-        codigo: machine.codigo || '',
-        modelo: machine.model || '',
-        marca: machine.brand || '',
-        tipo: machine.type || 'SPLIT',
-        capacidadeBTU: machine.capacity || 9000,
-        voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
-        localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
-        filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
-        status: machine.status || 'ATIVO',
-        observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
-      }));
+      return machinesList.map(machine => {
+        // Tratar data de instalação
+        let dataInstalacao = '';
+        if (machine.installation_date) {
+          const date = anyToDate(machine.installation_date);
+          if (date) {
+            dataInstalacao = date.toISOString();
+          }
+        }
+        
+        return {
+          ...mapDbToCamelCase(machine, 'machines'),
+          id: machine.id,
+          codigo: machine.codigo || '',
+          modelo: machine.model || '',
+          marca: machine.brand || '',
+          tipo: machine.type || 'SPLIT',
+          capacidadeBTU: machine.capacity || 9000,
+          voltagem: machine.voltage || 'V220',
+          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoDescricao: machine.location || '',
+          localizacaoAndar: machine.locationFloor || 0,
+          filial: machine.branch || 'Matriz',
+          dataInstalacao: dataInstalacao,
+          status: machine.status || 'ATIVO',
+          observacoes: machine.observacoes || '',
+          createdAt: machine.createdAt || new Date(),
+          updatedAt: machine.updatedAt || new Date()
+        };
+      });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquinas por filial:', error);
       return [];
@@ -686,6 +725,15 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
       
+      // Retornar data tratada
+      let dataInstalacao = '';
+      if (machine.installation_date) {
+        const date = anyToDate(machine.installation_date);
+        if (date) {
+          dataInstalacao = date.toISOString();
+        }
+      }
+      
       return {
         id: machine.id,
         codigo: machine.codigo || '',
@@ -698,7 +746,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
+        dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -726,7 +774,7 @@ export class DatabaseStorage implements IStorage {
       if (machineData.localizacaoAndar !== undefined) updateData.locationFloor = machineData.localizacaoAndar;
       if (machineData.filial !== undefined) updateData.branch = machineData.filial;
       if (machineData.dataInstalacao !== undefined) {
-        updateData.installationDate = anyToDate(machineData.dataInstalacao);
+        updateData.installationDate = anyToDate(machineData.dataInstalacao) || new Date();
       }
       if (machineData.status !== undefined) updateData.status = machineData.status;
       if (machineData.observacoes !== undefined) updateData.observacoes = machineData.observacoes;
@@ -745,6 +793,15 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
       
+      // Retornar data tratada
+      let dataInstalacao = '';
+      if (machine.installation_date) {
+        const date = anyToDate(machine.installation_date);
+        if (date) {
+          dataInstalacao = date.toISOString();
+        }
+      }
+      
       return {
         id: machine.id,
         codigo: machine.codigo || '',
@@ -757,7 +814,7 @@ export class DatabaseStorage implements IStorage {
         localizacaoDescricao: machine.location || '',
         localizacaoAndar: machine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
-        dataInstalacao: safeDateToISO(machine.installationDate),
+        dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
         createdAt: machine.createdAt || new Date(),
@@ -789,54 +846,21 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
-      // DEBUG: Verificar dados brutos
-      console.log('🔍 [STORAGE] Dados brutos do serviço:', {
-        id: service.id,
-        data_agendamento_raw: service.data_agendamento,
-        tipo_data_agendamento: typeof service.data_agendamento,
-        descricao: service.descricao_servico
-      });
-      
-      // Processar data_agendamento CORRETAMENTE
+      // Processar datas com anyToDate
       let dataAgendamentoFormatted = '';
+      let dataConclusaoFormatted = '';
+      
       if (service.data_agendamento) {
-        // Se já for string ISO, usar como está
-        if (typeof service.data_agendamento === 'string') {
-          const testDate = new Date(service.data_agendamento);
-          if (!isNaN(testDate.getTime())) {
-            console.log('✅ [STORAGE] Data_agendamento já é ISO válido');
-            dataAgendamentoFormatted = service.data_agendamento;
-          } else {
-            // Tentar parsear
-            const parsedDate = new Date(service.data_agendamento);
-            if (!isNaN(parsedDate.getTime())) {
-              dataAgendamentoFormatted = parsedDate.toISOString();
-              console.log('✅ [STORAGE] Data_agendamento parseada para ISO:', dataAgendamentoFormatted);
-            }
-          }
-        } else if (service.data_agendamento instanceof Date) {
-          // Se for objeto Date
-          if (!isNaN(service.data_agendamento.getTime())) {
-            dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            console.log('✅ [STORAGE] Data_agendamento (Date) convertida para ISO:', dataAgendamentoFormatted);
-          }
+        const date = anyToDate(service.data_agendamento);
+        if (date) {
+          dataAgendamentoFormatted = date.toISOString();
         }
-      } else {
-        console.log('⚠️  [STORAGE] Data_agendamento é nula ou vazia');
       }
       
-      // Processar data_conclusao se existir
-      let dataConclusaoFormatted = '';
       if (service.data_conclusao) {
-        if (typeof service.data_conclusao === 'string') {
-          const testDate = new Date(service.data_conclusao);
-          if (!isNaN(testDate.getTime())) {
-            dataConclusaoFormatted = service.data_conclusao;
-          }
-        } else if (service.data_conclusao instanceof Date) {
-          if (!isNaN(service.data_conclusao.getTime())) {
-            dataConclusaoFormatted = service.data_conclusao.toISOString();
-          }
+        const date = anyToDate(service.data_conclusao);
+        if (date) {
+          dataConclusaoFormatted = date.toISOString();
         }
       }
       
@@ -874,71 +898,23 @@ export class DatabaseStorage implements IStorage {
       console.log(`✅ [STORAGE] Encontrados ${servicesList.length} serviços no banco`);
       
       return servicesList.map(service => {
-        // DEBUG: Verificar dados brutos do banco
-        console.log('🔍 [STORAGE] Serviço do banco:', {
-          id: service.id,
-          data_agendamento_bruto: service.data_agendamento,
-          tipo_data_agendamento: typeof service.data_agendamento,
-          descricao: service.descricao_servico
-        });
-        
-        // Processar data_agendamento - VERSÃO CORRETA
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
-        if (service.data_agendamento) {
-          // Se já for string ISO, usar como está
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              console.log('✅ [STORAGE] Data_agendamento já é ISO válido');
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              // Tentar parsear se não for ISO
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-                console.log('✅ [STORAGE] Data_agendamento parseada para ISO:', dataAgendamentoFormatted);
-              } else {
-                console.log('❌ [STORAGE] Não foi possível parsear data_agendamento:', service.data_agendamento);
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            // Se for objeto Date
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-              console.log('✅ [STORAGE] Data_agendamento (Date) convertida para ISO:', dataAgendamentoFormatted);
-            } else {
-              console.log('❌ [STORAGE] Data_agendamento (Date) é inválida');
-            }
-          } else {
-            // Tentar converter qualquer outro tipo
-            const parsedDate = new Date(service.data_agendamento);
-            if (!isNaN(parsedDate.getTime())) {
-              dataAgendamentoFormatted = parsedDate.toISOString();
-              console.log('✅ [STORAGE] Data_agendamento convertida para ISO:', dataAgendamentoFormatted);
-            } else {
-              console.log('❌ [STORAGE] Não foi possível converter data_agendamento:', service.data_agendamento);
-            }
-          }
-        } else {
-          console.log('⚠️  [STORAGE] Data_agendamento é nula ou vazia');
-        }
-        
-        // Processar data_conclusao se existir
         let dataConclusaoFormatted = '';
-        if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+        
+        if (service.data_agendamento) {
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        console.log('📅 [STORAGE] Data agendamento final para serviço', service.id, ':', dataAgendamentoFormatted);
+        if (service.data_conclusao) {
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
+          }
+        }
         
         return {
           ...mapDbToCamelCase(service, 'services'),
@@ -973,38 +949,21 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Processar data_agendamento - MESMA LÓGICA CORRETA
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        // Processar data_conclusao
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1041,38 +1000,21 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Processar data_agendamento
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        // Processar data_conclusao
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1114,36 +1056,21 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1180,36 +1107,21 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1246,36 +1158,21 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1322,36 +1219,21 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1398,36 +1280,21 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
+        let dataConclusaoFormatted = '';
+        
         if (service.data_agendamento) {
-          if (typeof service.data_agendamento === 'string') {
-            const testDate = new Date(service.data_agendamento);
-            if (!isNaN(testDate.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento;
-            } else {
-              const parsedDate = new Date(service.data_agendamento);
-              if (!isNaN(parsedDate.getTime())) {
-                dataAgendamentoFormatted = parsedDate.toISOString();
-              }
-            }
-          } else if (service.data_agendamento instanceof Date) {
-            if (!isNaN(service.data_agendamento.getTime())) {
-              dataAgendamentoFormatted = service.data_agendamento.toISOString();
-            }
+          const date = anyToDate(service.data_agendamento);
+          if (date) {
+            dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        let dataConclusaoFormatted = '';
         if (service.data_conclusao) {
-          if (typeof service.data_conclusao === 'string') {
-            const testDate = new Date(service.data_conclusao);
-            if (!isNaN(testDate.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao;
-            }
-          } else if (service.data_conclusao instanceof Date) {
-            if (!isNaN(service.data_conclusao.getTime())) {
-              dataConclusaoFormatted = service.data_conclusao.toISOString();
-            }
+          const date = anyToDate(service.data_conclusao);
+          if (date) {
+            dataConclusaoFormatted = date.toISOString();
           }
         }
         
@@ -1464,34 +1331,11 @@ export class DatabaseStorage implements IStorage {
       const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
       
-      // Processar data_agendamento - CRÍTICO: Garantir que seja uma data válida
+      // Processar data_agendamento
       let dataAgendamento: Date | null = null;
       
       if (serviceData.data_agendamento) {
-        console.log('📅 [STORAGE] Data_agendamento recebida:', serviceData.data_agendamento);
-        console.log('📅 [STORAGE] Tipo:', typeof serviceData.data_agendamento);
-        
-        if (typeof serviceData.data_agendamento === 'string') {
-          // Testar se já é ISO válido
-          const testDate = new Date(serviceData.data_agendamento);
-          if (!isNaN(testDate.getTime())) {
-            dataAgendamento = testDate;
-            console.log('✅ [STORAGE] Data_agendamento já é ISO válido, usando como Date');
-          } else {
-            // Tentar parsear como Date
-            const parsedDate = new Date(serviceData.data_agendamento);
-            if (!isNaN(parsedDate.getTime())) {
-              dataAgendamento = parsedDate;
-              console.log('✅ [STORAGE] Data_agendamento parseada com sucesso');
-            } else {
-              console.log('❌ [STORAGE] Não foi possível parsear data_agendamento, usando data atual');
-              dataAgendamento = new Date();
-            }
-          }
-        } else if (serviceData.data_agendamento instanceof Date) {
-          dataAgendamento = serviceData.data_agendamento;
-          console.log('✅ [STORAGE] Data_agendamento já é objeto Date');
-        }
+        dataAgendamento = anyToDate(serviceData.data_agendamento);
       }
       
       // Se não conseguir parsear, usar data atual
@@ -1505,18 +1349,7 @@ export class DatabaseStorage implements IStorage {
       // Processar data_conclusao se existir
       let dataConclusao: Date | null = null;
       if (serviceData.data_conclusao) {
-        console.log('📅 [STORAGE] Data_conclusao recebida:', serviceData.data_conclusao);
-        
-        if (typeof serviceData.data_conclusao === 'string') {
-          const parsedDate = new Date(serviceData.data_conclusao);
-          if (!isNaN(parsedDate.getTime())) {
-            dataConclusao = parsedDate;
-            console.log('✅ [STORAGE] Data_conclusao parseada com sucesso');
-          }
-        } else if (serviceData.data_conclusao instanceof Date) {
-          dataConclusao = serviceData.data_conclusao;
-          console.log('✅ [STORAGE] Data_conclusao já é objeto Date');
-        }
+        dataConclusao = anyToDate(serviceData.data_conclusao);
       }
       
       // Processar custo
@@ -1565,23 +1398,11 @@ export class DatabaseStorage implements IStorage {
       });
       
       // Retornar no formato correto
-      let createdDataAgendamento = '';
-      if (service.data_agendamento) {
-        if (service.data_agendamento instanceof Date) {
-          createdDataAgendamento = service.data_agendamento.toISOString();
-        } else if (typeof service.data_agendamento === 'string') {
-          createdDataAgendamento = service.data_agendamento;
-        }
-      }
+      const createdDataAgendamento = service.data_agendamento ? 
+        anyToDate(service.data_agendamento)?.toISOString() || '' : '';
       
-      let createdDataConclusao = '';
-      if (service.data_conclusao) {
-        if (service.data_conclusao instanceof Date) {
-          createdDataConclusao = service.data_conclusao.toISOString();
-        } else if (typeof service.data_conclusao === 'string') {
-          createdDataConclusao = service.data_conclusao;
-        }
-      }
+      const createdDataConclusao = service.data_conclusao ? 
+        anyToDate(service.data_conclusao)?.toISOString() || '' : '';
       
       return {
         id: service.id,
@@ -1630,40 +1451,24 @@ export class DatabaseStorage implements IStorage {
       if (serviceData.data_agendamento !== undefined) {
         console.log('📅 [STORAGE] Processando data_agendamento para atualização:', serviceData.data_agendamento);
         
-        if (typeof serviceData.data_agendamento === 'string') {
-          const parsedDate = new Date(serviceData.data_agendamento);
-          if (!isNaN(parsedDate.getTime())) {
-            updateData.data_agendamento = parsedDate;
-            console.log('✅ [STORAGE] Data_agendamento parseada para atualização:', parsedDate.toISOString());
-          } else {
-            console.log('❌ [STORAGE] Data_agendamento inválida, mantendo a atual');
-          }
-        } else if (serviceData.data_agendamento instanceof Date) {
-          updateData.data_agendamento = serviceData.data_agendamento;
-          console.log('✅ [STORAGE] Data_agendamento já é Date:', serviceData.data_agendamento.toISOString());
-        } else if (serviceData.data_agendamento === null || serviceData.data_agendamento === '') {
-          // Se for nulo ou vazio, definir como null
-          updateData.data_agendamento = null;
-          console.log('📅 [STORAGE] Data_agendamento definida como null');
+        const parsedDate = anyToDate(serviceData.data_agendamento);
+        if (parsedDate) {
+          updateData.data_agendamento = parsedDate;
+          console.log('✅ [STORAGE] Data_agendamento parseada para atualização:', parsedDate.toISOString());
+        } else {
+          console.log('❌ [STORAGE] Data_agendamento inválida, mantendo a atual');
         }
       }
       
       // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
         if (serviceData.data_conclusao) {
-          console.log('📅 [STORAGE] Processando data_conclusao para atualização:', serviceData.data_conclusao);
-          
-          if (typeof serviceData.data_conclusao === 'string') {
-            const parsedDate = new Date(serviceData.data_conclusao);
-            if (!isNaN(parsedDate.getTime())) {
-              updateData.data_conclusao = parsedDate;
-              console.log('✅ [STORAGE] Data_conclusao parseada para atualização:', parsedDate.toISOString());
-            } else {
-              console.log('❌ [STORAGE] Data_conclusao inválida, mantendo a atual');
-            }
-          } else if (serviceData.data_conclusao instanceof Date) {
-            updateData.data_conclusao = serviceData.data_conclusao;
-            console.log('✅ [STORAGE] Data_conclusao já é Date:', serviceData.data_conclusao.toISOString());
+          const parsedDate = anyToDate(serviceData.data_conclusao);
+          if (parsedDate) {
+            updateData.data_conclusao = parsedDate;
+            console.log('✅ [STORAGE] Data_conclusao parseada para atualização:', parsedDate.toISOString());
+          } else {
+            console.log('❌ [STORAGE] Data_conclusao inválida, mantendo a atual');
           }
         } else {
           updateData.data_conclusao = null;
@@ -1702,23 +1507,11 @@ export class DatabaseStorage implements IStorage {
       console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
       
       // Retornar no formato correto
-      let updatedDataAgendamento = '';
-      if (service.data_agendamento) {
-        if (service.data_agendamento instanceof Date) {
-          updatedDataAgendamento = service.data_agendamento.toISOString();
-        } else if (typeof service.data_agendamento === 'string') {
-          updatedDataAgendamento = service.data_agendamento;
-        }
-      }
+      const updatedDataAgendamento = service.data_agendamento ? 
+        anyToDate(service.data_agendamento)?.toISOString() || '' : '';
       
-      let updatedDataConclusao = '';
-      if (service.data_conclusao) {
-        if (service.data_conclusao instanceof Date) {
-          updatedDataConclusao = service.data_conclusao.toISOString();
-        } else if (typeof service.data_conclusao === 'string') {
-          updatedDataConclusao = service.data_conclusao;
-        }
-      }
+      const updatedDataConclusao = service.data_conclusao ? 
+        anyToDate(service.data_conclusao)?.toISOString() || '' : '';
       
       return {
         id: service.id,
