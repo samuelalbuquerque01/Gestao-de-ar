@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useData, Service, ServiceType, ServiceStatus, Priority } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, PenTool, X } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, PenTool } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,7 +32,7 @@ const serviceSchema = z.object({
   tipoServico: z.string(),
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
   dataAgendamento: z.string().min(1, "Data é obrigatória"),
-  horaAgendamento: z.string(),
+  horaAgendamento: z.string().optional(),
   tecnicoId: z.string().min(1, "Técnico é obrigatório"),
   descricaoServico: z.string().min(1, "Descrição é obrigatória"),
   descricaoProblema: z.string().optional(),
@@ -46,23 +46,6 @@ export default function ServicesPage() {
   const [filter, setFilter] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-  const [machineSearch, setMachineSearch] = useState('');
-  const [filteredMachines, setFilteredMachines] = useState(machines);
-
-  useEffect(() => {
-    if (machineSearch.trim() === '') {
-      setFilteredMachines(machines);
-    } else {
-      const searchLower = machineSearch.toLowerCase();
-      const filtered = machines.filter(m => 
-        m.codigo.toLowerCase().includes(searchLower) ||
-        m.modelo.toLowerCase().includes(searchLower) ||
-        m.marca.toLowerCase().includes(searchLower) ||
-        m.filial.toLowerCase().includes(searchLower)
-      );
-      setFilteredMachines(filtered);
-    }
-  }, [machineSearch, machines]);
 
   const filteredServices = services.filter(s => {
     const machine = machines.find(m => m.id === s.maquinaId);
@@ -79,7 +62,7 @@ export default function ServicesPage() {
     defaultValues: {
       tipoServico: 'PREVENTIVA',
       maquinaId: '',
-      dataAgendamento: format(new Date(), 'yyyy-MM-dd'),
+      dataAgendamento: new Date().toISOString().split('T')[0],
       horaAgendamento: '08:00',
       tecnicoId: '',
       descricaoServico: '',
@@ -91,30 +74,14 @@ export default function ServicesPage() {
   });
 
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
-    // CORREÇÃO: Criar a data no formato ISO CORRETAMENTE
-    // O backend espera uma string ISO: "2025-12-18T08:00:00.000Z"
-    const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento}:00`);
+    const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento || '00:00'}:00`).toISOString();
     
-    // Verificar se a data é válida
-    if (isNaN(dateTime.getTime())) {
-      console.error('❌ Data inválida:', data.dataAgendamento, data.horaAgendamento);
-      return;
-    }
-    
-    const isoString = dateTime.toISOString();
-    
-    console.log('📅 Data selecionada:', data.dataAgendamento);
-    console.log('⏰ Hora selecionada:', data.horaAgendamento);
-    console.log('📊 Data criada (ISO):', isoString);
-    console.log('📅 Data local:', dateTime.toLocaleString('pt-BR'));
-
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
 
     const formattedData = {
       tipoServico: data.tipoServico as ServiceType,
       maquinaId: data.maquinaId,
-      dataAgendamento: isoString, // Enviar string ISO
-      horaAgendamento: data.horaAgendamento,
+      dataAgendamento: dateTime,
       tecnicoId: data.tecnicoId,
       tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       descricaoServico: data.descricaoServico,
@@ -124,35 +91,24 @@ export default function ServicesPage() {
       observacoes: data.observacoes
     };
 
-    console.log('📤 Enviando dados para API:', formattedData);
-
     if (editingService) {
-      console.log('✏️ Editando serviço:', editingService.id);
       updateService(editingService.id, formattedData);
     } else {
-      console.log('🆕 Criando novo serviço');
       createService(formattedData);
     }
     setIsDialogOpen(false);
     setEditingService(null);
     form.reset();
-    setMachineSearch('');
   };
 
   const handleEdit = (service: Service) => {
-    console.log('📝 Editando serviço:', service.id);
-    console.log('📅 Data do serviço do banco:', service.dataAgendamento);
-    
     setEditingService(service);
-    
-    // Converter a data ISO para o formato do input
     const dateObj = new Date(service.dataAgendamento);
-    
     form.reset({
       tipoServico: service.tipoServico,
       maquinaId: service.maquinaId,
-      dataAgendamento: format(dateObj, 'yyyy-MM-dd'),
-      horaAgendamento: format(dateObj, 'HH:mm'),
+      dataAgendamento: dateObj.toISOString().split('T')[0],
+      horaAgendamento: dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       tecnicoId: service.tecnicoId || '',
       descricaoServico: service.descricaoServico,
       descricaoProblema: service.descricaoProblema || '',
@@ -160,23 +116,15 @@ export default function ServicesPage() {
       status: service.status,
       observacoes: service.observacoes || ''
     });
-    
-    // Definir busca da máquina atual
-    const machine = machines.find(m => m.id === service.maquinaId);
-    if (machine) {
-      setMachineSearch(machine.codigo);
-    }
-    
     setIsDialogOpen(true);
   };
 
   const handleAddNew = () => {
-    console.log('🆕 Adicionando novo serviço');
     setEditingService(null);
     form.reset({
       tipoServico: 'PREVENTIVA',
       maquinaId: '',
-      dataAgendamento: format(new Date(), 'yyyy-MM-dd'),
+      dataAgendamento: new Date().toISOString().split('T')[0],
       horaAgendamento: '08:00',
       tecnicoId: '',
       descricaoServico: '',
@@ -185,7 +133,6 @@ export default function ServicesPage() {
       status: 'AGENDADO',
       observacoes: ''
     });
-    setMachineSearch('');
     setIsDialogOpen(true);
   };
 
@@ -197,11 +144,6 @@ export default function ServicesPage() {
       case 'BAIXA': return 'text-green-600 bg-green-100 border-green-200';
       default: return 'text-gray-600 bg-gray-100 border-gray-200';
     }
-  };
-
-  const clearMachineSearch = () => {
-    setMachineSearch('');
-    form.setValue('maquinaId', '');
   };
 
   return (
@@ -229,76 +171,26 @@ export default function ServicesPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo de seleção de máquina */}
                   <FormField
                     control={form.control}
                     name="maquinaId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
                         <FormLabel>Máquina</FormLabel>
-                        <div className="space-y-2">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Buscar máquina por código, modelo ou filial..."
-                              value={machineSearch}
-                              onChange={(e) => setMachineSearch(e.target.value)}
-                              className="pl-9"
-                            />
-                            {machineSearch && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-2 top-2 h-6 w-6"
-                                onClick={clearMachineSearch}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <div className="border rounded-md max-h-48 overflow-y-auto">
-                            {filteredMachines.length === 0 ? (
-                              <div className="p-4 text-center text-muted-foreground">
-                                Nenhuma máquina encontrada
-                              </div>
-                            ) : (
-                              <div className="p-2 space-y-1">
-                                {filteredMachines.map(m => (
-                                  <div
-                                    key={m.id}
-                                    className={`p-3 rounded-md cursor-pointer transition-colors hover:bg-muted ${field.value === m.id ? 'bg-primary/10 border border-primary' : ''}`}
-                                    onClick={() => {
-                                      field.onChange(m.id);
-                                      setMachineSearch(m.codigo);
-                                    }}
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <div className="font-medium">{m.codigo}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                          {m.modelo} • {m.marca} • {m.filial}
-                                        </div>
-                                      </div>
-                                      {field.value === m.id && (
-                                        <CheckCircle className="h-4 w-4 text-primary" />
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {field.value && (
-                            <div className="text-sm text-muted-foreground">
-                              Máquina selecionada: <span className="font-medium">
-                                {machines.find(m => m.id === field.value)?.codigo}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a máquina" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {machines.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.codigo} - {m.modelo} ({m.filial})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -359,11 +251,7 @@ export default function ServicesPage() {
                       <FormItem>
                         <FormLabel>Data Agendada</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
-                            min={format(new Date(), 'yyyy-MM-dd')}
-                          />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -395,7 +283,7 @@ export default function ServicesPage() {
                               <SelectValue placeholder="Selecione o técnico" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="max-h-60 overflow-y-auto">
+                          <SelectContent>
                             {technicians.map(t => (
                               <SelectItem key={t.id} value={t.id}>
                                 {t.nome} - {t.especialidade}
@@ -494,8 +382,6 @@ export default function ServicesPage() {
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            const serviceDate = new Date(service.dataAgendamento);
-            
             return (
               <div 
                 key={service.id} 
@@ -541,7 +427,7 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(serviceDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                    <span>{format(new Date(service.dataAgendamento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
