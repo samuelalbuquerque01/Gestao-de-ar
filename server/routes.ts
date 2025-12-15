@@ -12,7 +12,6 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   // ========== SCHEMAS CUSTOMIZADOS ==========
-  // Schema customizado para máquinas (português para frontend)
   const machineRequestSchema = z.object({
     codigo: z.string().min(1, "Código é obrigatório"),
     modelo: z.string().min(1, "Modelo é obrigatório"),
@@ -29,7 +28,6 @@ export async function registerRoutes(
     observacoes: z.string().optional()
   });
 
-  // Schema customizado para técnicos
   const technicianRequestSchema = z.object({
     nome: z.string().min(1, "Nome é obrigatório"),
     especialidade: z.string().min(1, "Especialidade é obrigatória"),
@@ -38,7 +36,6 @@ export async function registerRoutes(
     status: z.enum(['ATIVO', 'INATIVO']).optional().default('ATIVO')
   });
 
-  // Schema customizado para serviços
   const serviceRequestSchema = z.object({
     tipoServico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
     maquinaId: z.string().min(1, "Máquina é obrigatória"),
@@ -72,7 +69,6 @@ export async function registerRoutes(
   
   // ========== AUTH ROUTES ==========
   
-  // Rota de teste
   app.get('/api/test', (req, res) => {
     res.json({ 
       message: 'API Neuropsicocentro funcionando!',
@@ -81,29 +77,24 @@ export async function registerRoutes(
     });
   });
   
-  // Rota de registro
   app.post('/api/auth/register', async (req, res) => {
     console.log('🔍 [REGISTER] Iniciando registro...');
     console.log('📥 [REGISTER] Body:', req.body);
     
     try {
-      // Valida dados
       const validatedData = insertUserSchema.parse(req.body);
       console.log('✅ [REGISTER] Dados validados:', { 
         ...validatedData, 
         password: '***' 
       });
       
-      // Garante que email seja string vazia se não fornecido
       const email = validatedData.email || '';
       
-      // Verifica se usuário já existe
       let existingUser = null;
       if (email) {
         existingUser = await storage.getUserByEmail(email);
       }
       
-      // Também verifica por username
       const existingByUsername = await storage.getUserByUsername(validatedData.username);
       
       if (existingUser) {
@@ -116,11 +107,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: 'Nome de usuário já existe' });
       }
       
-      // Hash da senha
       console.log('🔐 [REGISTER] Gerando hash da senha...');
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
       
-      // Prepara dados para criação
       const userData = {
         username: validatedData.username,
         email: email,
@@ -133,7 +122,6 @@ export async function registerRoutes(
       const user = await storage.createUser(userData);
       console.log('✅ [REGISTER] Usuário criado ID:', user.id);
       
-      // Gera token JWT
       console.log('🎫 [REGISTER] Gerando token JWT...');
       const token = jwt.sign(
         { 
@@ -183,7 +171,6 @@ export async function registerRoutes(
     }
   });
   
-  // Rota de login
   app.post('/api/auth/login', async (req, res) => {
     console.log('🔍 [LOGIN] Tentativa de login...');
     console.log('📥 [LOGIN] Body:', req.body);
@@ -244,9 +231,8 @@ export async function registerRoutes(
     }
   });
   
-  // ========== MACHINES ROUTES (CRUD COMPLETO) ==========
+  // ========== MACHINES ROUTES ==========
   
-  // GET todas as máquinas
   app.get('/api/machines', authenticateToken, async (req, res) => {
     try {
       const machines = await storage.getAllMachines();
@@ -257,7 +243,6 @@ export async function registerRoutes(
     }
   });
   
-  // GET uma máquina específica
   app.get('/api/machines/:id', authenticateToken, async (req, res) => {
     try {
       const machine = await storage.getMachine(req.params.id);
@@ -271,24 +256,20 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar nova máquina (CORRIGIDO)
   app.post('/api/machines', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Criando nova máquina...');
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Valida com o schema customizado (português)
       const validatedData = machineRequestSchema.parse(req.body);
       
       console.log('✅ [MACHINES] Dados validados:', validatedData);
       
-      // Verifica se código já existe
       const existingMachine = await storage.getMachineByCodigo(validatedData.codigo);
       if (existingMachine) {
         return res.status(400).json({ error: 'Já existe uma máquina com este código' });
       }
       
-      // Converter para o formato do storage (que espera nomes em português)
       const machineData = {
         codigo: validatedData.codigo,
         modelo: validatedData.modelo,
@@ -307,7 +288,6 @@ export async function registerRoutes(
       
       console.log('📝 [MACHINES] Dados para criação:', JSON.stringify(machineData, null, 2));
       
-      // Cria a máquina
       const machine = await storage.createMachine(machineData);
       
       console.log('✅ [MACHINES] Máquina criada com ID:', machine.id);
@@ -339,18 +319,15 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar máquina (CORRIGIDO)
   app.put('/api/machines/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Atualizando máquina:', req.params.id);
     console.log('📥 [MACHINES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Valida com schema parcial (todos os campos opcionais)
       const validatedData = machineRequestSchema.partial().parse(req.body);
       
       console.log('✅ [MACHINES] Dados validados para atualização:', validatedData);
       
-      // Converter para o formato do storage
       const machineData = {
         codigo: validatedData.codigo,
         modelo: validatedData.modelo,
@@ -367,7 +344,6 @@ export async function registerRoutes(
         observacoes: validatedData.observacoes
       };
       
-      // Remover campos undefined
       Object.keys(machineData).forEach(key => {
         if (machineData[key as keyof typeof machineData] === undefined) {
           delete machineData[key as keyof typeof machineData];
@@ -407,7 +383,6 @@ export async function registerRoutes(
     }
   });
   
-  // DELETE máquina
   app.delete('/api/machines/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [MACHINES] Deletando máquina:', req.params.id);
     
@@ -431,9 +406,8 @@ export async function registerRoutes(
     }
   });
   
-  // ========== TECHNICIANS ROUTES (CRUD COMPLETO) ==========
+  // ========== TECHNICIANS ROUTES ==========
   
-  // GET todos os técnicos
   app.get('/api/technicians', authenticateToken, async (req, res) => {
     try {
       const technicians = await storage.getAllTechnicians();
@@ -444,7 +418,6 @@ export async function registerRoutes(
     }
   });
   
-  // GET um técnico específico
   app.get('/api/technicians/:id', authenticateToken, async (req, res) => {
     try {
       const technician = await storage.getTechnician(req.params.id);
@@ -458,13 +431,11 @@ export async function registerRoutes(
     }
   });
   
-  // POST criar novo técnico (CORRIGIDO)
   app.post('/api/technicians', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Criando novo técnico...');
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Valida com schema customizado
       const validatedData = technicianRequestSchema.parse(req.body);
       
       console.log('✅ [TECHNICIANS] Dados validados:', validatedData);
@@ -507,13 +478,11 @@ export async function registerRoutes(
     }
   });
   
-  // PUT atualizar técnico (CORRIGIDO)
   app.put('/api/technicians/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Atualizando técnico:', req.params.id);
     console.log('📥 [TECHNICIANS] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Valida com schema parcial
       const validatedData = technicianRequestSchema.partial().parse(req.body);
       
       console.log('✅ [TECHNICIANS] Dados validados para atualização:', validatedData);
@@ -526,7 +495,6 @@ export async function registerRoutes(
         status: validatedData.status
       };
       
-      // Remover campos undefined
       Object.keys(technicianData).forEach(key => {
         if (technicianData[key as keyof typeof technicianData] === undefined) {
           delete technicianData[key as keyof typeof technicianData];
@@ -564,7 +532,6 @@ export async function registerRoutes(
     }
   });
   
-  // DELETE técnico
   app.delete('/api/technicians/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [TECHNICIANS] Deletando técnico:', req.params.id);
     
@@ -588,9 +555,8 @@ export async function registerRoutes(
     }
   });
   
-  // ========== SERVICES ROUTES (CRUD COMPLETO) ==========
+  // ========== SERVICES ROUTES ==========
   
-  // GET todos os serviços (CORRIGIDO)
   app.get('/api/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getAllServices();
@@ -601,7 +567,6 @@ export async function registerRoutes(
     }
   });
   
-  // GET um serviço específico
   app.get('/api/services/:id', authenticateToken, async (req, res) => {
     try {
       const service = await storage.getService(req.params.id);
@@ -615,7 +580,6 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por máquina (CORRIGIDO)
   app.get('/api/machines/:machineId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByMachine(req.params.machineId);
@@ -626,7 +590,6 @@ export async function registerRoutes(
     }
   });
   
-  // GET serviços por técnico (CORRIGIDO)
   app.get('/api/technicians/:technicianId/services', authenticateToken, async (req, res) => {
     try {
       const services = await storage.getServicesByTechnician(req.params.technicianId);
@@ -636,369 +599,145 @@ export async function registerRoutes(
       res.status(500).json({ error: 'Erro ao buscar serviços do técnico' });
     }
   });
-  
- // Na rota POST /api/services (substitua completamente):
 
-// POST criar novo serviço (CORRIGIDO)
-app.post('/api/services', authenticateToken, async (req, res) => {
-  console.log('🔍 [SERVICES] Criando novo serviço...');
-  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Valida com schema customizado
-    const validatedData = serviceRequestSchema.parse(req.body);
+  // POST criar novo serviço (VERSÃO CORRIGIDA - ÚNICA)
+  app.post('/api/services', authenticateToken, async (req, res) => {
+    console.log('🔍 [SERVICES] Criando novo serviço...');
+    console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
-    console.log('✅ [SERVICES] Dados validados:', validatedData);
-    
-    // CORREÇÃO: Combinar data e hora corretamente
-    let dataAgendamento;
-    if (validatedData.dataAgendamento && validatedData.horaAgendamento) {
-      // Formato: YYYY-MM-DDTHH:mm:ss.sssZ
-      const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-      const [hour, minute] = validatedData.horaAgendamento.split(':').map(Number);
-      
-      // Criar data no fuso horário local e converter para ISO
-      const localDate = new Date(year, month - 1, day, hour, minute, 0);
-      dataAgendamento = localDate.toISOString();
-    } else if (validatedData.dataAgendamento) {
-      // Se só tem data, usar meio-dia como padrão
-      const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day, 12, 0, 0);
-      dataAgendamento = localDate.toISOString();
-    } else {
-      dataAgendamento = new Date().toISOString();
-    }
-    
-    console.log('📅 [SERVICES] Data agendamento processada:', dataAgendamento);
-    
-    // Preparar dados
-    const serviceData = {
-      tipo_servico: validatedData.tipoServico,
-      maquina_id: validatedData.maquinaId,
-      tecnico_id: validatedData.tecnicoId,
-      descricao_servico: validatedData.descricaoServico,
-      descricao_problema: validatedData.descricaoProblema || '',
-      data_agendamento: dataAgendamento, // Enviar como string ISO
-      prioridade: validatedData.prioridade,
-      status: validatedData.status,
-      observacoes: validatedData.observacoes || ''
-    };
-    
-    console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
-    
-    const service = await storage.createService(serviceData);
-    
-    console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
-    
-    res.status(201).json({
-      success: true,
-      data: service,
-      message: 'Serviço agendado com sucesso'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [SERVICES] Erro ao criar serviço:', error);
-    
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ 
-        error: 'Erro de validação',
-        details: error.errors.map((e: any) => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Erro ao criar serviço',
-      message: error.message 
-    });
-  }
-});
-
-// Na rota PUT /api/services (substitua completamente):
-
-// PUT atualizar serviço (CORRIGIDO)
-app.put('/api/services/:id', authenticateToken, async (req, res) => {
-  console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
-  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Valida com schema parcial
-    const validatedData = serviceRequestSchema.partial().parse(req.body);
-    
-    console.log('✅ [SERVICES] Dados validados para atualização:', validatedData);
-    
-    // Preparar dados
-    const serviceData: any = {
-      tipo_servico: validatedData.tipoServico,
-      maquina_id: validatedData.maquinaId,
-      tecnico_id: validatedData.tecnicoId,
-      descricao_servico: validatedData.descricaoServico,
-      descricao_problema: validatedData.descricaoProblema,
-      prioridade: validatedData.prioridade,
-      status: validatedData.status,
-      observacoes: validatedData.observacoes
-    };
-    
-    // CORREÇÃO: Verificar e processar data_agendamento corretamente
-    if (validatedData.dataAgendamento) {
-      try {
-        // Verificar se é uma string ISO válida
-        const dateStr = validatedData.dataAgendamento;
-        if (typeof dateStr === 'string' && dateStr.includes('T')) {
-          // Já está em formato ISO, usar como está
-          serviceData.data_agendamento = dateStr;
-          console.log('📅 [SERVICES] Data ISO recebida:', dateStr);
-        } else {
-          // Tentar parsear como Date
-          const date = new Date(dateStr);
-          if (!isNaN(date.getTime())) {
-            serviceData.data_agendamento = date.toISOString();
-            console.log('📅 [SERVICES] Data convertida para ISO:', serviceData.data_agendamento);
-          } else {
-            console.warn('⚠️ [SERVICES] Data inválida, ignorando:', dateStr);
-          }
-        }
-      } catch (error: any) {
-        console.warn('⚠️ [SERVICES] Erro ao processar data:', error.message);
-      }
-    }
-    
-    // Remover campos undefined
-    Object.keys(serviceData).forEach(key => {
-      if (serviceData[key] === undefined) {
-        delete serviceData[key];
-      }
-    });
-    
-    console.log('📝 [SERVICES] Dados para atualização:', JSON.stringify(serviceData, null, 2));
-    
-    const service = await storage.updateService(req.params.id, serviceData);
-    
-    if (!service) {
-      return res.status(404).json({ error: 'Serviço não encontrado' });
-    }
-    
-    console.log('✅ [SERVICES] Serviço atualizado');
-    
-    res.json({
-      success: true,
-      data: service,
-      message: 'Serviço atualizado com sucesso'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [SERVICES] Erro ao atualizar serviço:', error);
-    
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ 
-        error: 'Erro de validação',
-        details: error.errors.map((e: any) => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Erro ao atualizar serviço',
-      message: error.message 
-    });
-  }
-});
-
-// Na rota POST /api/services (substitua completamente):
-
-// POST criar novo serviço (CORRIGIDO)
-app.post('/api/services', authenticateToken, async (req, res) => {
-  console.log('🔍 [SERVICES] Criando novo serviço...');
-  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Valida com schema customizado
-    const validatedData = serviceRequestSchema.parse(req.body);
-    
-    console.log('✅ [SERVICES] Dados validados:', validatedData);
-    
-    // CORREÇÃO: Processar data_agendamento corretamente
-    let dataAgendamentoStr: string;
     try {
-      if (typeof validatedData.dataAgendamento === 'string') {
-        // Verificar se já é uma string ISO válida
-        const date = new Date(validatedData.dataAgendamento);
-        if (!isNaN(date.getTime())) {
-          dataAgendamentoStr = date.toISOString();
+      const validatedData = serviceRequestSchema.parse(req.body);
+      console.log('✅ [SERVICES] Dados validados:', validatedData);
+      
+      // CORREÇÃO: Processar data corretamente
+      let dataAgendamentoISO: string;
+      const horaAgendamento = validatedData.horaAgendamento || '08:00';
+      
+      try {
+        // Primeiro, tentar parsear como data ISO
+        const dateFromISO = new Date(validatedData.dataAgendamento);
+        
+        if (!isNaN(dateFromISO.getTime())) {
+          // Se for uma data ISO válida, extrair a data (YYYY-MM-DD)
+          const dataStr = dateFromISO.toISOString().split('T')[0];
+          // Combinar com a hora
+          dataAgendamentoISO = `${dataStr}T${horaAgendamento}:00.000Z`;
+          console.log('📅 [SERVICES] Data combinada a partir de ISO:', dataAgendamentoISO);
         } else {
-          // Se não for ISO, tentar combinar com hora
-          if (validatedData.horaAgendamento) {
-            const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-            const [hour, minute] = validatedData.horaAgendamento.split(':').map(Number);
-            const localDate = new Date(year, month - 1, day, hour, minute, 0);
-            dataAgendamentoStr = localDate.toISOString();
-          } else {
-            // Usar meio-dia como padrão
-            const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-            const localDate = new Date(year, month - 1, day, 12, 0, 0);
-            dataAgendamentoStr = localDate.toISOString();
-          }
+          // Se não for ISO, tratar como data simples (YYYY-MM-DD)
+          dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
+          console.log('📅 [SERVICES] Data simples combinada com hora:', dataAgendamentoISO);
         }
-      } else {
-        // Se for Date, converter para ISO
-        dataAgendamentoStr = validatedData.dataAgendamento.toISOString();
+        
+        // Validar se a data é válida
+        const finalDate = new Date(dataAgendamentoISO);
+        if (isNaN(finalDate.getTime())) {
+          throw new Error('Data inválida após processamento');
+        }
+        
+      } catch (error) {
+        console.error('❌ [SERVICES] Erro ao processar data:', error);
+        // Fallback: usar data atual
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        dataAgendamentoISO = `${todayStr}T${horaAgendamento}:00.000Z`;
+        console.log('📅 [SERVICES] Usando fallback (data atual):', dataAgendamentoISO);
       }
-    } catch (error) {
-      console.error('❌ [SERVICES] Erro ao processar data, usando data atual:', error);
-      dataAgendamentoStr = new Date().toISOString();
-    }
-    
-    console.log('📅 [SERVICES] Data agendamento processada:', dataAgendamentoStr);
-    
-    // Preparar dados
-    const serviceData = {
-      tipo_servico: validatedData.tipoServico,
-      maquina_id: validatedData.maquinaId,
-      tecnico_id: validatedData.tecnicoId,
-      descricao_servico: validatedData.descricaoServico,
-      descricao_problema: validatedData.descricaoProblema || '',
-      data_agendamento: dataAgendamentoStr, // Enviar string ISO
-      prioridade: validatedData.prioridade || 'MEDIA',
-      status: validatedData.status || 'AGENDADO',
-      observacoes: validatedData.observacoes || ''
-    };
-    
-    console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
-    
-    const service = await storage.createService(serviceData);
-    
-    console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
-    
-    res.status(201).json({
-      success: true,
-      data: service,
-      message: 'Serviço agendado com sucesso'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [SERVICES] Erro ao criar serviço:', error);
-    
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ 
-        error: 'Erro de validação',
-        details: error.errors.map((e: any) => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
+      
+      console.log('📅 [SERVICES] Data final para armazenamento:', dataAgendamentoISO);
+      
+      // Preparar dados para o storage
+      const serviceData = {
+        tipo_servico: validatedData.tipoServico,
+        maquina_id: validatedData.maquinaId,
+        tecnico_id: validatedData.tecnicoId,
+        descricao_servico: validatedData.descricaoServico,
+        descricao_problema: validatedData.descricaoProblema || '',
+        data_agendamento: dataAgendamentoISO,
+        prioridade: validatedData.prioridade || 'MEDIA',
+        status: validatedData.status || 'AGENDADO',
+        observacoes: validatedData.observacoes || ''
+      };
+      
+      console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
+      
+      const service = await storage.createService(serviceData);
+      
+      console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
+      
+      res.status(201).json({
+        success: true,
+        data: service,
+        message: 'Serviço agendado com sucesso'
+      });
+      
+    } catch (error: any) {
+      console.error('❌ [SERVICES] Erro ao criar serviço:', error);
+      console.error('❌ [SERVICES] Stack:', error.stack);
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: 'Erro de validação',
+          details: error.errors.map((e: any) => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
+      res.status(500).json({ 
+        error: 'Erro ao criar serviço',
+        message: error.message 
       });
     }
-    
-    res.status(500).json({ 
-      error: 'Erro ao criar serviço',
-      message: error.message 
-    });
-  }
-});
+  });
 
-// Na rota PUT /api/services (substitua completamente):
-
-// PUT atualizar serviço (CORRIGIDO)
-app.put('/api/services/:id', authenticateToken, async (req, res) => {
-  console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
-  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Valida com schema parcial
-    const validatedData = serviceRequestSchema.partial().parse(req.body);
-    
-    console.log('✅ [SERVICES] Dados validados para atualização:', validatedData);
-    
-    // Preparar dados
-    const serviceData: any = {
-      tipoServico: validatedData.tipoServico,
-      maquinaId: validatedData.maquinaId,
-      tecnicoId: validatedData.tecnicoId,
-      descricaoServico: validatedData.descricaoServico,
-      descricaoProblema: validatedData.descricaoProblema,
-      prioridade: validatedData.prioridade,
-      status: validatedData.status,
-      observacoes: validatedData.observacoes
-    };
-    
-    // Combinar data e hora se data existir
-    if (validatedData.dataAgendamento) {
-      const dateStr = validatedData.dataAgendamento.replace('Z', '');
-      const timeStr = validatedData.horaAgendamento || '08:00';
-      serviceData.dataAgendamento = `${dateStr}T${timeStr}:00`;
-      console.log('📅 [SERVICES] Data agendamento para atualização:', serviceData.dataAgendamento);
-    }
-    
-    // Remover campos undefined
-    Object.keys(serviceData).forEach(key => {
-      if (serviceData[key] === undefined) {
-        delete serviceData[key];
-      }
-    });
-    
-    console.log('📝 [SERVICES] Dados para atualização:', JSON.stringify(serviceData, null, 2));
-    
-    const service = await storage.updateService(req.params.id, serviceData);
-    
-    if (!service) {
-      return res.status(404).json({ error: 'Serviço não encontrado' });
-    }
-    
-    console.log('✅ [SERVICES] Serviço atualizado');
-    
-    res.json({
-      success: true,
-      data: service,
-      message: 'Serviço atualizado com sucesso'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [SERVICES] Erro ao atualizar serviço:', error);
-    
-    if (error.name === 'ZodError') {
-      return res.status(400).json({ 
-        error: 'Erro de validação',
-        details: error.errors.map((e: any) => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
-      });
-    }
-    
-    res.status(500).json({ error: 'Erro ao atualizar serviço' });
-  }
-});
-  // PUT atualizar serviço (CORRIGIDO)
+  // PUT atualizar serviço (VERSÃO CORRIGIDA - ÚNICA)
   app.put('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
     
     try {
-      // Valida com schema parcial
       const validatedData = serviceRequestSchema.partial().parse(req.body);
-      
       console.log('✅ [SERVICES] Dados validados para atualização:', validatedData);
       
-      // Preparar dados
       const serviceData: any = {
-        tipoServico: validatedData.tipoServico,
-        maquinaId: validatedData.maquinaId,
-        tecnicoId: validatedData.tecnicoId,
-        descricaoServico: validatedData.descricaoServico,
-        descricaoProblema: validatedData.descricaoProblema,
+        tipo_servico: validatedData.tipoServico,
+        maquina_id: validatedData.maquinaId,
+        tecnico_id: validatedData.tecnicoId,
+        descricao_servico: validatedData.descricaoServico,
+        descricao_problema: validatedData.descricaoProblema,
         prioridade: validatedData.prioridade,
         status: validatedData.status,
         observacoes: validatedData.observacoes
       };
       
-      // Combinar data e hora se ambos existirem
-      if (validatedData.dataAgendamento && validatedData.horaAgendamento) {
-        serviceData.dataAgendamento = `${validatedData.dataAgendamento}T${validatedData.horaAgendamento}:00`;
-      } else if (validatedData.dataAgendamento) {
-        serviceData.dataAgendamento = `${validatedData.dataAgendamento}T08:00:00`;
+      // CORREÇÃO: Processar data_agendamento se fornecida
+      if (validatedData.dataAgendamento) {
+        const horaAgendamento = validatedData.horaAgendamento || '08:00';
+        let dataAgendamentoISO: string;
+        
+        try {
+          const dateFromISO = new Date(validatedData.dataAgendamento);
+          
+          if (!isNaN(dateFromISO.getTime())) {
+            // Se for uma data ISO válida
+            const dataStr = dateFromISO.toISOString().split('T')[0];
+            dataAgendamentoISO = `${dataStr}T${horaAgendamento}:00.000Z`;
+          } else {
+            // Se for data simples (YYYY-MM-DD)
+            dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
+          }
+          
+          // Validar a data
+          const finalDate = new Date(dataAgendamentoISO);
+          if (!isNaN(finalDate.getTime())) {
+            serviceData.data_agendamento = dataAgendamentoISO;
+            console.log('📅 [SERVICES] Data para atualização:', dataAgendamentoISO);
+          }
+        } catch (error) {
+          console.warn('⚠️ [SERVICES] Erro ao processar data para atualização:', error);
+        }
       }
       
       // Remover campos undefined
@@ -1037,11 +776,13 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
         });
       }
       
-      res.status(500).json({ error: 'Erro ao atualizar serviço' });
+      res.status(500).json({ 
+        error: 'Erro ao atualizar serviço',
+        message: error.message 
+      });
     }
   });
   
-  // DELETE serviço
   app.delete('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Deletando serviço:', req.params.id);
     
@@ -1067,7 +808,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   
   // ========== DASHBOARD ROUTES ==========
   
-  // Dashboard stats
   app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     try {
       const stats = await storage.getDashboardStats();
@@ -1080,7 +820,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   
   // ========== SERVICE HISTORY ROUTES ==========
   
-  // GET histórico de um serviço
   app.get('/api/services/:serviceId/history', authenticateToken, async (req, res) => {
     try {
       const history = await storage.getServiceHistory(req.params.serviceId);
@@ -1093,7 +832,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   
   // ========== USER PROFILE ROUTES ==========
   
-  // GET perfil do usuário atual
   app.get('/api/user/profile', authenticateToken, async (req, res) => {
     try {
       const user = await storage.getUser(req.user.id);
@@ -1101,7 +839,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
       
-      // Remove senha da resposta
       const { password, ...userWithoutPassword } = user;
       res.json({ success: true, data: userWithoutPassword });
       
@@ -1113,7 +850,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
   
   // ========== ADDITIONAL ROUTES ==========
   
-  // GET máquina por código
   app.get('/api/machines/codigo/:codigo', authenticateToken, async (req, res) => {
     try {
       const machine = await storage.getMachineByCodigo(req.params.codigo);
@@ -1127,7 +863,6 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
     }
   });
   
-  // GET check health
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'healthy',
@@ -1139,224 +874,21 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
 
   // ========== ROTAS DE RELATÓRIOS ==========
 
-// Rota para gerar relatórios (similar à do frontend)
-app.get('/api/reports/summary', authenticateToken, async (req, res) => {
-  try {
-    console.log('📊 [REPORTS] Gerando relatório...');
-    
-    const {
-      startDate,
-      endDate,
-      branchFilter = 'all',
-      statusFilter = 'all',
-      technicianId,
-      machineId,
-      serviceType
-    } = req.query;
-    
-    console.log('📋 [REPORTS] Filtros:', {
-      startDate,
-      endDate,
-      branchFilter,
-      statusFilter,
-      technicianId,
-      machineId,
-      serviceType
-    });
-    
-    // Obter todos os serviços
-    const allServices = await storage.getAllServices();
-    const allMachines = await storage.getAllMachines();
-    
-    // Filtrar serviços
-    let filteredServices = allServices;
-    
-    // Filtrar por data
-    if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999);
+  app.get('/api/reports/summary', authenticateToken, async (req, res) => {
+    try {
+      console.log('📊 [REPORTS] Gerando relatório...');
       
-      filteredServices = filteredServices.filter(service => {
-        const serviceDate = new Date(service.dataAgendamento);
-        return serviceDate >= start && serviceDate <= end;
-      });
-    }
-    
-    // Filtrar por filial
-    if (branchFilter && branchFilter !== 'all') {
-      filteredServices = filteredServices.filter(service => {
-        const machine = allMachines.find(m => m.id === service.maquinaId);
-        return machine?.filial === branchFilter;
-      });
-    }
-    
-    // Filtrar por status
-    if (statusFilter && statusFilter !== 'all') {
-      filteredServices = filteredServices.filter(service => 
-        service.status === statusFilter
-      );
-    }
-    
-    // Filtrar por técnico
-    if (technicianId) {
-      filteredServices = filteredServices.filter(service => 
-        service.tecnicoId === technicianId
-      );
-    }
-    
-    // Filtrar por máquina
-    if (machineId) {
-      filteredServices = filteredServices.filter(service => 
-        service.maquinaId === machineId
-      );
-    }
-    
-    // Filtrar por tipo de serviço
-    if (serviceType) {
-      filteredServices = filteredServices.filter(service => 
-        service.tipoServico === serviceType
-      );
-    }
-    
-    // Gerar estatísticas
-    const servicesByType = filteredServices.reduce((acc, service) => {
-      const type = service.tipoServico || 'OUTRO';
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const servicesByStatus = filteredServices.reduce((acc, service) => {
-      const status = service.status || 'AGENDADO';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const servicesByTechnician = filteredServices.reduce((acc, service) => {
-      const tech = service.tecnicoNome || 'Desconhecido';
-      acc[tech] = (acc[tech] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const servicesByBranch = filteredServices.reduce((acc, service) => {
-      const machine = allMachines.find(m => m.id === service.maquinaId);
-      const branch = machine?.filial || 'Não especificada';
-      acc[branch] = (acc[branch] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const totalServices = filteredServices.length;
-    const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
-    const pendingServices = filteredServices.filter(s => 
-      s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
-    ).length;
-    const canceledServices = filteredServices.filter(s => s.status === 'CANCELADO').length;
-    
-    const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
-    
-    // Calcular custos
-    const totalCost = filteredServices.reduce((sum, service) => {
-      const cost = parseFloat(service.custo) || 0;
-      return sum + cost;
-    }, 0);
-    
-    const avgCostPerService = totalServices > 0 ? totalCost / totalServices : 0;
-    
-    // Encontrar técnico mais ativo
-    const topTechnicians = Object.entries(servicesByTechnician)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    
-    // Encontrar máquinas com mais serviços
-    const servicesByMachine = filteredServices.reduce((acc, service) => {
-      const machine = allMachines.find(m => m.id === service.maquinaId);
-      const machineName = machine ? `${machine.codigo} - ${machine.modelo}` : 'Desconhecida';
-      acc[machineName] = (acc[machineName] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const topMachines = Object.entries(servicesByMachine)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    
-    // Estatísticas por mês
-    const servicesByMonth = filteredServices.reduce((acc, service) => {
-      const date = new Date(service.dataAgendamento);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const monthLabel = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      const {
+        startDate,
+        endDate,
+        branchFilter = 'all',
+        statusFilter = 'all',
+        technicianId,
+        machineId,
+        serviceType
+      } = req.query;
       
-      if (!acc[monthKey]) {
-        acc[monthKey] = {
-          label: monthLabel,
-          completed: 0,
-          pending: 0,
-          total: 0
-        };
-      }
-      
-      acc[monthKey].total++;
-      if (service.status === 'CONCLUIDO') {
-        acc[monthKey].completed++;
-      } else if (service.status === 'AGENDADO' || service.status === 'EM_ANDAMENTO' || service.status === 'PENDENTE') {
-        acc[monthKey].pending++;
-      }
-      
-      return acc;
-    }, {} as Record<string, { label: string; completed: number; pending: number; total: number }>);
-    
-    const monthlyData = Object.values(servicesByMonth)
-      .sort((a, b) => {
-        const [aYear, aMonth] = a.label.split('/');
-        const [bYear, bMonth] = b.label.split('/');
-        return new Date(parseInt(aYear), aMonth.charCodeAt(0) - 97).getTime() - 
-               new Date(parseInt(bYear), bMonth.charCodeAt(0) - 97).getTime();
-      });
-    
-    // Serviços urgentes/críticos
-    const urgentServices = filteredServices.filter(s => 
-      s.prioridade === 'URGENTE' || s.prioridade === 'ALTA'
-    ).length;
-    
-    const response = {
-      summary: {
-        totalServices,
-        completedServices,
-        pendingServices,
-        canceledServices,
-        completionRate: parseFloat(completionRate.toFixed(2)),
-        totalCost: parseFloat(totalCost.toFixed(2)),
-        avgCostPerService: parseFloat(avgCostPerService.toFixed(2)),
-        urgentServices
-      },
-      breakdown: {
-        byType: Object.entries(servicesByType).map(([name, count]) => ({ name, count })),
-        byStatus: Object.entries(servicesByStatus).map(([name, count]) => ({ name, count })),
-        byBranch: Object.entries(servicesByBranch).map(([name, count]) => ({ name, count })),
-        monthlyData,
-        topTechnicians,
-        topMachines
-      },
-      services: filteredServices.map(service => {
-        const machine = allMachines.find(m => m.id === service.maquinaId);
-        return {
-          id: service.id,
-          tipoServico: service.tipoServico,
-          descricaoServico: service.descricaoServico,
-          dataAgendamento: service.dataAgendamento,
-          dataConclusao: service.dataConclusao,
-          tecnicoNome: service.tecnicoNome,
-          status: service.status,
-          prioridade: service.prioridade,
-          custo: service.custo,
-          machineCodigo: machine?.codigo,
-          machineModelo: machine?.modelo,
-          machineFilial: machine?.filial,
-          machineLocalizacao: machine?.localizacaoDescricao
-        };
-      }),
-      filters: {
+      console.log('📋 [REPORTS] Filtros:', {
         startDate,
         endDate,
         branchFilter,
@@ -1364,478 +896,644 @@ app.get('/api/reports/summary', authenticateToken, async (req, res) => {
         technicianId,
         machineId,
         serviceType
+      });
+      
+      const allServices = await storage.getAllServices();
+      const allMachines = await storage.getAllMachines();
+      
+      let filteredServices = allServices;
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        
+        filteredServices = filteredServices.filter(service => {
+          const serviceDate = new Date(service.dataAgendamento);
+          return serviceDate >= start && serviceDate <= end;
+        });
       }
-    };
-    
-    console.log('✅ [REPORTS] Relatório gerado:', {
-      totalServices: response.summary.totalServices,
-      filtros: response.filters
-    });
-    
-    res.json({
-      success: true,
-      data: response
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [REPORTS] Erro ao gerar relatório:', error);
-    res.status(500).json({ 
-      error: 'Erro ao gerar relatório',
-      message: error.message 
-    });
-  }
-});
-
-// Rota para exportar relatório em CSV
-app.get('/api/reports/export/csv', authenticateToken, async (req, res) => {
-  try {
-    const {
-      startDate,
-      endDate,
-      branchFilter = 'all',
-      statusFilter = 'all'
-    } = req.query;
-    
-    // Obter serviços filtrados (usando a mesma lógica acima)
-    const allServices = await storage.getAllServices();
-    const allMachines = await storage.getAllMachines();
-    
-    let filteredServices = allServices;
-    
-    if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999);
       
-      filteredServices = filteredServices.filter(service => {
-        const serviceDate = new Date(service.dataAgendamento);
-        return serviceDate >= start && serviceDate <= end;
-      });
-    }
-    
-    if (branchFilter && branchFilter !== 'all') {
-      filteredServices = filteredServices.filter(service => {
-        const machine = allMachines.find(m => m.id === service.maquinaId);
-        return machine?.filial === branchFilter;
-      });
-    }
-    
-    if (statusFilter && statusFilter !== 'all') {
-      filteredServices = filteredServices.filter(service => 
-        service.status === statusFilter
-      );
-    }
-    
-    // Preparar dados CSV
-    const csvRows = [];
-    
-    // Cabeçalho
-    csvRows.push([
-      'ID',
-      'Tipo de Serviço',
-      'Descrição',
-      'Data Agendamento',
-      'Data Conclusão',
-      'Técnico',
-      'Status',
-      'Prioridade',
-      'Custo (R$)',
-      'Código da Máquina',
-      'Modelo',
-      'Filial',
-      'Localização',
-      'Observações'
-    ].join(','));
-    
-    // Dados
-    filteredServices.forEach(service => {
-      const machine = allMachines.find(m => m.id === service.maquinaId);
-      
-      const row = [
-        service.id,
-        `"${service.tipoServico || ''}"`,
-        `"${service.descricaoServico || ''}"`,
-        new Date(service.dataAgendamento).toISOString(),
-        service.dataConclusao ? new Date(service.dataConclusao).toISOString() : '',
-        `"${service.tecnicoNome || ''}"`,
-        service.status || '',
-        service.prioridade || '',
-        service.custo || '0',
-        `"${machine?.codigo || ''}"`,
-        `"${machine?.modelo || ''}"`,
-        `"${machine?.filial || ''}"`,
-        `"${machine?.localizacaoDescricao || ''}"`,
-        `"${service.observacoes || ''}"`
-      ].join(',');
-      
-      csvRows.push(row);
-    });
-    
-    const csvContent = csvRows.join('\n');
-    
-    // Configurar resposta
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio_servicos_${new Date().toISOString().split('T')[0]}.csv`);
-    
-    res.send(csvContent);
-    
-  } catch (error: any) {
-    console.error('❌ [REPORTS] Erro ao exportar CSV:', error);
-    res.status(500).json({ 
-      error: 'Erro ao exportar relatório',
-      message: error.message 
-    });
-  }
-});
-
-// Rota para estatísticas em tempo real
-app.get('/api/reports/real-time-stats', authenticateToken, async (req, res) => {
-  try {
-    const allServices = await storage.getAllServices();
-    const allMachines = await storage.getAllMachines();
-    
-    // Serviços do dia
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const todayServices = allServices.filter(service => {
-      const serviceDate = new Date(service.dataAgendamento);
-      return serviceDate >= today && serviceDate < tomorrow;
-    });
-    
-    // Serviços da semana
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    
-    const weekServices = allServices.filter(service => {
-      const serviceDate = new Date(service.dataAgendamento);
-      return serviceDate >= weekAgo;
-    });
-    
-    // Máquinas com problemas
-    const problemMachines = allMachines.filter(m => 
-      m.status === 'DEFEITO' || m.status === 'MANUTENCAO'
-    ).length;
-    
-    // Técnicos mais ativos da semana
-    const weekServicesByTech = weekServices.reduce((acc, service) => {
-      const tech = service.tecnicoNome || 'Desconhecido';
-      acc[tech] = (acc[tech] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    const topActiveTechs = Object.entries(weekServicesByTech)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
-    
-    const response = {
-      today: {
-        total: todayServices.length,
-        completed: todayServices.filter(s => s.status === 'CONCLUIDO').length,
-        pending: todayServices.filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO').length
-      },
-      week: {
-        total: weekServices.length,
-        completed: weekServices.filter(s => s.status === 'CONCLUIDO').length,
-        completionRate: weekServices.length > 0 ? 
-          (weekServices.filter(s => s.status === 'CONCLUIDO').length / weekServices.length) * 100 : 0
-      },
-      machines: {
-        total: allMachines.length,
-        active: allMachines.filter(m => m.status === 'ATIVO').length,
-        problems: problemMachines
-      },
-      technicians: {
-        total: (await storage.getAllTechnicians()).length,
-        active: topActiveTechs.length,
-        topActive: topActiveTechs
-      },
-      alerts: {
-        urgentServices: allServices.filter(s => s.prioridade === 'URGENTE' && s.status !== 'CONCLUIDO').length,
-        overdueServices: allServices.filter(s => {
-          const serviceDate = new Date(s.dataAgendamento);
-          return serviceDate < new Date() && s.status === 'AGENDADO';
-        }).length
+      if (branchFilter && branchFilter !== 'all') {
+        filteredServices = filteredServices.filter(service => {
+          const machine = allMachines.find(m => m.id === service.maquinaId);
+          return machine?.filial === branchFilter;
+        });
       }
-    };
-    
-    res.json({
-      success: true,
-      data: response
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [REPORTS] Erro ao buscar estatísticas em tempo real:', error);
-    res.status(500).json({ 
-      error: 'Erro ao buscar estatísticas',
-      message: error.message 
-    });
-  }
-});
-
-// Rota para histórico de serviços por máquina
-app.get('/api/reports/machine-history/:machineId', authenticateToken, async (req, res) => {
-  try {
-    const { machineId } = req.params;
-    
-    const services = await storage.getServicesByMachine(machineId);
-    const machine = await storage.getMachine(machineId);
-    
-    if (!machine) {
-      return res.status(404).json({ error: 'Máquina não encontrada' });
-    }
-    
-    // Estatísticas da máquina
-    const totalServices = services.length;
-    const completedServices = services.filter(s => s.status === 'CONCLUIDO').length;
-    const maintenanceCost = services.reduce((sum, service) => {
-      const cost = parseFloat(service.custo) || 0;
-      return sum + cost;
-    }, 0);
-    
-    // Histórico de problemas
-    const problemServices = services.filter(s => 
-      s.tipoServico === 'CORRETIVA' || s.descricaoProblema
-    );
-    
-    // Próxima manutenção preventiva sugerida
-    const lastPreventive = services
-      .filter(s => s.tipoServico === 'PREVENTIVA' && s.status === 'CONCLUIDO')
-      .sort((a, b) => new Date(b.dataConclusao || b.dataAgendamento).getTime() - 
-                     new Date(a.dataConclusao || a.dataAgendamento).getTime())[0];
-    
-    let nextPreventiveDate = null;
-    if (lastPreventive) {
-      const lastDate = new Date(lastPreventive.dataConclusao || lastPreventive.dataAgendamento);
-      nextPreventiveDate = new Date(lastDate);
-      nextPreventiveDate.setMonth(nextPreventiveDate.getMonth() + 3); // Sugere em 3 meses
-    }
-    
-    const response = {
-      machine: {
-        id: machine.id,
-        codigo: machine.codigo,
-        modelo: machine.modelo,
-        marca: machine.marca,
-        status: machine.status,
-        localizacao: machine.localizacaoDescricao,
-        filial: machine.filial,
-        instalacao: machine.dataInstalacao
-      },
-      stats: {
-        totalServices,
-        completedServices,
-        completionRate: totalServices > 0 ? (completedServices / totalServices) * 100 : 0,
-        totalCost: maintenanceCost,
-        avgCostPerService: totalServices > 0 ? maintenanceCost / totalServices : 0,
-        problemCount: problemServices.length
-      },
-      preventiveMaintenance: {
-        last: lastPreventive ? {
-          date: lastPreventive.dataConclusao || lastPreventive.dataAgendamento,
-          technician: lastPreventive.tecnicoNome
-        } : null,
-        nextSuggested: nextPreventiveDate ? nextPreventiveDate.toISOString() : null
-      },
-      services: services.map(service => ({
-        id: service.id,
-        tipoServico: service.tipoServico,
-        descricaoServico: service.descricaoServico,
-        descricaoProblema: service.descricaoProblema,
-        dataAgendamento: service.dataAgendamento,
-        dataConclusao: service.dataConclusao,
-        tecnicoNome: service.tecnicoNome,
-        status: service.status,
-        prioridade: service.prioridade,
-        custo: service.custo,
-        observacoes: service.observacoes
-      }))
-    };
-    
-    res.json({
-      success: true,
-      data: response
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [REPORTS] Erro ao buscar histórico da máquina:', error);
-    res.status(500).json({ 
-      error: 'Erro ao buscar histórico',
-      message: error.message 
-    });
-  }
-});
-
-// Rota para relatório de custos
-app.get('/api/reports/cost-analysis', authenticateToken, async (req, res) => {
-  try {
-    const { 
-      startDate,
-      endDate,
-      branchFilter = 'all',
-      groupBy = 'month' // month, branch, type, technician
-    } = req.query;
-    
-    const allServices = await storage.getAllServices();
-    const allMachines = await storage.getAllMachines();
-    const allTechnicians = await storage.getAllTechnicians();
-    
-    let filteredServices = allServices;
-    
-    // Aplicar filtros de data
-    if (startDate && endDate) {
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
-      end.setHours(23, 59, 59, 999);
       
-      filteredServices = filteredServices.filter(service => {
-        const serviceDate = new Date(service.dataAgendamento);
-        return serviceDate >= start && serviceDate <= end;
-      });
-    }
-    
-    // Aplicar filtro de filial
-    if (branchFilter && branchFilter !== 'all') {
-      filteredServices = filteredServices.filter(service => {
+      if (statusFilter && statusFilter !== 'all') {
+        filteredServices = filteredServices.filter(service => 
+          service.status === statusFilter
+        );
+      }
+      
+      if (technicianId) {
+        filteredServices = filteredServices.filter(service => 
+          service.tecnicoId === technicianId
+        );
+      }
+      
+      if (machineId) {
+        filteredServices = filteredServices.filter(service => 
+          service.maquinaId === machineId
+        );
+      }
+      
+      if (serviceType) {
+        filteredServices = filteredServices.filter(service => 
+          service.tipoServico === serviceType
+        );
+      }
+      
+      const servicesByType = filteredServices.reduce((acc, service) => {
+        const type = service.tipoServico || 'OUTRO';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const servicesByStatus = filteredServices.reduce((acc, service) => {
+        const status = service.status || 'AGENDADO';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const servicesByTechnician = filteredServices.reduce((acc, service) => {
+        const tech = service.tecnicoNome || 'Desconhecido';
+        acc[tech] = (acc[tech] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const servicesByBranch = filteredServices.reduce((acc, service) => {
         const machine = allMachines.find(m => m.id === service.maquinaId);
-        return machine?.filial === branchFilter;
-      });
-    }
-    
-    // Agrupar por período escolhido
-    let costAnalysis = {};
-    
-    if (groupBy === 'month') {
-      costAnalysis = filteredServices.reduce((acc, service) => {
+        const branch = machine?.filial || 'Não especificada';
+        acc[branch] = (acc[branch] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const totalServices = filteredServices.length;
+      const completedServices = filteredServices.filter(s => s.status === 'CONCLUIDO').length;
+      const pendingServices = filteredServices.filter(s => 
+        s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO' || s.status === 'PENDENTE'
+      ).length;
+      const canceledServices = filteredServices.filter(s => s.status === 'CANCELADO').length;
+      
+      const completionRate = totalServices > 0 ? (completedServices / totalServices) * 100 : 0;
+      
+      const totalCost = filteredServices.reduce((sum, service) => {
+        const cost = parseFloat(service.custo) || 0;
+        return sum + cost;
+      }, 0);
+      
+      const avgCostPerService = totalServices > 0 ? totalCost / totalServices : 0;
+      
+      const topTechnicians = Object.entries(servicesByTechnician)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const servicesByMachine = filteredServices.reduce((acc, service) => {
+        const machine = allMachines.find(m => m.id === service.maquinaId);
+        const machineName = machine ? `${machine.codigo} - ${machine.modelo}` : 'Desconhecida';
+        acc[machineName] = (acc[machineName] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const topMachines = Object.entries(servicesByMachine)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const servicesByMonth = filteredServices.reduce((acc, service) => {
         const date = new Date(service.dataAgendamento);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        
-        const cost = parseFloat(service.custo) || 0;
+        const monthLabel = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
         
         if (!acc[monthKey]) {
           acc[monthKey] = {
             label: monthLabel,
-            totalCost: 0,
-            serviceCount: 0,
-            avgCost: 0,
-            breakdown: {}
+            completed: 0,
+            pending: 0,
+            total: 0
           };
         }
         
-        acc[monthKey].totalCost += cost;
-        acc[monthKey].serviceCount++;
-        acc[monthKey].avgCost = acc[monthKey].totalCost / acc[monthKey].serviceCount;
-        
-        // Detalhamento por tipo
-        const serviceType = service.tipoServico;
-        if (!acc[monthKey].breakdown[serviceType]) {
-          acc[monthKey].breakdown[serviceType] = {
-            cost: 0,
-            count: 0
-          };
+        acc[monthKey].total++;
+        if (service.status === 'CONCLUIDO') {
+          acc[monthKey].completed++;
+        } else if (service.status === 'AGENDADO' || service.status === 'EM_ANDAMENTO' || service.status === 'PENDENTE') {
+          acc[monthKey].pending++;
         }
-        acc[monthKey].breakdown[serviceType].cost += cost;
-        acc[monthKey].breakdown[serviceType].count++;
         
         return acc;
-      }, {} as Record<string, any>);
-    }
-    
-    // Calcular totais
-    const totalCost = filteredServices.reduce((sum, service) => {
-      return sum + (parseFloat(service.custo) || 0);
-    }, 0);
-    
-    const avgCostPerService = filteredServices.length > 0 ? totalCost / filteredServices.length : 0;
-    
-    // Serviços mais caros
-    const expensiveServices = filteredServices
-      .map(service => ({
-        id: service.id,
-        descricao: service.descricaoServico,
-        tipo: service.tipoServico,
-        tecnico: service.tecnicoNome,
-        data: service.dataAgendamento,
-        custo: parseFloat(service.custo) || 0
-      }))
-      .sort((a, b) => b.custo - a.custo)
-      .slice(0, 10);
-    
-    // Custo por técnico
-    const costByTechnician = filteredServices.reduce((acc, service) => {
-      const techName = service.tecnicoNome;
-      const cost = parseFloat(service.custo) || 0;
+      }, {} as Record<string, { label: string; completed: number; pending: number; total: number }>);
       
-      if (!acc[techName]) {
-        acc[techName] = {
-          totalCost: 0,
-          serviceCount: 0
-        };
+      const monthlyData = Object.values(servicesByMonth)
+        .sort((a, b) => {
+          const [aYear, aMonth] = a.label.split('/');
+          const [bYear, bMonth] = b.label.split('/');
+          return new Date(parseInt(aYear), aMonth.charCodeAt(0) - 97).getTime() - 
+                 new Date(parseInt(bYear), bMonth.charCodeAt(0) - 97).getTime();
+        });
+      
+      const urgentServices = filteredServices.filter(s => 
+        s.prioridade === 'URGENTE' || s.prioridade === 'ALTA'
+      ).length;
+      
+      const response = {
+        summary: {
+          totalServices,
+          completedServices,
+          pendingServices,
+          canceledServices,
+          completionRate: parseFloat(completionRate.toFixed(2)),
+          totalCost: parseFloat(totalCost.toFixed(2)),
+          avgCostPerService: parseFloat(avgCostPerService.toFixed(2)),
+          urgentServices
+        },
+        breakdown: {
+          byType: Object.entries(servicesByType).map(([name, count]) => ({ name, count })),
+          byStatus: Object.entries(servicesByStatus).map(([name, count]) => ({ name, count })),
+          byBranch: Object.entries(servicesByBranch).map(([name, count]) => ({ name, count })),
+          monthlyData,
+          topTechnicians,
+          topMachines
+        },
+        services: filteredServices.map(service => {
+          const machine = allMachines.find(m => m.id === service.maquinaId);
+          return {
+            id: service.id,
+            tipoServico: service.tipoServico,
+            descricaoServico: service.descricaoServico,
+            dataAgendamento: service.dataAgendamento,
+            dataConclusao: service.dataConclusao,
+            tecnicoNome: service.tecnicoNome,
+            status: service.status,
+            prioridade: service.prioridade,
+            custo: service.custo,
+            machineCodigo: machine?.codigo,
+            machineModelo: machine?.modelo,
+            machineFilial: machine?.filial,
+            machineLocalizacao: machine?.localizacaoDescricao
+          };
+        }),
+        filters: {
+          startDate,
+          endDate,
+          branchFilter,
+          statusFilter,
+          technicianId,
+          machineId,
+          serviceType
+        }
+      };
+      
+      console.log('✅ [REPORTS] Relatório gerado:', {
+        totalServices: response.summary.totalServices,
+        filtros: response.filters
+      });
+      
+      res.json({
+        success: true,
+        data: response
+      });
+      
+    } catch (error: any) {
+      console.error('❌ [REPORTS] Erro ao gerar relatório:', error);
+      res.status(500).json({ 
+        error: 'Erro ao gerar relatório',
+        message: error.message 
+      });
+    }
+  });
+
+  app.get('/api/reports/export/csv', authenticateToken, async (req, res) => {
+    try {
+      const {
+        startDate,
+        endDate,
+        branchFilter = 'all',
+        statusFilter = 'all'
+      } = req.query;
+      
+      const allServices = await storage.getAllServices();
+      const allMachines = await storage.getAllMachines();
+      
+      let filteredServices = allServices;
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        
+        filteredServices = filteredServices.filter(service => {
+          const serviceDate = new Date(service.dataAgendamento);
+          return serviceDate >= start && serviceDate <= end;
+        });
       }
       
-      acc[techName].totalCost += cost;
-      acc[techName].serviceCount++;
+      if (branchFilter && branchFilter !== 'all') {
+        filteredServices = filteredServices.filter(service => {
+          const machine = allMachines.find(m => m.id === service.maquinaId);
+          return machine?.filial === branchFilter;
+        });
+      }
       
-      return acc;
-    }, {} as Record<string, any>);
-    
-    const response = {
-      summary: {
-        totalCost: parseFloat(totalCost.toFixed(2)),
-        totalServices: filteredServices.length,
-        avgCostPerService: parseFloat(avgCostPerService.toFixed(2)),
-        period: {
-          start: startDate,
-          end: endDate
+      if (statusFilter && statusFilter !== 'all') {
+        filteredServices = filteredServices.filter(service => 
+          service.status === statusFilter
+        );
+      }
+      
+      const csvRows = [];
+      
+      csvRows.push([
+        'ID',
+        'Tipo de Serviço',
+        'Descrição',
+        'Data Agendamento',
+        'Data Conclusão',
+        'Técnico',
+        'Status',
+        'Prioridade',
+        'Custo (R$)',
+        'Código da Máquina',
+        'Modelo',
+        'Filial',
+        'Localização',
+        'Observações'
+      ].join(','));
+      
+      filteredServices.forEach(service => {
+        const machine = allMachines.find(m => m.id === service.maquinaId);
+        
+        const row = [
+          service.id,
+          `"${service.tipoServico || ''}"`,
+          `"${service.descricaoServico || ''}"`,
+          new Date(service.dataAgendamento).toISOString(),
+          service.dataConclusao ? new Date(service.dataConclusao).toISOString() : '',
+          `"${service.tecnicoNome || ''}"`,
+          service.status || '',
+          service.prioridade || '',
+          service.custo || '0',
+          `"${machine?.codigo || ''}"`,
+          `"${machine?.modelo || ''}"`,
+          `"${machine?.filial || ''}"`,
+          `"${machine?.localizacaoDescricao || ''}"`,
+          `"${service.observacoes || ''}"`
+        ].join(',');
+        
+        csvRows.push(row);
+      });
+      
+      const csvContent = csvRows.join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=relatorio_servicos_${new Date().toISOString().split('T')[0]}.csv`);
+      
+      res.send(csvContent);
+      
+    } catch (error: any) {
+      console.error('❌ [REPORTS] Erro ao exportar CSV:', error);
+      res.status(500).json({ 
+        error: 'Erro ao exportar relatório',
+        message: error.message 
+      });
+    }
+  });
+
+  app.get('/api/reports/real-time-stats', authenticateToken, async (req, res) => {
+    try {
+      const allServices = await storage.getAllServices();
+      const allMachines = await storage.getAllMachines();
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const todayServices = allServices.filter(service => {
+        const serviceDate = new Date(service.dataAgendamento);
+        return serviceDate >= today && serviceDate < tomorrow;
+      });
+      
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const weekServices = allServices.filter(service => {
+        const serviceDate = new Date(service.dataAgendamento);
+        return serviceDate >= weekAgo;
+      });
+      
+      const problemMachines = allMachines.filter(m => 
+        m.status === 'DEFEITO' || m.status === 'MANUTENCAO'
+      ).length;
+      
+      const weekServicesByTech = weekServices.reduce((acc, service) => {
+        const tech = service.tecnicoNome || 'Desconhecido';
+        acc[tech] = (acc[tech] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const topActiveTechs = Object.entries(weekServicesByTech)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      
+      const response = {
+        today: {
+          total: todayServices.length,
+          completed: todayServices.filter(s => s.status === 'CONCLUIDO').length,
+          pending: todayServices.filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO').length
+        },
+        week: {
+          total: weekServices.length,
+          completed: weekServices.filter(s => s.status === 'CONCLUIDO').length,
+          completionRate: weekServices.length > 0 ? 
+            (weekServices.filter(s => s.status === 'CONCLUIDO').length / weekServices.length) * 100 : 0
+        },
+        machines: {
+          total: allMachines.length,
+          active: allMachines.filter(m => m.status === 'ATIVO').length,
+          problems: problemMachines
+        },
+        technicians: {
+          total: (await storage.getAllTechnicians()).length,
+          active: topActiveTechs.length,
+          topActive: topActiveTechs
+        },
+        alerts: {
+          urgentServices: allServices.filter(s => s.prioridade === 'URGENTE' && s.status !== 'CONCLUIDO').length,
+          overdueServices: allServices.filter(s => {
+            const serviceDate = new Date(s.dataAgendamento);
+            return serviceDate < new Date() && s.status === 'AGENDADO';
+          }).length
         }
-      },
-      costAnalysis: Object.values(costAnalysis),
-      breakdown: {
-        byType: filteredServices.reduce((acc, service) => {
-          const type = service.tipoServico;
+      };
+      
+      res.json({
+        success: true,
+        data: response
+      });
+      
+    } catch (error: any) {
+      console.error('❌ [REPORTS] Erro ao buscar estatísticas em tempo real:', error);
+      res.status(500).json({ 
+        error: 'Erro ao buscar estatísticas',
+        message: error.message 
+      });
+    }
+  });
+
+  app.get('/api/reports/machine-history/:machineId', authenticateToken, async (req, res) => {
+    try {
+      const { machineId } = req.params;
+      
+      const services = await storage.getServicesByMachine(machineId);
+      const machine = await storage.getMachine(machineId);
+      
+      if (!machine) {
+        return res.status(404).json({ error: 'Máquina não encontrada' });
+      }
+      
+      const totalServices = services.length;
+      const completedServices = services.filter(s => s.status === 'CONCLUIDO').length;
+      const maintenanceCost = services.reduce((sum, service) => {
+        const cost = parseFloat(service.custo) || 0;
+        return sum + cost;
+      }, 0);
+      
+      const problemServices = services.filter(s => 
+        s.tipoServico === 'CORRETIVA' || s.descricaoProblema
+      );
+      
+      const lastPreventive = services
+        .filter(s => s.tipoServico === 'PREVENTIVA' && s.status === 'CONCLUIDO')
+        .sort((a, b) => new Date(b.dataConclusao || b.dataAgendamento).getTime() - 
+                       new Date(a.dataConclusao || a.dataAgendamento).getTime())[0];
+      
+      let nextPreventiveDate = null;
+      if (lastPreventive) {
+        const lastDate = new Date(lastPreventive.dataConclusao || lastPreventive.dataAgendamento);
+        nextPreventiveDate = new Date(lastDate);
+        nextPreventiveDate.setMonth(nextPreventiveDate.getMonth() + 3);
+      }
+      
+      const response = {
+        machine: {
+          id: machine.id,
+          codigo: machine.codigo,
+          modelo: machine.modelo,
+          marca: machine.marca,
+          status: machine.status,
+          localizacao: machine.localizacaoDescricao,
+          filial: machine.filial,
+          instalacao: machine.dataInstalacao
+        },
+        stats: {
+          totalServices,
+          completedServices,
+          completionRate: totalServices > 0 ? (completedServices / totalServices) * 100 : 0,
+          totalCost: maintenanceCost,
+          avgCostPerService: totalServices > 0 ? maintenanceCost / totalServices : 0,
+          problemCount: problemServices.length
+        },
+        preventiveMaintenance: {
+          last: lastPreventive ? {
+            date: lastPreventive.dataConclusao || lastPreventive.dataAgendamento,
+            technician: lastPreventive.tecnicoNome
+          } : null,
+          nextSuggested: nextPreventiveDate ? nextPreventiveDate.toISOString() : null
+        },
+        services: services.map(service => ({
+          id: service.id,
+          tipoServico: service.tipoServico,
+          descricaoServico: service.descricaoServico,
+          descricaoProblema: service.descricaoProblema,
+          dataAgendamento: service.dataAgendamento,
+          dataConclusao: service.dataConclusao,
+          tecnicoNome: service.tecnicoNome,
+          status: service.status,
+          prioridade: service.prioridade,
+          custo: service.custo,
+          observacoes: service.observacoes
+        }))
+      };
+      
+      res.json({
+        success: true,
+        data: response
+      });
+      
+    } catch (error: any) {
+      console.error('❌ [REPORTS] Erro ao buscar histórico da máquina:', error);
+      res.status(500).json({ 
+        error: 'Erro ao buscar histórico',
+        message: error.message 
+      });
+    }
+  });
+
+  app.get('/api/reports/cost-analysis', authenticateToken, async (req, res) => {
+    try {
+      const { 
+        startDate,
+        endDate,
+        branchFilter = 'all',
+        groupBy = 'month'
+      } = req.query;
+      
+      const allServices = await storage.getAllServices();
+      const allMachines = await storage.getAllMachines();
+      const allTechnicians = await storage.getAllTechnicians();
+      
+      let filteredServices = allServices;
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        
+        filteredServices = filteredServices.filter(service => {
+          const serviceDate = new Date(service.dataAgendamento);
+          return serviceDate >= start && serviceDate <= end;
+        });
+      }
+      
+      if (branchFilter && branchFilter !== 'all') {
+        filteredServices = filteredServices.filter(service => {
+          const machine = allMachines.find(m => m.id === service.maquinaId);
+          return machine?.filial === branchFilter;
+        });
+      }
+      
+      let costAnalysis = {};
+      
+      if (groupBy === 'month') {
+        costAnalysis = filteredServices.reduce((acc, service) => {
+          const date = new Date(service.dataAgendamento);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const monthLabel = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          
           const cost = parseFloat(service.custo) || 0;
           
-          if (!acc[type]) {
-            acc[type] = {
+          if (!acc[monthKey]) {
+            acc[monthKey] = {
+              label: monthLabel,
               totalCost: 0,
-              serviceCount: 0
+              serviceCount: 0,
+              avgCost: 0,
+              breakdown: {}
             };
           }
           
-          acc[type].totalCost += cost;
-          acc[type].serviceCount++;
+          acc[monthKey].totalCost += cost;
+          acc[monthKey].serviceCount++;
+          acc[monthKey].avgCost = acc[monthKey].totalCost / acc[monthKey].serviceCount;
+          
+          const serviceType = service.tipoServico;
+          if (!acc[monthKey].breakdown[serviceType]) {
+            acc[monthKey].breakdown[serviceType] = {
+              cost: 0,
+              count: 0
+            };
+          }
+          acc[monthKey].breakdown[serviceType].cost += cost;
+          acc[monthKey].breakdown[serviceType].count++;
           
           return acc;
-        }, {} as Record<string, any>),
-        byTechnician: costByTechnician
-      },
-      expensiveServices,
-      recommendations: generateCostRecommendations(filteredServices, allMachines)
-    };
-    
-    res.json({
-      success: true,
-      data: response
-    });
-    
-  } catch (error: any) {
-    console.error('❌ [REPORTS] Erro na análise de custos:', error);
-    res.status(500).json({ 
-      error: 'Erro na análise de custos',
-      message: error.message 
-    });
-  }
-});
+        }, {} as Record<string, any>);
+      }
+      
+      const totalCost = filteredServices.reduce((sum, service) => {
+        return sum + (parseFloat(service.custo) || 0);
+      }, 0);
+      
+      const avgCostPerService = filteredServices.length > 0 ? totalCost / filteredServices.length : 0;
+      
+      const expensiveServices = filteredServices
+        .map(service => ({
+          id: service.id,
+          descricao: service.descricaoServico,
+          tipo: service.tipoServico,
+          tecnico: service.tecnicoNome,
+          data: service.dataAgendamento,
+          custo: parseFloat(service.custo) || 0
+        }))
+        .sort((a, b) => b.custo - a.custo)
+        .slice(0, 10);
+      
+      const costByTechnician = filteredServices.reduce((acc, service) => {
+        const techName = service.tecnicoNome;
+        const cost = parseFloat(service.custo) || 0;
+        
+        if (!acc[techName]) {
+          acc[techName] = {
+            totalCost: 0,
+            serviceCount: 0
+          };
+        }
+        
+        acc[techName].totalCost += cost;
+        acc[techName].serviceCount++;
+        
+        return acc;
+      }, {} as Record<string, any>);
+      
+      const response = {
+        summary: {
+          totalCost: parseFloat(totalCost.toFixed(2)),
+          totalServices: filteredServices.length,
+          avgCostPerService: parseFloat(avgCostPerService.toFixed(2)),
+          period: {
+            start: startDate,
+            end: endDate
+          }
+        },
+        costAnalysis: Object.values(costAnalysis),
+        breakdown: {
+          byType: filteredServices.reduce((acc, service) => {
+            const type = service.tipoServico;
+            const cost = parseFloat(service.custo) || 0;
+            
+            if (!acc[type]) {
+              acc[type] = {
+                totalCost: 0,
+                serviceCount: 0
+              };
+            }
+            
+            acc[type].totalCost += cost;
+            acc[type].serviceCount++;
+            
+            return acc;
+          }, {} as Record<string, any>),
+          byTechnician: costByTechnician
+        },
+        expensiveServices,
+        recommendations: generateCostRecommendations(filteredServices, allMachines)
+      };
+      
+      res.json({
+        success: true,
+        data: response
+      });
+      
+    } catch (error: any) {
+      console.error('❌ [REPORTS] Erro na análise de custos:', error);
+      res.status(500).json({ 
+        error: 'Erro na análise de custos',
+        message: error.message 
+      });
+    }
+  });
+  
+  return httpServer;
+}
 
-// Função auxiliar para gerar recomendações de custos
 function generateCostRecommendations(services: any[], machines: any[]) {
   const recommendations = [];
   
-  // Análise de custo por máquina
   const costByMachine = services.reduce((acc, service) => {
     const machine = machines.find(m => m.id === service.maquinaId);
     if (!machine) return acc;
@@ -1863,9 +1561,8 @@ function generateCostRecommendations(services: any[], machines: any[]) {
     return acc;
   }, {} as Record<string, any>);
   
-  // Identificar máquinas com alto custo de manutenção
   const highCostMachines = Object.values(costByMachine)
-    .filter((item: any) => item.totalCost > 1000) // Exemplo: máquinas com custo > R$1000
+    .filter((item: any) => item.totalCost > 1000)
     .sort((a: any, b: any) => b.totalCost - a.totalCost);
   
   if (highCostMachines.length > 0) {
@@ -1882,7 +1579,6 @@ function generateCostRecommendations(services: any[], machines: any[]) {
     });
   }
   
-  // Identificar serviços preventivos em falta
   const machinesNeedingPreventive = machines.filter(machine => {
     const lastPreventive = services
       .filter(s => s.maquinaId === machine.id && s.tipoServico === 'PREVENTIVA')
@@ -1892,7 +1588,7 @@ function generateCostRecommendations(services: any[], machines: any[]) {
     
     const lastDate = new Date(lastPreventive.dataAgendamento);
     const monthsSince = (new Date().getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
-    return monthsSince > 6; // Mais de 6 meses sem manutenção preventiva
+    return monthsSince > 6;
   });
   
   if (machinesNeedingPreventive.length > 0) {
@@ -1909,7 +1605,4 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   }
   
   return recommendations;
-}
-  
-  return httpServer;
 }
