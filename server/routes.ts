@@ -741,21 +741,28 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
       observacoes: validatedData.observacoes
     };
     
-    // CORREÇÃO: Combinar data e hora se data existir
+    // CORREÇÃO: Verificar e processar data_agendamento corretamente
     if (validatedData.dataAgendamento) {
-      let dataAgendamento;
-      if (validatedData.horaAgendamento) {
-        const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-        const [hour, minute] = validatedData.horaAgendamento.split(':').map(Number);
-        const localDate = new Date(year, month - 1, day, hour, minute, 0);
-        dataAgendamento = localDate.toISOString();
-      } else {
-        const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
-        const localDate = new Date(year, month - 1, day, 12, 0, 0);
-        dataAgendamento = localDate.toISOString();
+      try {
+        // Verificar se é uma string ISO válida
+        const dateStr = validatedData.dataAgendamento;
+        if (typeof dateStr === 'string' && dateStr.includes('T')) {
+          // Já está em formato ISO, usar como está
+          serviceData.data_agendamento = dateStr;
+          console.log('📅 [SERVICES] Data ISO recebida:', dateStr);
+        } else {
+          // Tentar parsear como Date
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            serviceData.data_agendamento = date.toISOString();
+            console.log('📅 [SERVICES] Data convertida para ISO:', serviceData.data_agendamento);
+          } else {
+            console.warn('⚠️ [SERVICES] Data inválida, ignorando:', dateStr);
+          }
+        }
+      } catch (error: any) {
+        console.warn('⚠️ [SERVICES] Erro ao processar data:', error.message);
       }
-      serviceData.data_agendamento = dataAgendamento;
-      console.log('📅 [SERVICES] Data agendamento para atualização:', dataAgendamento);
     }
     
     // Remover campos undefined
@@ -794,7 +801,101 @@ app.put('/api/services/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    res.status(500).json({ error: 'Erro ao atualizar serviço' });
+    res.status(500).json({ 
+      error: 'Erro ao atualizar serviço',
+      message: error.message 
+    });
+  }
+});
+
+// Na rota POST /api/services (substitua completamente):
+
+// POST criar novo serviço (CORRIGIDO)
+app.post('/api/services', authenticateToken, async (req, res) => {
+  console.log('🔍 [SERVICES] Criando novo serviço...');
+  console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    // Valida com schema customizado
+    const validatedData = serviceRequestSchema.parse(req.body);
+    
+    console.log('✅ [SERVICES] Dados validados:', validatedData);
+    
+    // CORREÇÃO: Processar data_agendamento corretamente
+    let dataAgendamentoStr: string;
+    try {
+      if (typeof validatedData.dataAgendamento === 'string') {
+        // Verificar se já é uma string ISO válida
+        const date = new Date(validatedData.dataAgendamento);
+        if (!isNaN(date.getTime())) {
+          dataAgendamentoStr = date.toISOString();
+        } else {
+          // Se não for ISO, tentar combinar com hora
+          if (validatedData.horaAgendamento) {
+            const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
+            const [hour, minute] = validatedData.horaAgendamento.split(':').map(Number);
+            const localDate = new Date(year, month - 1, day, hour, minute, 0);
+            dataAgendamentoStr = localDate.toISOString();
+          } else {
+            // Usar meio-dia como padrão
+            const [year, month, day] = validatedData.dataAgendamento.split('-').map(Number);
+            const localDate = new Date(year, month - 1, day, 12, 0, 0);
+            dataAgendamentoStr = localDate.toISOString();
+          }
+        }
+      } else {
+        // Se for Date, converter para ISO
+        dataAgendamentoStr = validatedData.dataAgendamento.toISOString();
+      }
+    } catch (error) {
+      console.error('❌ [SERVICES] Erro ao processar data, usando data atual:', error);
+      dataAgendamentoStr = new Date().toISOString();
+    }
+    
+    console.log('📅 [SERVICES] Data agendamento processada:', dataAgendamentoStr);
+    
+    // Preparar dados
+    const serviceData = {
+      tipo_servico: validatedData.tipoServico,
+      maquina_id: validatedData.maquinaId,
+      tecnico_id: validatedData.tecnicoId,
+      descricao_servico: validatedData.descricaoServico,
+      descricao_problema: validatedData.descricaoProblema || '',
+      data_agendamento: dataAgendamentoStr, // Enviar string ISO
+      prioridade: validatedData.prioridade || 'MEDIA',
+      status: validatedData.status || 'AGENDADO',
+      observacoes: validatedData.observacoes || ''
+    };
+    
+    console.log('📝 [SERVICES] Dados para criação:', JSON.stringify(serviceData, null, 2));
+    
+    const service = await storage.createService(serviceData);
+    
+    console.log('✅ [SERVICES] Serviço criado com ID:', service.id);
+    
+    res.status(201).json({
+      success: true,
+      data: service,
+      message: 'Serviço agendado com sucesso'
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [SERVICES] Erro ao criar serviço:', error);
+    
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ 
+        error: 'Erro de validação',
+        details: error.errors.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erro ao criar serviço',
+      message: error.message 
+    });
   }
 });
 
