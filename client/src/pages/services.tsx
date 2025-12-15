@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, PenTool } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, PenTool, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -32,7 +32,7 @@ const serviceSchema = z.object({
   tipoServico: z.string(),
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
   dataAgendamento: z.string().min(1, "Data é obrigatória"),
-  horaAgendamento: z.string(),
+  horaAgendamento: z.string().min(1, "Hora é obrigatória"),
   tecnicoId: z.string().min(1, "Técnico é obrigatório"),
   descricaoServico: z.string().min(1, "Descrição é obrigatória"),
   descricaoProblema: z.string().optional(),
@@ -181,6 +181,11 @@ export default function ServicesPage() {
     }
   };
 
+  const clearMachineSearch = () => {
+    setMachineSearch('');
+    form.setValue('maquinaId', '');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -206,64 +211,80 @@ export default function ServicesPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo de busca e seleção de máquina */}
-                  <div className="md:col-span-2 space-y-2">
-                    <FormLabel>Máquina *</FormLabel>
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Buscar máquina por código, modelo ou filial..."
-                          value={machineSearch}
-                          onChange={(e) => setMachineSearch(e.target.value)}
-                          className="pl-9"
-                        />
-                      </div>
-                      
-                      <div className="border rounded-md max-h-48 overflow-y-auto">
-                        {filteredMachines.length === 0 ? (
-                          <div className="p-4 text-center text-muted-foreground">
-                            Nenhuma máquina encontrada
-                          </div>
-                        ) : (
-                          <div className="p-2 space-y-1">
-                            {filteredMachines.map(m => (
-                              <div
-                                key={m.id}
-                                className={`p-3 rounded-md cursor-pointer transition-colors hover:bg-muted ${form.watch('maquinaId') === m.id ? 'bg-primary/10 border border-primary' : ''}`}
-                                onClick={() => handleMachineSelect(m.id)}
+                  {/* Campo de seleção de máquina - Corrigido com FormField */}
+                  <FormField
+                    control={form.control}
+                    name="maquinaId"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Máquina</FormLabel>
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Buscar máquina por código, modelo ou filial..."
+                              value={machineSearch}
+                              onChange={(e) => setMachineSearch(e.target.value)}
+                              className="pl-9"
+                            />
+                            {machineSearch && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-2 top-2 h-6 w-6"
+                                onClick={clearMachineSearch}
                               >
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="font-medium">{m.codigo}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {m.modelo} • {m.marca} • {m.filial}
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <div className="border rounded-md max-h-48 overflow-y-auto">
+                            {filteredMachines.length === 0 ? (
+                              <div className="p-4 text-center text-muted-foreground">
+                                Nenhuma máquina encontrada
+                              </div>
+                            ) : (
+                              <div className="p-2 space-y-1">
+                                {filteredMachines.map(m => (
+                                  <div
+                                    key={m.id}
+                                    className={`p-3 rounded-md cursor-pointer transition-colors hover:bg-muted ${field.value === m.id ? 'bg-primary/10 border border-primary' : ''}`}
+                                    onClick={() => {
+                                      field.onChange(m.id);
+                                      setMachineSearch(m.codigo);
+                                    }}
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <div>
+                                        <div className="font-medium">{m.codigo}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {m.modelo} • {m.marca} • {m.filial}
+                                        </div>
+                                      </div>
+                                      {field.value === m.id && (
+                                        <CheckCircle className="h-4 w-4 text-primary" />
+                                      )}
                                     </div>
                                   </div>
-                                  {form.watch('maquinaId') === m.id && (
-                                    <CheckCircle className="h-4 w-4 text-primary" />
-                                  )}
-                                </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        )}
-                      </div>
-                      
-                      {form.watch('maquinaId') && (
-                        <div className="text-sm text-muted-foreground">
-                          Máquina selecionada: <span className="font-medium">
-                            {machines.find(m => m.id === form.watch('maquinaId'))?.codigo}
-                          </span>
+                          
+                          {field.value && (
+                            <div className="text-sm text-muted-foreground">
+                              Máquina selecionada: <span className="font-medium">
+                                {machines.find(m => m.id === field.value)?.codigo}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {form.formState.errors.maquinaId && (
-                      <p className="text-sm font-medium text-destructive">
-                        {form.formState.errors.maquinaId.message}
-                      </p>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
 
                   <FormField
                     control={form.control}
