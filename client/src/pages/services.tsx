@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { format, parseISO, isAfter, isBefore } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +32,7 @@ const serviceSchema = z.object({
   tipoServico: z.string(),
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
   dataAgendamento: z.string().min(1, "Data é obrigatória"),
-  horaAgendamento: z.string().min(1, "Hora é obrigatória"),
+  horaAgendamento: z.string(),
   tecnicoId: z.string().min(1, "Técnico é obrigatório"),
   descricaoServico: z.string().min(1, "Descrição é obrigatória"),
   descricaoProblema: z.string().optional(),
@@ -48,14 +48,6 @@ export default function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [machineSearch, setMachineSearch] = useState('');
   const [filteredMachines, setFilteredMachines] = useState(machines);
-  
-  // Debug: logar quando os serviços mudam
-  useEffect(() => {
-    console.log('🔄 [SERVICES] Serviços atualizados:', services.length);
-    services.forEach((service, index) => {
-      console.log(`   ${index + 1}. ID: ${service.id.substring(0, 8)}..., Data: ${service.dataAgendamento}`);
-    });
-  }, [services]);
 
   useEffect(() => {
     if (machineSearch.trim() === '') {
@@ -100,17 +92,20 @@ export default function ServicesPage() {
 
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
     // CORREÇÃO: Criar a data no formato ISO CORRETAMENTE
-    // Usar UTC para evitar problemas de fuso horário
-    const [year, month, day] = data.dataAgendamento.split('-').map(Number);
-    const [hours, minutes] = data.horaAgendamento.split(':').map(Number);
+    // O backend espera uma string ISO: "2025-12-18T08:00:00.000Z"
+    const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento}:00`);
     
-    // Criar data no formato ISO com UTC
-    const dateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+    // Verificar se a data é válida
+    if (isNaN(dateTime.getTime())) {
+      console.error('❌ Data inválida:', data.dataAgendamento, data.horaAgendamento);
+      return;
+    }
+    
     const isoString = dateTime.toISOString();
     
     console.log('📅 Data selecionada:', data.dataAgendamento);
     console.log('⏰ Hora selecionada:', data.horaAgendamento);
-    console.log('📊 Data criada:', isoString);
+    console.log('📊 Data criada (ISO):', isoString);
     console.log('📅 Data local:', dateTime.toLocaleString('pt-BR'));
 
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
@@ -118,7 +113,8 @@ export default function ServicesPage() {
     const formattedData = {
       tipoServico: data.tipoServico as ServiceType,
       maquinaId: data.maquinaId,
-      dataAgendamento: isoString, // Usar a ISO string correta
+      dataAgendamento: isoString, // Enviar string ISO
+      horaAgendamento: data.horaAgendamento,
       tecnicoId: data.tecnicoId,
       tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       descricaoServico: data.descricaoServico,
@@ -127,6 +123,8 @@ export default function ServicesPage() {
       status: data.status as ServiceStatus,
       observacoes: data.observacoes
     };
+
+    console.log('📤 Enviando dados para API:', formattedData);
 
     if (editingService) {
       console.log('✏️ Editando serviço:', editingService.id);
@@ -143,22 +141,12 @@ export default function ServicesPage() {
 
   const handleEdit = (service: Service) => {
     console.log('📝 Editando serviço:', service.id);
-    console.log('📅 Data do serviço:', service.dataAgendamento);
+    console.log('📅 Data do serviço do banco:', service.dataAgendamento);
     
     setEditingService(service);
-    let dateObj;
     
-    try {
-      // Tentar parsear a data do serviço
-      dateObj = parseISO(service.dataAgendamento);
-      if (isNaN(dateObj.getTime())) {
-        throw new Error('Data inválida');
-      }
-      console.log('✅ Data parseada:', dateObj.toISOString());
-    } catch (error) {
-      console.error('❌ Erro ao parsear data, usando data atual:', error);
-      dateObj = new Date();
-    }
+    // Converter a data ISO para o formato do input
+    const dateObj = new Date(service.dataAgendamento);
     
     form.reset({
       tipoServico: service.tipoServico,
@@ -497,11 +485,6 @@ export default function ServicesPage() {
         />
       </div>
 
-      {/* Informação de debug */}
-      <div className="text-sm text-muted-foreground">
-        Total de serviços: {services.length} | Última atualização: {new Date().toLocaleTimeString()}
-      </div>
-
       {/* Kanban-like List or Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredServices.length === 0 ? (
@@ -509,45 +492,18 @@ export default function ServicesPage() {
             Nenhum serviço encontrado com os filtros atuais.
           </div>
         ) : (
-          filteredServices.map((service, index) => {
+          filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            let serviceDate;
-            
-            try {
-              serviceDate = parseISO(service.dataAgendamento);
-              if (isNaN(serviceDate.getTime())) {
-                serviceDate = new Date();
-              }
-            } catch (error) {
-              console.error('❌ Erro ao parsear data para exibição:', error);
-              serviceDate = new Date();
-            }
-            
-            // Debug info
-            const isToday = format(serviceDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-            const isFuture = isAfter(serviceDate, new Date());
-            const isPast = isBefore(serviceDate, new Date());
-            
-            console.log(`📋 Serviço ${index + 1}: ID=${service.id.substring(0, 8)}..., DataISO=${service.dataAgendamento}, DataParseada=${serviceDate.toISOString()}, ÉHoje=${isToday}`);
+            const serviceDate = new Date(service.dataAgendamento);
             
             return (
               <div 
                 key={service.id} 
                 className={cn(
                   "flex flex-col p-5 rounded-xl border bg-card shadow-sm transition-all hover:shadow-md group relative overflow-hidden",
-                  service.status === 'CONCLUIDO' && "opacity-75 hover:opacity-100",
-                  isToday && "border-blue-300 dark:border-blue-700"
+                  service.status === 'CONCLUIDO' && "opacity-75 hover:opacity-100"
                 )}
               >
-                {/* Debug indicator */}
-                {isToday && (
-                  <div className="absolute top-2 right-2">
-                    <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                      HOJE
-                    </div>
-                  </div>
-                )}
-                
                 {/* Priority Stripe */}
                 <div className={cn(
                   "absolute left-0 top-0 bottom-0 w-1.5",
@@ -567,10 +523,6 @@ export default function ServicesPage() {
                       </span>
                     </div>
                     <h3 className="font-semibold text-lg leading-tight">{service.descricaoServico}</h3>
-                    {/* Debug: mostrar data ISO */}
-                    <div className="text-xs text-muted-foreground mt-1 font-mono">
-                      ID: {service.id.substring(0, 8)}... | Data: {service.dataAgendamento}
-                    </div>
                   </div>
                   <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => handleEdit(service)}>
                     <PenTool className="h-4 w-4" />
@@ -590,14 +542,6 @@ export default function ServicesPage() {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     <span>{format(serviceDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                    <span className={cn(
-                      "text-xs px-2 py-0.5 rounded-full",
-                      isFuture ? "bg-green-100 text-green-800" :
-                      isPast ? "bg-gray-100 text-gray-800" :
-                      "bg-blue-100 text-blue-800"
-                    )}>
-                      {isFuture ? "FUTURO" : isPast ? "PASSADO" : "HOJE"}
-                    </span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

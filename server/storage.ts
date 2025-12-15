@@ -1013,166 +1013,209 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createService(serviceData: InsertService): Promise<Service> {
+  // Na função createService (linhas ~350-400):
+async createService(serviceData: InsertService): Promise<Service> {
+  try {
+    console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
+    
+    // Obter nome do técnico
+    const technician = await this.getTechnician(serviceData.tecnico_id);
+    const tecnicoNome = technician?.nome || "Desconhecido";
+    
+    // CORREÇÃO: Processar data_agendamento corretamente
+    let dataAgendamento: Date;
     try {
-      console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
-      
-      // Obter nome do técnico
-      const technician = await this.getTechnician(serviceData.tecnico_id);
-      const tecnicoNome = technician?.nome || "Desconhecido";
-      
-      // Processar dados
-      const processedData = {
-        tipo_servico: serviceData.tipoServico || 'PREVENTIVA',
-        maquina_id: serviceData.maquinaId,
-        tecnico_id: serviceData.tecnicoId,
-        tecnico_nome: tecnicoNome,
-        descricao_servico: serviceData.descricaoServico || '',
-        descricao_problema: serviceData.descricaoProblema || '',
-        data_agendamento: serviceData.dataAgendamento && !isNaN(new Date(serviceData.dataAgendamento).getTime())
-          ? new Date(serviceData.dataAgendamento)
-          : new Date(),
-        data_conclusao: serviceData.dataConclusao 
-          ? new Date(serviceData.dataConclusao)
-          : undefined,
-        prioridade: serviceData.prioridade || 'MEDIA',
-        status: serviceData.status || 'AGENDADO',
-        custo: serviceData.custo || null,
-        observacoes: serviceData.observacoes || ''
-      };
-      
-      console.log('📝 [STORAGE] Dados processados para banco:', JSON.stringify(processedData, null, 2));
-      
-      const [service] = await db.insert(services).values({
-        ...processedData,
-        updated_at: new Date()
-      }).returning();
-      
-      // Adicionar ao histórico
-      await this.addServiceHistory({
-        serviceId: service.id,
-        status: service.status || 'AGENDADO',
-        observacao: "Serviço criado"
-      });
-      
-      console.log('✅ [STORAGE] Serviço criado com ID:', service.id);
-      
-      // Retornar no formato correto
-      return {
-        id: service.id,
-        tipoServico: service.tipo_servico || 'PREVENTIVA',
-        maquinaId: service.maquina_id || '',
-        tecnicoId: service.tecnico_id || '',
-        tecnicoNome: service.tecnico_nome || 'Desconhecido',
-        descricaoServico: service.descricao_servico || '',
-        descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: service.data_conclusao 
-          ? safeDateToISO(service.data_conclusao)
-          : undefined,
-        prioridade: service.prioridade || 'MEDIA',
-        status: service.status || 'AGENDADO',
-        custo: service.custo ? service.custo.toString() : '',
-        observacoes: service.observacoes || '',
-        createdAt: service.created_at || new Date(),
-        updatedAt: service.updated_at || new Date()
-      };
-    } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
-      throw error;
-    }
-  }
-
-  async updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined> {
-    try {
-      const updateData: any = {};
-      
-      // Mapear campos do frontend para o banco
-      if (serviceData.tipoServico !== undefined) updateData.tipo_servico = serviceData.tipoServico;
-      if (serviceData.maquinaId !== undefined) updateData.maquina_id = serviceData.maquinaId;
-      if (serviceData.tecnicoId !== undefined) {
-        updateData.tecnico_id = serviceData.tecnicoId;
-        // Buscar nome do técnico se o ID mudou
-        const technician = await this.getTechnician(serviceData.tecnicoId);
-        updateData.tecnico_nome = technician?.nome || "Desconhecido";
-      }
-      if (serviceData.descricaoServico !== undefined) updateData.descricao_servico = serviceData.descricaoServico;
-      if (serviceData.descricaoProblema !== undefined) updateData.descricao_problema = serviceData.descricaoProblema;
-      if (serviceData.dataAgendamento !== undefined) {
-        const date = new Date(serviceData.dataAgendamento);
-        if (!isNaN(date.getTime())) {
-          updateData.data_agendamento = date;
-        } else {
-          console.warn('⚠️ [STORAGE] Data inválida para serviço:', serviceData.dataAgendamento);
+      // Se data_agendamento é string, converter para Date
+      if (typeof serviceData.data_agendamento === 'string') {
+        dataAgendamento = new Date(serviceData.data_agendamento);
+        if (isNaN(dataAgendamento.getTime())) {
+          throw new Error('Data inválida');
         }
+      } else if (serviceData.data_agendamento instanceof Date) {
+        dataAgendamento = serviceData.data_agendamento;
+      } else {
+        throw new Error('Tipo de data inválido');
       }
-      if (serviceData.dataConclusao !== undefined) {
-        updateData.data_conclusao = serviceData.dataConclusao ? new Date(serviceData.dataConclusao) : null;
-      }
-      if (serviceData.prioridade !== undefined) updateData.prioridade = serviceData.prioridade;
-      if (serviceData.status !== undefined) updateData.status = serviceData.status;
-      if (serviceData.custo !== undefined) updateData.custo = serviceData.custo;
-      if (serviceData.observacoes !== undefined) updateData.observacoes = serviceData.observacoes;
-      
-      updateData.updated_at = new Date();
-      
-      console.log('📝 [STORAGE] Atualizando serviço:', id);
-      console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
-      
-      const [service] = await db.update(services)
-        .set(updateData)
-        .where(eq(services.id, id))
-        .returning();
-      
-      if (!service) return undefined;
-      
-      // Adicionar ao histórico se status mudou
-      if (serviceData.status) {
-        await this.addServiceHistory({
-          serviceId: id,
-          status: serviceData.status,
-          observacao: "Status atualizado"
-        });
-      }
-      
-      console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
-      
-      // Retornar no formato correto
-      return {
-        id: service.id,
-        tipoServico: service.tipo_servico || 'PREVENTIVA',
-        maquinaId: service.maquina_id || '',
-        tecnicoId: service.tecnico_id || '',
-        tecnicoNome: service.tecnico_nome || 'Desconhecido',
-        descricaoServico: service.descricao_servico || '',
-        descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: service.data_conclusao 
-          ? safeDateToISO(service.data_conclusao)
-          : undefined,
-        prioridade: service.prioridade || 'MEDIA',
-        status: service.status || 'AGENDADO',
-        custo: service.custo ? service.custo.toString() : '',
-        observacoes: service.observacoes || '',
-        createdAt: service.created_at || new Date(),
-        updatedAt: service.updated_at || new Date()
-      };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao atualizar serviço:', error);
-      return undefined;
+      console.error('❌ [STORAGE] Erro ao processar data, usando data atual:', error);
+      dataAgendamento = new Date();
     }
+    
+    // Processar data_conclusao se existir
+    let dataConclusao: Date | null = null;
+    if (serviceData.data_conclusao) {
+      try {
+        if (typeof serviceData.data_conclusao === 'string') {
+          dataConclusao = new Date(serviceData.data_conclusao);
+        } else if (serviceData.data_conclusao instanceof Date) {
+          dataConclusao = serviceData.data_conclusao;
+        }
+      } catch (error) {
+        console.error('❌ [STORAGE] Erro ao processar data_conclusao:', error);
+      }
+    }
+    
+    // Processar dados
+    const processedData = {
+      tipo_servico: serviceData.tipo_servico || 'PREVENTIVA',
+      maquina_id: serviceData.maquina_id,
+      tecnico_id: serviceData.tecnico_id,
+      tecnico_nome: tecnicoNome,
+      descricao_servico: serviceData.descricao_servico || '',
+      descricao_problema: serviceData.descricao_problema || '',
+      data_agendamento: dataAgendamento, // USAR A DATA PROCESSADA
+      data_conclusao: dataConclusao,
+      prioridade: serviceData.prioridade || 'MEDIA',
+      status: serviceData.status || 'AGENDADO',
+      custo: serviceData.custo || null,
+      observacoes: serviceData.observacoes || ''
+    };
+    
+    console.log('📝 [STORAGE] Dados processados para banco:', JSON.stringify(processedData, null, 2));
+    console.log('📅 [STORAGE] Data agendamento processada:', dataAgendamento.toISOString());
+    
+    const [service] = await db.insert(services).values({
+      ...processedData,
+      updated_at: new Date()
+    }).returning();
+    
+    // Adicionar ao histórico
+    await this.addServiceHistory({
+      serviceId: service.id,
+      status: service.status || 'AGENDADO',
+      observacao: "Serviço criado"
+    });
+    
+    console.log('✅ [STORAGE] Serviço criado com ID:', service.id);
+    console.log('📅 [STORAGE] Data salva no banco:', service.data_agendamento);
+    
+    // Retornar no formato correto
+    return {
+      id: service.id,
+      tipoServico: service.tipo_servico || 'PREVENTIVA',
+      maquinaId: service.maquina_id || '',
+      tecnicoId: service.tecnico_id || '',
+      tecnicoNome: service.tecnico_nome || 'Desconhecido',
+      descricaoServico: service.descricao_servico || '',
+      descricaoProblema: service.descricao_problema || '',
+      dataAgendamento: safeDateToISO(service.data_agendamento),
+      dataConclusao: service.data_conclusao 
+        ? safeDateToISO(service.data_conclusao)
+        : undefined,
+      prioridade: service.prioridade || 'MEDIA',
+      status: service.status || 'AGENDADO',
+      custo: service.custo ? service.custo.toString() : '',
+      observacoes: service.observacoes || '',
+      createdAt: service.created_at || new Date(),
+      updatedAt: service.updated_at || new Date()
+    };
+  } catch (error: any) {
+    console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
+    console.error('❌ [STORAGE] Stack:', error.stack);
+    throw error;
   }
+}
 
-  async deleteService(id: string): Promise<boolean> {
-    try {
-      const result = await db.delete(services).where(eq(services.id, id));
-      return result.rowCount > 0;
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao deletar serviço:', error);
-      return false;
+// Na função updateService (linhas ~500-550):
+async updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined> {
+  try {
+    const updateData: any = {};
+    
+    // Mapear campos do frontend para o banco
+    if (serviceData.tipo_servico !== undefined) updateData.tipo_servico = serviceData.tipo_servico;
+    if (serviceData.maquina_id !== undefined) updateData.maquina_id = serviceData.maquina_id;
+    if (serviceData.tecnico_id !== undefined) {
+      updateData.tecnico_id = serviceData.tecnico_id;
+      // Buscar nome do técnico se o ID mudou
+      const technician = await this.getTechnician(serviceData.tecnico_id);
+      updateData.tecnico_nome = technician?.nome || "Desconhecido";
     }
+    if (serviceData.descricao_servico !== undefined) updateData.descricao_servico = serviceData.descricao_servico;
+    if (serviceData.descricao_problema !== undefined) updateData.descricao_problema = serviceData.descricao_problema;
+    
+    // CORREÇÃO: Processar data_agendamento corretamente
+    if (serviceData.data_agendamento !== undefined) {
+      try {
+        let dataAgendamento: Date;
+        if (typeof serviceData.data_agendamento === 'string') {
+          dataAgendamento = new Date(serviceData.data_agendamento);
+          if (isNaN(dataAgendamento.getTime())) {
+            throw new Error('Data inválida');
+          }
+        } else if (serviceData.data_agendamento instanceof Date) {
+          dataAgendamento = serviceData.data_agendamento;
+        } else {
+          throw new Error('Tipo de data inválido');
+        }
+        updateData.data_agendamento = dataAgendamento;
+        console.log('📅 [STORAGE] Data agendamento para atualização:', dataAgendamento.toISOString());
+      } catch (error: any) {
+        console.warn('⚠️ [STORAGE] Data inválida para atualização:', serviceData.data_agendamento, error.message);
+      }
+    }
+    
+    if (serviceData.data_conclusao !== undefined) {
+      try {
+        updateData.data_conclusao = serviceData.data_conclusao ? new Date(serviceData.data_conclusao) : null;
+      } catch (error) {
+        console.warn('⚠️ [STORAGE] Data conclusão inválida:', serviceData.data_conclusao);
+      }
+    }
+    
+    if (serviceData.prioridade !== undefined) updateData.prioridade = serviceData.prioridade;
+    if (serviceData.status !== undefined) updateData.status = serviceData.status;
+    if (serviceData.custo !== undefined) updateData.custo = serviceData.custo;
+    if (serviceData.observacoes !== undefined) updateData.observacoes = serviceData.observacoes;
+    
+    updateData.updated_at = new Date();
+    
+    console.log('📝 [STORAGE] Atualizando serviço:', id);
+    console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
+    
+    const [service] = await db.update(services)
+      .set(updateData)
+      .where(eq(services.id, id))
+      .returning();
+    
+    if (!service) return undefined;
+    
+    // Adicionar ao histórico se status mudou
+    if (serviceData.status) {
+      await this.addServiceHistory({
+        serviceId: id,
+        status: serviceData.status,
+        observacao: "Status atualizado"
+      });
+    }
+    
+    console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
+    console.log('📅 [STORAGE] Data atualizada no banco:', service.data_agendamento);
+    
+    // Retornar no formato correto
+    return {
+      id: service.id,
+      tipoServico: service.tipo_servico || 'PREVENTIVA',
+      maquinaId: service.maquina_id || '',
+      tecnicoId: service.tecnico_id || '',
+      tecnicoNome: service.tecnico_nome || 'Desconhecido',
+      descricaoServico: service.descricao_servico || '',
+      descricaoProblema: service.descricao_problema || '',
+      dataAgendamento: safeDateToISO(service.data_agendamento),
+      dataConclusao: service.data_conclusao 
+        ? safeDateToISO(service.data_conclusao)
+        : undefined,
+      prioridade: service.prioridade || 'MEDIA',
+      status: service.status || 'AGENDADO',
+      custo: service.custo ? service.custo.toString() : '',
+      observacoes: service.observacoes || '',
+      createdAt: service.created_at || new Date(),
+      updatedAt: service.updated_at || new Date()
+    };
+  } catch (error) {
+    console.error('❌ [STORAGE] Erro ao atualizar serviço:', error);
+    return undefined;
   }
+}
 
   // ========== SERVICE HISTORY ==========
   async addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory> {
