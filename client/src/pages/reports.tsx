@@ -57,7 +57,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
-// Função para formatar datas com segurança
+// Função para formatar datas com segurança - VERSÃO CORRIGIDA
 const safeDateFormat = (dateString: any): string => {
   if (!dateString) return 'Data não informada';
   
@@ -69,19 +69,19 @@ const safeDateFormat = (dateString: any): string => {
     
     const date = new Date(dateString);
     
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ Data inválida:', dateString);
-      return 'Data inválida';
+      return 'Data não informada';
     }
     
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   } catch (error) {
     console.error('❌ Erro ao formatar data:', error);
-    return 'Data inválida';
+    return 'Data não informada';
   }
 };
 
-// Função para formatar data/hora com segurança
+// Função para formatar data/hora com segurança - VERSÃO CORRIGIDA
 const safeDateTimeFormat = (dateString: any): string => {
   if (!dateString) return 'Data/hora não informada';
   
@@ -93,15 +93,15 @@ const safeDateTimeFormat = (dateString: any): string => {
     
     const date = new Date(dateString);
     
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ Data/hora inválida:', dateString);
-      return 'Data/hora inválida';
+      return 'Data/hora não informada';
     }
     
     return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   } catch (error) {
     console.error('❌ Erro ao formatar data/hora:', error);
-    return 'Data/hora inválida';
+    return 'Data/hora não informada';
   }
 };
 

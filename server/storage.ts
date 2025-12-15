@@ -103,7 +103,7 @@ export interface IStorage {
   }>>;
 }
 
-// Função auxiliar para converter snake_case para camelCase
+// Função auxiliar para converter snake_case para camelCase - VERSÃO CORRIGIDA
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
@@ -129,7 +129,22 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   if (tableName === 'machines') {
     if (result.location_type) result.locationType = result.location_type;
     if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
-    if (result.installation_date) result.installationDate = result.installation_date;
+    
+    // CORREÇÃO: Não criar Date inválido para installation_date
+    if (result.installation_date) {
+      // Verificar se a data é válida antes de converter
+      if (result.installation_date instanceof Date && !isNaN(result.installation_date.getTime())) {
+        result.installationDate = result.installation_date;
+      } else if (typeof result.installation_date === 'string') {
+        const date = new Date(result.installation_date);
+        if (!isNaN(date.getTime())) {
+          result.installationDate = date;
+        } else {
+          result.installationDate = new Date(); // Fallback
+        }
+      }
+    }
+    
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
@@ -147,8 +162,39 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.tecnico_nome) result.tecnicoNome = result.tecnico_nome;
     if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
     if (result.descricao_problema) result.descricaoProblema = result.descricao_problema;
-    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
-    if (result.data_conclusao) result.dataConclusao = result.data_conclusao;
+    
+    // CORREÇÃO: Não criar Date inválido para data_agendamento
+    if (result.data_agendamento) {
+      if (result.data_agendamento instanceof Date && !isNaN(result.data_agendamento.getTime())) {
+        result.dataAgendamento = result.data_agendamento;
+      } else if (typeof result.data_agendamento === 'string') {
+        const date = new Date(result.data_agendamento);
+        if (!isNaN(date.getTime())) {
+          result.dataAgendamento = date;
+        } else {
+          result.dataAgendamento = new Date(); // Fallback
+        }
+      }
+    }
+    
+    // CORREÇÃO: Não criar Date inválido para data_conclusao
+    if (result.data_conclusao) {
+      if (result.data_conclusao instanceof Date && !isNaN(result.data_conclusao.getTime())) {
+        result.dataConclusao = result.data_conclusao;
+      } else if (typeof result.data_conclusao === 'string') {
+        const date = new Date(result.data_conclusao);
+        if (!isNaN(date.getTime())) {
+          result.dataConclusao = date;
+        } else {
+          result.dataConclusao = null;
+        }
+      } else {
+        result.dataConclusao = null;
+      }
+    } else {
+      result.dataConclusao = null;
+    }
+    
     if (result.custo) result.custo = result.custo.toString();
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
@@ -252,61 +298,48 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para validar e formatar datas - VERSÃO FINAL CORRIGIDA
+// Função auxiliar para validar e formatar datas - VERSÃO COMPLETAMENTE CORRIGIDA
 function safeDateToISO(dateValue: any): string {
   // Se for nulo/vazio, retornar string vazia
-  if (!dateValue || dateValue === null || dateValue === undefined || dateValue === '') {
-    console.log('📅 [safeDateToISO] Valor nulo/vazio, retornando string vazia');
+  if (!dateValue) {
     return '';
   }
   
   try {
-    // Verificar se é um objeto Date inválido
+    // Se for um objeto Date
     if (dateValue instanceof Date) {
+      // Verificar se é um Date válido
       if (isNaN(dateValue.getTime())) {
-        console.warn('⚠️ [safeDateToISO] Objeto Date inválido detectado, retornando string vazia');
+        console.warn('⚠️ [safeDateToISO] Date inválido detectado');
         return '';
       }
       return dateValue.toISOString();
     }
     
-    // Se for uma string ISO válida, retornar como está
+    // Se for string
     if (typeof dateValue === 'string') {
-      // Limpar a string
       const cleanStr = dateValue.trim();
-      
-      // Verificar se string está vazia
       if (cleanStr === '') {
         return '';
       }
       
-      // Se já terminar com Z, verificar se é válida
-      if (cleanStr.endsWith('Z')) {
-        const date = new Date(cleanStr);
-        if (!isNaN(date.getTime())) {
-          return cleanStr;
-        }
-      }
-      
-      // Tentar parsear como Date
+      // Tentar parsear
       const date = new Date(cleanStr);
       if (!isNaN(date.getTime())) {
         return date.toISOString();
       }
       
       // Tentar formatos específicos
-      // Formato YYYY-MM-DD
-      const dateRegex = /^(\d{4})-(\d{2})-(\d{2})/;
-      const match = cleanStr.match(dateRegex);
-      if (match) {
-        const [_, year, month, day] = match.map(Number);
+      // Formato ISO
+      const isoMatch = cleanStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const [_, year, month, day] = isoMatch.map(Number);
         const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
           return date.toISOString();
         }
       }
       
-      console.warn('⚠️ [safeDateToISO] String não pôde ser parseada:', cleanStr);
       return '';
     }
     
@@ -318,12 +351,6 @@ function safeDateToISO(dateValue: any): string {
       }
     }
     
-    // Se chegar aqui, é um tipo não suportado ou valor inválido
-    console.warn('⚠️ [safeDateToISO] Tipo não suportado ou valor inválido:', 
-      typeof dateValue, 
-      'Valor:', 
-      dateValue && dateValue.toString ? dateValue.toString() : dateValue
-    );
     return '';
     
   } catch (error) {
@@ -332,10 +359,9 @@ function safeDateToISO(dateValue: any): string {
   }
 }
 
-// Função auxiliar para converter qualquer valor para Date
+// Função auxiliar para converter qualquer valor para Date - VERSÃO SIMPLIFICADA
 function anyToDate(dateValue: any): Date {
   if (!dateValue) {
-    console.log('📅 [anyToDate] Valor nulo/vazio, usando data atual');
     return new Date();
   }
   
@@ -343,7 +369,6 @@ function anyToDate(dateValue: any): Date {
     // Se já for Date, retornar como está
     if (dateValue instanceof Date) {
       if (isNaN(dateValue.getTime())) {
-        console.warn('⚠️ [anyToDate] Date inválido, usando data atual');
         return new Date();
       }
       return dateValue;
@@ -351,20 +376,14 @@ function anyToDate(dateValue: any): Date {
     
     // Se for string, tentar parse
     if (typeof dateValue === 'string') {
-      // Remover espaços
       const cleanStr = dateValue.trim();
-      
-      // Verificar se string está vazia
       if (cleanStr === '') {
-        console.log('📅 [anyToDate] String vazia, usando data atual');
         return new Date();
       }
       
       // Tentar parse ISO
       const date = new Date(cleanStr);
-      
       if (!isNaN(date.getTime())) {
-        console.log('📅 [anyToDate] String parseada com sucesso:', cleanStr, '→', date.toISOString());
         return date;
       }
       
@@ -373,8 +392,9 @@ function anyToDate(dateValue: any): Date {
       if (brMatch) {
         const [_, day, month, year] = brMatch.map(Number);
         const date = new Date(year, month - 1, day);
-        console.log('📅 [anyToDate] Formato BR parseado:', cleanStr, '→', date.toISOString());
-        return date;
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
       }
       
       // Tentar formato YYYY-MM-DD
@@ -382,20 +402,17 @@ function anyToDate(dateValue: any): Date {
       if (isoMatch) {
         const [_, year, month, day] = isoMatch.map(Number);
         const date = new Date(year, month - 1, day);
-        console.log('📅 [anyToDate] Formato YYYY-MM-DD parseado:', cleanStr, '→', date.toISOString());
-        return date;
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
       }
-      
-      console.warn('⚠️ [anyToDate] String não pôde ser parseada:', cleanStr);
     }
     
     // Fallback para data atual
-    console.log('📅 [anyToDate] Usando data atual como fallback');
     return new Date();
     
   } catch (error) {
     console.warn('⚠️ [anyToDate] Erro:', error);
-    console.log('📅 [anyToDate] Usando data atual como fallback');
     return new Date();
   }
 }
@@ -861,6 +878,9 @@ export class DatabaseStorage implements IStorage {
     try {
       const servicesList = await db.select().from(services).orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
+        // Extrair dados para debugging
+        const dataAgendamento = service.data_agendamento;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -870,7 +890,7 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
+          dataAgendamento: safeDateToISO(dataAgendamento),
           dataConclusao: service.data_conclusao 
             ? safeDateToISO(service.data_conclusao)
             : '',

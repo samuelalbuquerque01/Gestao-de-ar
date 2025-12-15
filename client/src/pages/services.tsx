@@ -28,7 +28,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-// Função para formatar data/hora com segurança
+// Função para formatar data/hora com segurança - VERSÃO CORRIGIDA
 const safeDateTimeFormat = (dateValue: any): string => {
   if (!dateValue) return 'Data/hora não informada';
   
@@ -40,15 +40,15 @@ const safeDateTimeFormat = (dateValue: any): string => {
     
     const date = new Date(dateValue);
     
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ Data/hora inválida:', dateValue);
-      return 'Data/hora inválida';
+      return 'Data/hora não informada';
     }
     
     return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   } catch (error) {
     console.error('❌ Erro ao formatar data/hora:', error);
-    return 'Data/hora inválida';
+    return 'Data/hora não informada';
   }
 };
 

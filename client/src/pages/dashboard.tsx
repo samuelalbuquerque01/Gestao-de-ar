@@ -18,7 +18,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Função auxiliar para validar e formatar datas com segurança
+// Função auxiliar para validar e formatar datas com segurança - VERSÃO CORRIGIDA
 const safeDateFormat = (dateValue: any): string => {
   if (!dateValue) return 'Data não informada';
   
@@ -28,41 +28,30 @@ const safeDateFormat = (dateValue: any): string => {
       return 'Data não informada';
     }
     
+    // Criar objeto Date
     const date = new Date(dateValue);
     
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ Data inválida:', dateValue);
-      return 'Data inválida';
+      return 'Data não informada';
     }
     
     return format(date, "dd 'de' MMMM", { locale: ptBR });
   } catch (error) {
     console.error('❌ Erro ao formatar data:', error);
-    return 'Data inválida';
+    return 'Data não informada';
   }
 };
 
-// Função para formatar data/hora completa com segurança
-const safeDateTimeFormat = (dateValue: any): string => {
-  if (!dateValue) return 'Data/hora não informada';
+// Função segura para comparar datas
+const safeDateCompare = (dateValue: any): number => {
+  if (!dateValue) return 0;
   
   try {
-    // Se for string, verificar se está vazia
-    if (typeof dateValue === 'string' && dateValue.trim() === '') {
-      return 'Data/hora não informada';
-    }
-    
     const date = new Date(dateValue);
-    
-    if (isNaN(date.getTime())) {
-      console.warn('⚠️ Data/hora inválida:', dateValue);
-      return 'Data/hora inválida';
-    }
-    
-    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    return isNaN(date.getTime()) ? 0 : date.getTime();
   } catch (error) {
-    console.error('❌ Erro ao formatar data/hora:', error);
-    return 'Data/hora inválida';
+    return 0;
   }
 };
 
@@ -250,8 +239,8 @@ export default function Dashboard() {
             {services
               .filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO')
               .sort((a, b) => {
-                const dateA = a.dataAgendamento ? new Date(a.dataAgendamento).getTime() : 0;
-                const dateB = b.dataAgendamento ? new Date(b.dataAgendamento).getTime() : 0;
+                const dateA = safeDateCompare(a.dataAgendamento);
+                const dateB = safeDateCompare(b.dataAgendamento);
                 return dateA - dateB;
               })
               .slice(0, 5)
