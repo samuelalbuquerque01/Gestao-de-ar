@@ -18,6 +18,54 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// Função auxiliar para validar e formatar datas com segurança
+const safeDateFormat = (dateValue: any): string => {
+  if (!dateValue) return 'Data não informada';
+  
+  try {
+    // Se for string, verificar se está vazia
+    if (typeof dateValue === 'string' && dateValue.trim() === '') {
+      return 'Data não informada';
+    }
+    
+    const date = new Date(dateValue);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Data inválida:', dateValue);
+      return 'Data inválida';
+    }
+    
+    return format(date, "dd 'de' MMMM", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data:', error);
+    return 'Data inválida';
+  }
+};
+
+// Função para formatar data/hora completa com segurança
+const safeDateTimeFormat = (dateValue: any): string => {
+  if (!dateValue) return 'Data/hora não informada';
+  
+  try {
+    // Se for string, verificar se está vazia
+    if (typeof dateValue === 'string' && dateValue.trim() === '') {
+      return 'Data/hora não informada';
+    }
+    
+    const date = new Date(dateValue);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Data/hora inválida:', dateValue);
+      return 'Data/hora inválida';
+    }
+    
+    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data/hora:', error);
+    return 'Data/hora inválida';
+  }
+};
+
 export default function Dashboard() {
   const { machines, services, dashboardStats, isLoadingMachines, isLoadingMachinesInitial } = useData();
 
@@ -201,7 +249,11 @@ export default function Dashboard() {
           <div className="space-y-4">
             {services
               .filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO')
-              .sort((a, b) => new Date(a.dataAgendamento).getTime() - new Date(b.dataAgendamento).getTime())
+              .sort((a, b) => {
+                const dateA = a.dataAgendamento ? new Date(a.dataAgendamento).getTime() : 0;
+                const dateB = b.dataAgendamento ? new Date(b.dataAgendamento).getTime() : 0;
+                return dateA - dateB;
+              })
               .slice(0, 5)
               .map(service => {
                 const machine = machines.find(m => m.id === service.maquinaId);
@@ -220,7 +272,7 @@ export default function Dashboard() {
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span>{machine?.codigo || 'Sem máquina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
                           <span>•</span>
-                          <span>{format(new Date(service.dataAgendamento), "dd 'de' MMMM", { locale: ptBR })}</span>
+                          <span>{safeDateFormat(service.dataAgendamento)}</span>
                         </div>
                       </div>
                     </div>

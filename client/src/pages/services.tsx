@@ -28,6 +28,30 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Função para formatar data/hora com segurança
+const safeDateTimeFormat = (dateValue: any): string => {
+  if (!dateValue) return 'Data/hora não informada';
+  
+  try {
+    // Se for string, verificar se está vazia
+    if (typeof dateValue === 'string' && dateValue.trim() === '') {
+      return 'Data/hora não informada';
+    }
+    
+    const date = new Date(dateValue);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Data/hora inválida:', dateValue);
+      return 'Data/hora inválida';
+    }
+    
+    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data/hora:', error);
+    return 'Data/hora inválida';
+  }
+};
+
 const serviceSchema = z.object({
   tipoServico: z.string(),
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
@@ -145,14 +169,33 @@ export default function ServicesPage() {
     
     setEditingService(service);
     
-    // Converter a data ISO para o formato do input
-    const dateObj = new Date(service.dataAgendamento);
+    // Converter a data ISO para o formato do input com segurança
+    let dataAgendamento = '';
+    let horaAgendamento = '08:00';
+    
+    if (service.dataAgendamento) {
+      try {
+        const dateObj = new Date(service.dataAgendamento);
+        if (!isNaN(dateObj.getTime())) {
+          dataAgendamento = format(dateObj, 'yyyy-MM-dd');
+          horaAgendamento = format(dateObj, 'HH:mm');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao parsear data:', error);
+        // Usar valores padrão
+        dataAgendamento = format(new Date(), 'yyyy-MM-dd');
+        horaAgendamento = '08:00';
+      }
+    } else {
+      dataAgendamento = format(new Date(), 'yyyy-MM-dd');
+      horaAgendamento = '08:00';
+    }
     
     form.reset({
       tipoServico: service.tipoServico,
       maquinaId: service.maquinaId,
-      dataAgendamento: format(dateObj, 'yyyy-MM-dd'),
-      horaAgendamento: format(dateObj, 'HH:mm'),
+      dataAgendamento,
+      horaAgendamento,
       tecnicoId: service.tecnicoId || '',
       descricaoServico: service.descricaoServico,
       descricaoProblema: service.descricaoProblema || '',
@@ -494,7 +537,7 @@ export default function ServicesPage() {
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            const serviceDate = new Date(service.dataAgendamento);
+            const serviceDate = service.dataAgendamento ? new Date(service.dataAgendamento) : new Date();
             
             return (
               <div 
@@ -541,7 +584,7 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(serviceDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                    <span>{safeDateTimeFormat(service.dataAgendamento)}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">

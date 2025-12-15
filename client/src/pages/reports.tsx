@@ -57,6 +57,54 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
+// Função para formatar datas com segurança
+const safeDateFormat = (dateString: any): string => {
+  if (!dateString) return 'Data não informada';
+  
+  try {
+    // Se for string, verificar se está vazia
+    if (typeof dateString === 'string' && dateString.trim() === '') {
+      return 'Data não informada';
+    }
+    
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Data inválida:', dateString);
+      return 'Data inválida';
+    }
+    
+    return format(date, "dd/MM/yyyy", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data:', error);
+    return 'Data inválida';
+  }
+};
+
+// Função para formatar data/hora com segurança
+const safeDateTimeFormat = (dateString: any): string => {
+  if (!dateString) return 'Data/hora não informada';
+  
+  try {
+    // Se for string, verificar se está vazia
+    if (typeof dateString === 'string' && dateString.trim() === '') {
+      return 'Data/hora não informada';
+    }
+    
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.warn('⚠️ Data/hora inválida:', dateString);
+      return 'Data/hora inválida';
+    }
+    
+    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data/hora:', error);
+    return 'Data/hora inválida';
+  }
+};
+
 const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   try {
     const html2canvas = (await import('html2canvas')).default;
@@ -309,11 +357,7 @@ export default function ReportsPage() {
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(endDate);
       
-      const reportTitle = `Relatório de Serviços - ${
-        isValid(startDateObj) ? format(startDateObj, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida'
-      } a ${
-        isValid(endDateObj) ? format(endDateObj, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida'
-      }`;
+      const reportTitle = `Relatório de Serviços - ${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`;
       
       await generatePDF(reportRef.current, reportTitle);
       
@@ -355,15 +399,6 @@ export default function ReportsPage() {
         description: "Não foi possível atualizar o relatório.",
         variant: "destructive",
       });
-    }
-  };
-
-  const formatDateSafe = (dateString: string) => {
-    try {
-      const date = parseISO(dateString);
-      return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
-    } catch {
-      return 'Data inválida';
     }
   };
 
@@ -559,7 +594,7 @@ export default function ReportsPage() {
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                {formatCurrentDate(new Date(startDate))} a {formatCurrentDate(new Date(endDate))}
+                {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
               </span>
               {branchFilter !== 'all' && (
                 <span className="flex items-center gap-1">
@@ -581,7 +616,7 @@ export default function ReportsPage() {
             <h1 className="text-2xl font-bold text-black">Neuropsicocentro - Relatório de Serviços</h1>
             <p className="text-gray-600">Sistema de Gestão de Ar Condicionado</p>
             <div className="mt-2 text-sm text-gray-700">
-              Período: {formatCurrentDate(new Date(startDate))} a {formatCurrentDate(new Date(endDate))}
+              Período: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
               {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -771,7 +806,7 @@ export default function ReportsPage() {
                               className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                             >
                               <TableCell className="text-black">
-                                {formatDateSafe(service.dataAgendamento)}
+                                {safeDateFormat(service.dataAgendamento)}
                               </TableCell>
                               <TableCell className="font-medium text-black">
                                 {service.machineCodigo || machine?.codigo || 'N/A'} - {service.machineModelo || machine?.modelo || 'Desconhecido'}
