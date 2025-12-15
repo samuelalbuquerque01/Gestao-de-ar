@@ -15,7 +15,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Função auxiliar para validar e formatar datas com segurança - VERSÃO CORRIGIDA
@@ -28,8 +28,15 @@ const safeDateFormat = (dateValue: any): string => {
       return 'Data não informada';
     }
     
-    // Criar objeto Date
-    const date = new Date(dateValue);
+    let date: Date;
+    
+    // Verificar se já é um objeto Date
+    if (dateValue instanceof Date) {
+      date = dateValue;
+    } else {
+      // Tentar criar a partir da string
+      date = new Date(dateValue);
+    }
     
     // Verificar se é válido
     if (isNaN(date.getTime())) {
@@ -48,7 +55,14 @@ const safeDateCompare = (dateValue: any): number => {
   if (!dateValue) return 0;
   
   try {
-    const date = new Date(dateValue);
+    let date: Date;
+    
+    if (dateValue instanceof Date) {
+      date = dateValue;
+    } else {
+      date = new Date(dateValue);
+    }
+    
     return isNaN(date.getTime()) ? 0 : date.getTime();
   } catch (error) {
     return 0;
@@ -99,6 +113,16 @@ export default function Dashboard() {
   ];
 
   const COLORS = ['hsl(221, 83%, 53%)', 'hsl(173, 58%, 39%)', 'hsl(197, 37%, 24%)', 'hsl(43, 74%, 66%)', 'hsl(27, 87%, 67%)', 'hsl(0, 0%, 40%)'];
+
+  // Ordenar serviços por data
+  const upcomingServices = services
+    .filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO')
+    .sort((a, b) => {
+      const dateA = safeDateCompare(a.dataAgendamento);
+      const dateB = safeDateCompare(b.dataAgendamento);
+      return dateA - dateB;
+    })
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -236,15 +260,12 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {services
-              .filter(s => s.status === 'AGENDADO' || s.status === 'EM_ANDAMENTO')
-              .sort((a, b) => {
-                const dateA = safeDateCompare(a.dataAgendamento);
-                const dateB = safeDateCompare(b.dataAgendamento);
-                return dateA - dateB;
-              })
-              .slice(0, 5)
-              .map(service => {
+            {upcomingServices.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum serviço agendado.
+              </div>
+            ) : (
+              upcomingServices.map(service => {
                 const machine = machines.find(m => m.id === service.maquinaId);
                 return (
                   <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
@@ -276,11 +297,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 );
-            })}
-            {services.filter(s => s.status === 'AGENDADO').length === 0 && (
-               <div className="text-center py-8 text-muted-foreground">
-                 Nenhum serviço agendado.
-               </div>
+              })
             )}
           </div>
         </CardContent>

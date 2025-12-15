@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +38,15 @@ const safeDateTimeFormat = (dateValue: any): string => {
       return 'Data/hora não informada';
     }
     
-    const date = new Date(dateValue);
+    let date: Date;
+    
+    // Verificar se já é um objeto Date
+    if (dateValue instanceof Date) {
+      date = dateValue;
+    } else {
+      // Tentar criar a partir da string
+      date = new Date(dateValue);
+    }
     
     // Verificar se é válido
     if (isNaN(date.getTime())) {
@@ -52,16 +60,46 @@ const safeDateTimeFormat = (dateValue: any): string => {
   }
 };
 
+// Função para extrair data de string ISO
+const extractDateFromISO = (isoString: string): string => {
+  if (!isoString) return format(new Date(), 'yyyy-MM-dd');
+  
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return format(new Date(), 'yyyy-MM-dd');
+    }
+    return format(date, 'yyyy-MM-dd');
+  } catch (error) {
+    return format(new Date(), 'yyyy-MM-dd');
+  }
+};
+
+// Função para extrair hora de string ISO
+const extractTimeFromISO = (isoString: string): string => {
+  if (!isoString) return '08:00';
+  
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return '08:00';
+    }
+    return format(date, 'HH:mm');
+  } catch (error) {
+    return '08:00';
+  }
+};
+
 const serviceSchema = z.object({
-  tipoServico: z.string(),
+  tipoServico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
   maquinaId: z.string().min(1, "Máquina é obrigatória"),
   dataAgendamento: z.string().min(1, "Data é obrigatória"),
   horaAgendamento: z.string(),
   tecnicoId: z.string().min(1, "Técnico é obrigatório"),
   descricaoServico: z.string().min(1, "Descrição é obrigatória"),
   descricaoProblema: z.string().optional(),
-  prioridade: z.string(),
-  status: z.string(),
+  prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']),
+  status: z.enum(['AGENDADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO', 'PENDENTE']),
   observacoes: z.string().optional(),
 });
 
@@ -114,14 +152,18 @@ export default function ServicesPage() {
     }
   });
 
-  const onSubmit = (data: z.infer<typeof serviceSchema>) => {
-    // CORREÇÃO: Criar a data no formato ISO CORRETAMENTE
-    // O backend espera uma string ISO: "2025-12-18T08:00:00.000Z"
-    const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento}:00`);
+  const onSubmit = async (data: z.infer<typeof serviceSchema>) => {
+    console.log('📤 [FRONTEND] Submetendo dados do formulário:', data);
+    
+    // Criar a data no formato ISO CORRETAMENTE
+    // Combinar data e hora
+    const dateTimeStr = `${data.dataAgendamento}T${data.horaAgendamento}:00`;
+    const dateTime = new Date(dateTimeStr);
     
     // Verificar se a data é válida
     if (isNaN(dateTime.getTime())) {
-      console.error('❌ Data inválida:', data.dataAgendamento, data.horaAgendamento);
+      console.error('❌ Data inválida após combinação:', dateTimeStr);
+      alert('Data inválida. Por favor, verifique a data e hora.');
       return;
     }
     
@@ -134,33 +176,40 @@ export default function ServicesPage() {
 
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
 
+    // Preparar dados no formato esperado pela API
     const formattedData = {
-      tipoServico: data.tipoServico as ServiceType,
+      tipoServico: data.tipoServico,
       maquinaId: data.maquinaId,
-      dataAgendamento: isoString, // Enviar string ISO
+      dataAgendamento: isoString, // Enviar string ISO completa
       horaAgendamento: data.horaAgendamento,
       tecnicoId: data.tecnicoId,
       tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       descricaoServico: data.descricaoServico,
-      descricaoProblema: data.descricaoProblema,
-      prioridade: data.prioridade as Priority,
-      status: data.status as ServiceStatus,
-      observacoes: data.observacoes
+      descricaoProblema: data.descricaoProblema || '',
+      prioridade: data.prioridade,
+      status: data.status,
+      observacoes: data.observacoes || ''
     };
 
-    console.log('📤 Enviando dados para API:', formattedData);
+    console.log('📤 [FRONTEND] Enviando dados para API:', formattedData);
 
-    if (editingService) {
-      console.log('✏️ Editando serviço:', editingService.id);
-      updateService(editingService.id, formattedData);
-    } else {
-      console.log('🆕 Criando novo serviço');
-      createService(formattedData);
+    try {
+      if (editingService) {
+        console.log('✏️ Editando serviço:', editingService.id);
+        await updateService(editingService.id, formattedData);
+      } else {
+        console.log('🆕 Criando novo serviço');
+        await createService(formattedData);
+      }
+      
+      setIsDialogOpen(false);
+      setEditingService(null);
+      form.reset();
+      setMachineSearch('');
+    } catch (error) {
+      console.error('❌ Erro ao salvar serviço:', error);
+      alert('Erro ao salvar serviço. Verifique os dados e tente novamente.');
     }
-    setIsDialogOpen(false);
-    setEditingService(null);
-    form.reset();
-    setMachineSearch('');
   };
 
   const handleEdit = (service: Service) => {
@@ -169,38 +218,23 @@ export default function ServicesPage() {
     
     setEditingService(service);
     
-    // Converter a data ISO para o formato do input com segurança
-    let dataAgendamento = '';
-    let horaAgendamento = '08:00';
+    // Extrair data e hora da string ISO
+    const dataAgendamento = extractDateFromISO(service.dataAgendamento);
+    const horaAgendamento = extractTimeFromISO(service.dataAgendamento);
     
-    if (service.dataAgendamento) {
-      try {
-        const dateObj = new Date(service.dataAgendamento);
-        if (!isNaN(dateObj.getTime())) {
-          dataAgendamento = format(dateObj, 'yyyy-MM-dd');
-          horaAgendamento = format(dateObj, 'HH:mm');
-        }
-      } catch (error) {
-        console.error('❌ Erro ao parsear data:', error);
-        // Usar valores padrão
-        dataAgendamento = format(new Date(), 'yyyy-MM-dd');
-        horaAgendamento = '08:00';
-      }
-    } else {
-      dataAgendamento = format(new Date(), 'yyyy-MM-dd');
-      horaAgendamento = '08:00';
-    }
+    console.log('📅 Data extraída:', dataAgendamento);
+    console.log('⏰ Hora extraída:', horaAgendamento);
     
     form.reset({
-      tipoServico: service.tipoServico,
+      tipoServico: service.tipoServico as ServiceType,
       maquinaId: service.maquinaId,
       dataAgendamento,
       horaAgendamento,
       tecnicoId: service.tecnicoId || '',
       descricaoServico: service.descricaoServico,
       descricaoProblema: service.descricaoProblema || '',
-      prioridade: service.prioridade,
-      status: service.status,
+      prioridade: service.prioridade as Priority,
+      status: service.status as ServiceStatus,
       observacoes: service.observacoes || ''
     });
     
@@ -247,6 +281,17 @@ export default function ServicesPage() {
     form.setValue('maquinaId', '');
   };
 
+  const handleDelete = async (serviceId: string) => {
+    if (confirm('Tem certeza que deseja excluir este serviço?')) {
+      try {
+        await deleteService(serviceId);
+      } catch (error) {
+        console.error('❌ Erro ao deletar serviço:', error);
+        alert('Erro ao deletar serviço.');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -278,7 +323,7 @@ export default function ServicesPage() {
                     name="maquinaId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Máquina</FormLabel>
+                        <FormLabel>Máquina *</FormLabel>
                         <div className="space-y-2">
                           <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -323,6 +368,9 @@ export default function ServicesPage() {
                                         <div className="text-sm text-muted-foreground">
                                           {m.modelo} • {m.marca} • {m.filial}
                                         </div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {m.localizacaoDescricao}
+                                        </div>
                                       </div>
                                       {field.value === m.id && (
                                         <CheckCircle className="h-4 w-4 text-primary" />
@@ -352,7 +400,7 @@ export default function ServicesPage() {
                     name="tipoServico"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo de Serviço</FormLabel>
+                        <FormLabel>Tipo de Serviço *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -360,8 +408,8 @@ export default function ServicesPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="PREVENTIVA">Preventiva</SelectItem>
-                            <SelectItem value="CORRETIVA">Corretiva</SelectItem>
+                            <SelectItem value="PREVENTIVA">Manutenção Preventiva</SelectItem>
+                            <SelectItem value="CORRETIVA">Manutenção Corretiva</SelectItem>
                             <SelectItem value="INSTALACAO">Instalação</SelectItem>
                             <SelectItem value="LIMPEZA">Limpeza</SelectItem>
                             <SelectItem value="VISTORIA">Vistoria</SelectItem>
@@ -376,7 +424,7 @@ export default function ServicesPage() {
                     name="prioridade"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Prioridade</FormLabel>
+                        <FormLabel>Prioridade *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -400,7 +448,7 @@ export default function ServicesPage() {
                     name="dataAgendamento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data Agendada</FormLabel>
+                        <FormLabel>Data Agendada *</FormLabel>
                         <FormControl>
                           <Input 
                             type="date" 
@@ -417,7 +465,7 @@ export default function ServicesPage() {
                     name="horaAgendamento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Horário</FormLabel>
+                        <FormLabel>Horário *</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -431,7 +479,7 @@ export default function ServicesPage() {
                     name="tecnicoId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Técnico Responsável</FormLabel>
+                        <FormLabel>Técnico Responsável *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -441,7 +489,7 @@ export default function ServicesPage() {
                           <SelectContent className="max-h-60 overflow-y-auto">
                             {technicians.map(t => (
                               <SelectItem key={t.id} value={t.id}>
-                                {t.nome} - {t.especialidade}
+                                {t.nome} - {t.especialidade} {t.telefone ? `(${t.telefone})` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -456,9 +504,13 @@ export default function ServicesPage() {
                     name="descricaoServico"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Descrição do Serviço</FormLabel>
+                        <FormLabel>Descrição do Serviço *</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="O que será feito..." {...field} />
+                          <Textarea 
+                            placeholder="Descreva o que será feito durante o serviço..." 
+                            {...field} 
+                            rows={3}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -473,7 +525,12 @@ export default function ServicesPage() {
                         <FormItem className="md:col-span-2">
                           <FormLabel>Descrição do Problema (Defeito)</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="O que está acontecendo..." className="bg-red-50 dark:bg-red-900/10" {...field} />
+                            <Textarea 
+                              placeholder="Descreva o problema ou defeito encontrado..." 
+                              className="bg-red-50 dark:bg-red-900/10" 
+                              {...field} 
+                              rows={2}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -486,7 +543,7 @@ export default function ServicesPage() {
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>Status *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -505,9 +562,44 @@ export default function ServicesPage() {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="observacoes"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Observações Adicionais</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Observações importantes sobre o serviço..." 
+                            {...field} 
+                            rows={2}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <DialogFooter>
-                  <Button type="submit" className="w-full md:w-auto">
+                
+                <div className="text-xs text-muted-foreground mt-2">
+                  * Campos obrigatórios
+                </div>
+                
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setEditingService(null);
+                      form.reset();
+                      setMachineSearch('');
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="w-full sm:w-auto">
                     {editingService ? 'Salvar Alterações' : 'Agendar Serviço'}
                   </Button>
                 </DialogFooter>
@@ -528,23 +620,27 @@ export default function ServicesPage() {
         />
       </div>
 
-      {/* Kanban-like List or Grid */}
+      {/* Services List */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredServices.length === 0 ? (
           <div className="col-span-full text-center py-12 text-muted-foreground bg-card border rounded-lg border-dashed">
-            Nenhum serviço encontrado com os filtros atuais.
+            <div className="flex flex-col items-center gap-3">
+              <Calendar className="h-12 w-12 text-muted-foreground/50" />
+              <p className="text-lg font-medium">Nenhum serviço encontrado</p>
+              <p className="text-sm">Tente ajustar os filtros ou crie um novo serviço.</p>
+            </div>
           </div>
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            const serviceDate = service.dataAgendamento ? new Date(service.dataAgendamento) : new Date();
+            const technician = technicians.find(t => t.id === service.tecnicoId);
             
             return (
               <div 
                 key={service.id} 
                 className={cn(
                   "flex flex-col p-5 rounded-xl border bg-card shadow-sm transition-all hover:shadow-md group relative overflow-hidden",
-                  service.status === 'CONCLUIDO' && "opacity-75 hover:opacity-100"
+                  service.status === 'CONCLUIDO' && "opacity-90 hover:opacity-100"
                 )}
               >
                 {/* Priority Stripe */}
@@ -567,30 +663,55 @@ export default function ServicesPage() {
                     </div>
                     <h3 className="font-semibold text-lg leading-tight">{service.descricaoServico}</h3>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => handleEdit(service)}>
-                    <PenTool className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100" 
+                      onClick={() => handleEdit(service)}
+                      title="Editar serviço"
+                    >
+                      <PenTool className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 pl-2 flex-1">
                   {machine && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="p-1 bg-secondary rounded">
-                        <span className="font-mono text-xs text-foreground">{machine.codigo}</span>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="p-1 bg-secondary rounded min-w-16">
+                        <span className="font-mono text-xs text-foreground font-bold">{machine.codigo}</span>
                       </div>
-                      <span className="truncate">{machine.localizacaoDescricao} ({machine.filial})</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate font-medium">{machine.modelo}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {machine.localizacaoDescricao} • {machine.filial}
+                        </div>
+                      </div>
                     </div>
                   )}
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 flex-shrink-0" />
                     <span>{safeDateTimeFormat(service.dataAgendamento)}</span>
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <User className="w-4 h-4" />
+                    <User className="w-4 h-4 flex-shrink-0" />
                     <span>{service.tecnicoNome}</span>
+                    {technician?.especialidade && (
+                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {technician.especialidade}
+                      </span>
+                    )}
                   </div>
+                  
+                  {service.descricaoProblema && (
+                    <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 p-2 rounded">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs">{service.descricaoProblema}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-3 border-t pl-2 flex justify-between items-center">
@@ -603,8 +724,13 @@ export default function ServicesPage() {
                   )}>
                     {service.status === 'CONCLUIDO' && <CheckCircle className="w-3 h-3 mr-1" />}
                     {service.status === 'EM_ANDAMENTO' && <Clock className="w-3 h-3 mr-1" />}
+                    {service.status === 'CANCELADO' && <X className="w-3 h-3 mr-1" />}
                     {service.status.replace('_', ' ')}
                   </span>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    {service.createdAt && new Date(service.createdAt).toLocaleDateString('pt-BR')}
+                  </div>
                 </div>
               </div>
             );

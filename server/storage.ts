@@ -14,7 +14,93 @@ import {
 import { eq, and, desc, sql, count, gte, lte, sum, avg } from "drizzle-orm";
 
 export interface IStorage {
-  // ... interface existente (manter igual) ...
+  // USERS
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(userData: InsertUser): Promise<User>;
+  
+  // TECHNICIANS
+  getTechnician(id: string): Promise<Technician | undefined>;
+  getAllTechnicians(): Promise<Technician[]>;
+  createTechnician(technicianData: InsertTechnician): Promise<Technician>;
+  updateTechnician(id: string, technicianData: Partial<InsertTechnician>): Promise<Technician | undefined>;
+  deleteTechnician(id: string): Promise<boolean>;
+  
+  // MACHINES
+  getMachine(id: string): Promise<Machine | undefined>;
+  getMachineByCodigo(codigo: string): Promise<Machine | undefined>;
+  getAllMachines(): Promise<Machine[]>;
+  getMachinesByStatus(status: string): Promise<Machine[]>;
+  getMachinesByBranch(branch: string): Promise<Machine[]>;
+  createMachine(machineData: InsertMachine): Promise<Machine>;
+  updateMachine(id: string, machineData: Partial<InsertMachine>): Promise<Machine | undefined>;
+  deleteMachine(id: string): Promise<boolean>;
+  
+  // SERVICES
+  getService(id: string): Promise<Service | undefined>;
+  getAllServices(): Promise<Service[]>;
+  getServicesByMachine(machineId: string): Promise<Service[]>;
+  getServicesByTechnician(technicianId: string): Promise<Service[]>;
+  getServicesByDateRange(startDate: Date, endDate: Date): Promise<Service[]>;
+  getServicesByStatus(status: string): Promise<Service[]>;
+  getServicesByType(serviceType: string): Promise<Service[]>;
+  getCompletedServices(startDate?: Date, endDate?: Date): Promise<Service[]>;
+  getServicesWithCosts(startDate?: Date, endDate?: Date): Promise<Service[]>;
+  createService(serviceData: InsertService): Promise<Service>;
+  updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: string): Promise<boolean>;
+  
+  // SERVICE HISTORY
+  addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory>;
+  getServiceHistory(serviceId: string): Promise<ServiceHistory[]>;
+  
+  // DASHBOARD STATS
+  getDashboardStats(): Promise<{
+    activeMachines: number;
+    maintenanceMachines: number;
+    defectMachines: number;
+    pendingServices: number;
+    completedServices: number;
+    totalCost: number;
+    avgServiceCost: number;
+  }>;
+  
+  // REPORTS
+  getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
+  getTechnicianPerformance(startDate?: Date, endDate?: Date): Promise<Array<{
+    technicianId: string;
+    technicianName: string;
+    completedServices: number;
+    totalServices: number;
+    avgCompletionTime: number;
+    totalCost: number;
+  }>>;
+  getMonthlyServiceStats(year?: number): Promise<Array<{
+    month: string;
+    totalServices: number;
+    completedServices: number;
+    pendingServices: number;
+    totalCost: number;
+  }>>;
+  getBranchStats(): Promise<Array<{
+    branch: string;
+    machineCount: number;
+    activeMachines: number;
+    totalServices: number;
+    totalCost: number;
+  }>>;
+  getCostAnalysis(startDate?: Date, endDate?: Date): Promise<{
+    byType: Array<{ type: string; count: number; totalCost: number; avgCost: number }>;
+    byTechnician: Array<{ technicianName: string; count: number; totalCost: number; avgCost: number }>;
+    byBranch: Array<{ branch: string; count: number; totalCost: number; avgCost: number }>;
+    byPriority: Array<{ priority: string; count: number; totalCost: number; avgCost: number }>;
+  }>;
+  getMachineMaintenanceHistory(machineId: string): Promise<Array<{
+    service: Service;
+    daysSinceLastService: number;
+    totalCost: number;
+  }>>;
 }
 
 // Função auxiliar para converter snake_case para camelCase - VERSÃO COMPLETAMENTE CORRIGIDA
@@ -44,30 +130,9 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.location_type) result.locationType = result.location_type;
     if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
     
-    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos
+    // CORREÇÃO CRÍTICA: Data de instalação
     if (result.installation_date) {
-      // Verificar se é um objeto Date válido
-      if (result.installation_date instanceof Date) {
-        if (!isNaN(result.installation_date.getTime())) {
-          result.installationDate = result.installation_date;
-        } else {
-          result.installationDate = null;
-        }
-      } else if (typeof result.installation_date === 'string') {
-        // Tentar parsear a string
-        try {
-          const date = new Date(result.installation_date);
-          if (!isNaN(date.getTime())) {
-            result.installationDate = date;
-          } else {
-            result.installationDate = null;
-          }
-        } catch {
-          result.installationDate = null;
-        }
-      } else {
-        result.installationDate = null;
-      }
+      result.installationDate = result.installation_date;
     } else {
       result.installationDate = null;
     }
@@ -90,59 +155,20 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
     if (result.descricao_problema) result.descricaoProblema = result.descricao_problema;
     
-    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos para data_agendamento
+    // CORREÇÃO CRÍTICA: Datas do serviço
     if (result.data_agendamento) {
-      if (result.data_agendamento instanceof Date) {
-        if (!isNaN(result.data_agendamento.getTime())) {
-          result.dataAgendamento = result.data_agendamento;
-        } else {
-          result.dataAgendamento = null;
-        }
-      } else if (typeof result.data_agendamento === 'string') {
-        try {
-          const date = new Date(result.data_agendamento);
-          if (!isNaN(date.getTime())) {
-            result.dataAgendamento = date;
-          } else {
-            result.dataAgendamento = null;
-          }
-        } catch {
-          result.dataAgendamento = null;
-        }
-      } else {
-        result.dataAgendamento = null;
-      }
+      result.dataAgendamento = result.data_agendamento;
     } else {
       result.dataAgendamento = null;
     }
     
-    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos para data_conclusao
     if (result.data_conclusao) {
-      if (result.data_conclusao instanceof Date) {
-        if (!isNaN(result.data_conclusao.getTime())) {
-          result.dataConclusao = result.data_conclusao;
-        } else {
-          result.dataConclusao = null;
-        }
-      } else if (typeof result.data_conclusao === 'string') {
-        try {
-          const date = new Date(result.data_conclusao);
-          if (!isNaN(date.getTime())) {
-            result.dataConclusao = date;
-          } else {
-            result.dataConclusao = null;
-          }
-        } catch {
-          result.dataConclusao = null;
-        }
-      } else {
-        result.dataConclusao = null;
-      }
+      result.dataConclusao = result.data_conclusao;
     } else {
       result.dataConclusao = null;
     }
     
-    if (result.custo) result.custo = result.custo.toString();
+    if (result.custo !== null && result.custo !== undefined) result.custo = result.custo.toString();
     if (result.created_at) result.createdAt = result.created_at;
     if (result.updated_at) result.updatedAt = result.updated_at;
     
@@ -245,7 +271,7 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para validar e formatar datas - VERSÃO SIMPLIFICADA
+// Função auxiliar para validar e formatar datas - VERSÃO COMPLETAMENTE REESCRITA
 function safeDateToISO(dateValue: any): string {
   // Se for nulo/vazio, retornar string vazia
   if (!dateValue) {
@@ -253,29 +279,37 @@ function safeDateToISO(dateValue: any): string {
   }
   
   try {
-    // Se for um objeto Date
-    if (dateValue instanceof Date) {
-      // Verificar se é um Date válido
-      if (isNaN(dateValue.getTime())) {
-        console.log('📅 [safeDateToISO] Date inválido detectado - retornando string vazia');
-        return '';
-      }
-      return dateValue.toISOString();
-    }
-    
-    // Se for string
+    // Se já for string, verificar se está vazia
     if (typeof dateValue === 'string') {
       const cleanStr = dateValue.trim();
-      if (cleanStr === '') {
+      if (cleanStr === '' || cleanStr === 'null' || cleanStr === 'undefined') {
         return '';
       }
       
-      // Tentar parsear
+      // Se já for uma data ISO válida, retornar como está
       const date = new Date(cleanStr);
       if (!isNaN(date.getTime())) {
         return date.toISOString();
       }
       
+      return '';
+    }
+    
+    // Se for um objeto Date
+    if (dateValue instanceof Date) {
+      // Verificar se é um Date válido
+      if (isNaN(dateValue.getTime())) {
+        return '';
+      }
+      return dateValue.toISOString();
+    }
+    
+    // Se for número (timestamp)
+    if (typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
       return '';
     }
     
@@ -287,41 +321,40 @@ function safeDateToISO(dateValue: any): string {
   }
 }
 
-// Função auxiliar para converter qualquer valor para Date - VERSÃO SIMPLIFICADA
-function anyToDate(dateValue: any): Date {
+// Função auxiliar para converter qualquer valor para Date
+function anyToDate(dateValue: any): Date | null {
   if (!dateValue) {
-    return new Date();
+    return null;
   }
   
   try {
     // Se já for Date, retornar como está
     if (dateValue instanceof Date) {
-      if (isNaN(dateValue.getTime())) {
-        return new Date();
-      }
-      return dateValue;
+      return isNaN(dateValue.getTime()) ? null : dateValue;
     }
     
-    // Se for string, tentar parse
+    // Se for string
     if (typeof dateValue === 'string') {
       const cleanStr = dateValue.trim();
-      if (cleanStr === '') {
-        return new Date();
+      if (cleanStr === '' || cleanStr === 'null') {
+        return null;
       }
       
-      // Tentar parse ISO
       const date = new Date(cleanStr);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
+      return isNaN(date.getTime()) ? null : date;
     }
     
-    // Fallback para data atual
-    return new Date();
+    // Se for número (timestamp)
+    if (typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    
+    return null;
     
   } catch (error) {
     console.log('📅 [anyToDate] Erro:', error);
-    return new Date();
+    return null;
   }
 }
 
@@ -639,9 +672,7 @@ export class DatabaseStorage implements IStorage {
         location: machineData.localizacaoDescricao || '',
         locationFloor: machineData.localizacaoAndar || 0,
         branch: machineData.filial || 'Matriz',
-        installationDate: machineData.dataInstalacao 
-          ? anyToDate(machineData.dataInstalacao)
-          : new Date(),
+        installationDate: anyToDate(machineData.dataInstalacao) || new Date(),
         status: machineData.status || 'ATIVO',
         observacoes: machineData.observacoes || ''
       };
@@ -756,6 +787,10 @@ export class DatabaseStorage implements IStorage {
       const [service] = await db.select().from(services).where(eq(services.id, id));
       if (!service) return undefined;
       
+      // CORREÇÃO: Obter as datas diretamente do banco
+      const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+      const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+      
       return {
         ...mapDbToCamelCase(service, 'services'),
         id: service.id,
@@ -765,10 +800,8 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: service.data_conclusao 
-          ? safeDateToISO(service.data_conclusao)
-          : '',
+        dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+        dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -786,8 +819,9 @@ export class DatabaseStorage implements IStorage {
     try {
       const servicesList = await db.select().from(services).orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
-        // Extrair dados para debugging
-        const dataAgendamento = service.data_agendamento;
+        // CORREÇÃO: Obter as datas diretamente do banco
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
         
         return {
           ...mapDbToCamelCase(service, 'services'),
@@ -798,10 +832,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(dataAgendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -823,6 +855,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(services.maquina_id, machineId))
         .orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -832,10 +867,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -857,6 +890,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(services.tecnico_id, technicianId))
         .orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -866,10 +902,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -897,6 +931,9 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -906,10 +943,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -932,6 +967,9 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -941,10 +979,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -967,6 +1003,9 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -976,10 +1015,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1012,6 +1049,9 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -1021,10 +1061,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1057,6 +1095,9 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        const dataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+        const dataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+        
         return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
@@ -1066,10 +1107,8 @@ export class DatabaseStorage implements IStorage {
           tecnicoNome: service.tecnico_nome || 'Desconhecido',
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
-          dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: service.data_conclusao 
-            ? safeDateToISO(service.data_conclusao)
-            : '',
+          dataAgendamento: dataAgendamento ? dataAgendamento.toISOString() : '',
+          dataConclusao: dataConclusao ? dataConclusao.toISOString() : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1094,7 +1133,7 @@ export class DatabaseStorage implements IStorage {
       
       // Processar data_agendamento usando anyToDate
       const dataAgendamento = anyToDate(serviceData.data_agendamento);
-      console.log('📅 [STORAGE] Data agendamento processada:', dataAgendamento.toISOString());
+      console.log('📅 [STORAGE] Data agendamento processada:', dataAgendamento?.toISOString());
       
       // Processar data_conclusao se existir
       let dataConclusao: Date | null = null;
@@ -1136,6 +1175,9 @@ export class DatabaseStorage implements IStorage {
       });
       
       // Retornar no formato correto
+      const createdDataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+      const createdDataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+      
       return {
         id: service.id,
         tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1144,10 +1186,8 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: service.data_conclusao 
-          ? safeDateToISO(service.data_conclusao)
-          : '',
+        dataAgendamento: createdDataAgendamento ? createdDataAgendamento.toISOString() : '',
+        dataConclusao: createdDataConclusao ? createdDataConclusao.toISOString() : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -1183,15 +1223,21 @@ export class DatabaseStorage implements IStorage {
       
       // Processar data_agendamento se fornecida
       if (serviceData.data_agendamento !== undefined) {
-        updateData.data_agendamento = anyToDate(serviceData.data_agendamento);
-        console.log('📅 [STORAGE] Data agendamento processada para atualização:', updateData.data_agendamento.toISOString());
+        const date = anyToDate(serviceData.data_agendamento);
+        if (date) {
+          updateData.data_agendamento = date;
+          console.log('📅 [STORAGE] Data agendamento processada para atualização:', updateData.data_agendamento.toISOString());
+        }
       }
       
       // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
         if (serviceData.data_conclusao) {
-          updateData.data_conclusao = anyToDate(serviceData.data_conclusao);
-          console.log('📅 [STORAGE] Data conclusão processada para atualização:', updateData.data_conclusao?.toISOString());
+          const date = anyToDate(serviceData.data_conclusao);
+          if (date) {
+            updateData.data_conclusao = date;
+            console.log('📅 [STORAGE] Data conclusão processada para atualização:', updateData.data_conclusao?.toISOString());
+          }
         } else {
           updateData.data_conclusao = null;
           console.log('📅 [STORAGE] Data conclusão definida como null');
@@ -1229,6 +1275,9 @@ export class DatabaseStorage implements IStorage {
       console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
       
       // Retornar no formato correto
+      const updatedDataAgendamento = service.data_agendamento ? new Date(service.data_agendamento) : null;
+      const updatedDataConclusao = service.data_conclusao ? new Date(service.data_conclusao) : null;
+      
       return {
         id: service.id,
         tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1237,10 +1286,8 @@ export class DatabaseStorage implements IStorage {
         tecnicoNome: service.tecnico_nome || 'Desconhecido',
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
-        dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: service.data_conclusao 
-          ? safeDateToISO(service.data_conclusao)
-          : '',
+        dataAgendamento: updatedDataAgendamento ? updatedDataAgendamento.toISOString() : '',
+        dataConclusao: updatedDataConclusao ? updatedDataConclusao.toISOString() : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -1614,8 +1661,8 @@ export class DatabaseStorage implements IStorage {
       
       // Ordenar por data
       const sortedServices = servicesList.sort((a, b) => {
-        const dateA = new Date(a.dataAgendamento || '');
-        const dateB = new Date(b.dataAgendamento || '');
+        const dateA = a.dataAgendamento ? new Date(a.dataAgendamento) : new Date(0);
+        const dateB = b.dataAgendamento ? new Date(b.dataAgendamento) : new Date(0);
         return dateB.getTime() - dateA.getTime();
       });
       
@@ -1624,7 +1671,7 @@ export class DatabaseStorage implements IStorage {
       let totalCost = 0;
       
       for (const service of sortedServices) {
-        const serviceDate = new Date(service.dataAgendamento || new Date());
+        const serviceDate = service.dataAgendamento ? new Date(service.dataAgendamento) : new Date();
         const daysSince = lastServiceDate 
           ? Math.floor((lastServiceDate.getTime() - serviceDate.getTime()) / (1000 * 60 * 60 * 24))
           : 0;
