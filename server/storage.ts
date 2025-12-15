@@ -1,4 +1,4 @@
-// ========== STORAGE COMPLETO ATUALIZADO ==========
+// ========== STORAGE COMPLETO ATUALIZADO E CORRIGIDO ==========
 
 import { 
   type User, type InsertUser,
@@ -261,10 +261,24 @@ function safeDateToISO(dateValue: any): string {
   }
   
   try {
-    // Se já for uma string ISO válida, retornar como está
+    // Verificar se é um objeto Date inválido
+    if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) {
+        console.warn('⚠️ [safeDateToISO] Objeto Date inválido detectado, retornando string vazia');
+        return '';
+      }
+      return dateValue.toISOString();
+    }
+    
+    // Se for uma string ISO válida, retornar como está
     if (typeof dateValue === 'string') {
       // Limpar a string
       const cleanStr = dateValue.trim();
+      
+      // Verificar se string está vazia
+      if (cleanStr === '') {
+        return '';
+      }
       
       // Se já terminar com Z, verificar se é válida
       if (cleanStr.endsWith('Z')) {
@@ -304,14 +318,12 @@ function safeDateToISO(dateValue: any): string {
       }
     }
     
-    // Se for objeto Date
-    if (dateValue instanceof Date) {
-      if (!isNaN(dateValue.getTime())) {
-        return dateValue.toISOString();
-      }
-    }
-    
-    console.warn('⚠️ [safeDateToISO] Tipo não suportado ou valor inválido:', typeof dateValue, 'Valor:', dateValue);
+    // Se chegar aqui, é um tipo não suportado ou valor inválido
+    console.warn('⚠️ [safeDateToISO] Tipo não suportado ou valor inválido:', 
+      typeof dateValue, 
+      'Valor:', 
+      dateValue && dateValue.toString ? dateValue.toString() : dateValue
+    );
     return '';
     
   } catch (error) {
@@ -341,6 +353,12 @@ function anyToDate(dateValue: any): Date {
     if (typeof dateValue === 'string') {
       // Remover espaços
       const cleanStr = dateValue.trim();
+      
+      // Verificar se string está vazia
+      if (cleanStr === '') {
+        console.log('📅 [anyToDate] String vazia, usando data atual');
+        return new Date();
+      }
       
       // Tentar parse ISO
       const date = new Date(cleanStr);
