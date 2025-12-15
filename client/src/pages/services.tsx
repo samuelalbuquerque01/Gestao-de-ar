@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -91,15 +91,26 @@ export default function ServicesPage() {
   });
 
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
-    // CORREÇÃO: Criar a data corretamente
-    const dateTime = new Date(`${data.dataAgendamento}T${data.horaAgendamento}:00`);
+    // CORREÇÃO: Criar a data no formato ISO CORRETAMENTE
+    // Usar UTC para evitar problemas de fuso horário
+    const [year, month, day] = data.dataAgendamento.split('-').map(Number);
+    const [hours, minutes] = data.horaAgendamento.split(':').map(Number);
     
+    // Criar data no formato ISO com UTC
+    const dateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+    const isoString = dateTime.toISOString();
+    
+    console.log('📅 Data selecionada:', data.dataAgendamento);
+    console.log('⏰ Hora selecionada:', data.horaAgendamento);
+    console.log('📊 Data criada:', isoString);
+    console.log('📅 Data local:', dateTime.toLocaleString('pt-BR'));
+
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
 
     const formattedData = {
       tipoServico: data.tipoServico as ServiceType,
       maquinaId: data.maquinaId,
-      dataAgendamento: dateTime.toISOString(), // CORREÇÃO: Usar toISOString()
+      dataAgendamento: isoString, // Usar a ISO string correta
       tecnicoId: data.tecnicoId,
       tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
       descricaoServico: data.descricaoServico,
@@ -122,7 +133,19 @@ export default function ServicesPage() {
 
   const handleEdit = (service: Service) => {
     setEditingService(service);
-    const dateObj = new Date(service.dataAgendamento);
+    let dateObj;
+    
+    try {
+      // Tentar parsear a data do serviço
+      dateObj = parseISO(service.dataAgendamento);
+      if (isNaN(dateObj.getTime())) {
+        throw new Error('Data inválida');
+      }
+    } catch (error) {
+      console.error('Erro ao parsear data, usando data atual:', error);
+      dateObj = new Date();
+    }
+    
     form.reset({
       tipoServico: service.tipoServico,
       maquinaId: service.maquinaId,
@@ -173,14 +196,6 @@ export default function ServicesPage() {
     }
   };
 
-  const handleMachineSelect = (machineId: string) => {
-    form.setValue('maquinaId', machineId);
-    const machine = machines.find(m => m.id === machineId);
-    if (machine) {
-      setMachineSearch(machine.codigo);
-    }
-  };
-
   const clearMachineSearch = () => {
     setMachineSearch('');
     form.setValue('maquinaId', '');
@@ -211,7 +226,7 @@ export default function ServicesPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo de seleção de máquina - Corrigido com FormField */}
+                  {/* Campo de seleção de máquina */}
                   <FormField
                     control={form.control}
                     name="maquinaId"
@@ -476,7 +491,17 @@ export default function ServicesPage() {
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            const serviceDate = new Date(service.dataAgendamento);
+            let serviceDate;
+            
+            try {
+              serviceDate = parseISO(service.dataAgendamento);
+              if (isNaN(serviceDate.getTime())) {
+                serviceDate = new Date();
+              }
+            } catch (error) {
+              console.error('Erro ao parsear data para exibição:', error);
+              serviceDate = new Date();
+            }
             
             return (
               <div 
