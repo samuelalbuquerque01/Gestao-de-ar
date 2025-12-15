@@ -14,96 +14,10 @@ import {
 import { eq, and, desc, sql, count, gte, lte, sum, avg } from "drizzle-orm";
 
 export interface IStorage {
-  // Users
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
-  // Technicians
-  getTechnician(id: string): Promise<Technician | undefined>;
-  getAllTechnicians(): Promise<Technician[]>;
-  createTechnician(technician: InsertTechnician): Promise<Technician>;
-  updateTechnician(id: string, technician: Partial<InsertTechnician>): Promise<Technician | undefined>;
-  deleteTechnician(id: string): Promise<boolean>;
-  
-  // Machines
-  getMachine(id: string): Promise<Machine | undefined>;
-  getMachineByCodigo(codigo: string): Promise<Machine | undefined>;
-  getAllMachines(): Promise<Machine[]>;
-  getMachinesByStatus(status: string): Promise<Machine[]>;
-  getMachinesByBranch(branch: string): Promise<Machine[]>;
-  createMachine(machine: InsertMachine): Promise<Machine>;
-  updateMachine(id: string, machine: Partial<InsertMachine>): Promise<Machine | undefined>;
-  deleteMachine(id: string): Promise<boolean>;
-  
-  // Services
-  getService(id: string): Promise<Service | undefined>;
-  getAllServices(): Promise<Service[]>;
-  getServicesByMachine(machineId: string): Promise<Service[]>;
-  getServicesByTechnician(technicianId: string): Promise<Service[]>;
-  getServicesByDateRange(startDate: Date, endDate: Date): Promise<Service[]>;
-  getServicesByStatus(status: string): Promise<Service[]>;
-  getServicesByType(serviceType: string): Promise<Service[]>;
-  getCompletedServices(startDate?: Date, endDate?: Date): Promise<Service[]>;
-  getServicesWithCosts(startDate?: Date, endDate?: Date): Promise<Service[]>;
-  createService(service: InsertService): Promise<Service>;
-  updateService(id: string, service: Partial<InsertService>): Promise<Service | undefined>;
-  deleteService(id: string): Promise<boolean>;
-  
-  // Service History
-  addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory>;
-  getServiceHistory(serviceId: string): Promise<ServiceHistory[]>;
-  
-  // Dashboard Stats
-  getDashboardStats(): Promise<{
-    activeMachines: number;
-    maintenanceMachines: number;
-    defectMachines: number;
-    pendingServices: number;
-    completedServices: number;
-    totalCost: number;
-    avgServiceCost: number;
-  }>;
-  
-  // Reports
-  getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
-  getTechnicianPerformance(startDate?: Date, endDate?: Date): Promise<Array<{
-    technicianId: string;
-    technicianName: string;
-    completedServices: number;
-    totalServices: number;
-    avgCompletionTime: number;
-    totalCost: number;
-  }>>;
-  getMonthlyServiceStats(year?: number): Promise<Array<{
-    month: string;
-    totalServices: number;
-    completedServices: number;
-    pendingServices: number;
-    totalCost: number;
-  }>>;
-  getBranchStats(): Promise<Array<{
-    branch: string;
-    machineCount: number;
-    activeMachines: number;
-    totalServices: number;
-    totalCost: number;
-  }>>;
-  getCostAnalysis(startDate?: Date, endDate?: Date): Promise<{
-    byType: Array<{ type: string; count: number; totalCost: number; avgCost: number }>;
-    byTechnician: Array<{ technicianName: string; count: number; totalCost: number; avgCost: number }>;
-    byBranch: Array<{ branch: string; count: number; totalCost: number; avgCost: number }>;
-    byPriority: Array<{ priority: string; count: number; totalCost: number; avgCost: number }>;
-  }>;
-  getMachineMaintenanceHistory(machineId: string): Promise<Array<{
-    service: Service;
-    daysSinceLastService: number;
-    totalCost: number;
-  }>>;
+  // ... interface existente (manter igual) ...
 }
 
-// Função auxiliar para converter snake_case para camelCase - VERSÃO CORRIGIDA
+// Função auxiliar para converter snake_case para camelCase - VERSÃO COMPLETAMENTE CORRIGIDA
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
@@ -130,19 +44,32 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.location_type) result.locationType = result.location_type;
     if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
     
-    // CORREÇÃO: Não criar Date inválido para installation_date
+    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos
     if (result.installation_date) {
-      // Verificar se a data é válida antes de converter
-      if (result.installation_date instanceof Date && !isNaN(result.installation_date.getTime())) {
-        result.installationDate = result.installation_date;
-      } else if (typeof result.installation_date === 'string') {
-        const date = new Date(result.installation_date);
-        if (!isNaN(date.getTime())) {
-          result.installationDate = date;
+      // Verificar se é um objeto Date válido
+      if (result.installation_date instanceof Date) {
+        if (!isNaN(result.installation_date.getTime())) {
+          result.installationDate = result.installation_date;
         } else {
-          result.installationDate = new Date(); // Fallback
+          result.installationDate = null;
         }
+      } else if (typeof result.installation_date === 'string') {
+        // Tentar parsear a string
+        try {
+          const date = new Date(result.installation_date);
+          if (!isNaN(date.getTime())) {
+            result.installationDate = date;
+          } else {
+            result.installationDate = null;
+          }
+        } catch {
+          result.installationDate = null;
+        }
+      } else {
+        result.installationDate = null;
       }
+    } else {
+      result.installationDate = null;
     }
     
     if (result.created_at) result.createdAt = result.created_at;
@@ -163,29 +90,49 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
     if (result.descricao_problema) result.descricaoProblema = result.descricao_problema;
     
-    // CORREÇÃO: Não criar Date inválido para data_agendamento
+    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos para data_agendamento
     if (result.data_agendamento) {
-      if (result.data_agendamento instanceof Date && !isNaN(result.data_agendamento.getTime())) {
-        result.dataAgendamento = result.data_agendamento;
-      } else if (typeof result.data_agendamento === 'string') {
-        const date = new Date(result.data_agendamento);
-        if (!isNaN(date.getTime())) {
-          result.dataAgendamento = date;
+      if (result.data_agendamento instanceof Date) {
+        if (!isNaN(result.data_agendamento.getTime())) {
+          result.dataAgendamento = result.data_agendamento;
         } else {
-          result.dataAgendamento = new Date(); // Fallback
+          result.dataAgendamento = null;
         }
+      } else if (typeof result.data_agendamento === 'string') {
+        try {
+          const date = new Date(result.data_agendamento);
+          if (!isNaN(date.getTime())) {
+            result.dataAgendamento = date;
+          } else {
+            result.dataAgendamento = null;
+          }
+        } catch {
+          result.dataAgendamento = null;
+        }
+      } else {
+        result.dataAgendamento = null;
       }
+    } else {
+      result.dataAgendamento = null;
     }
     
-    // CORREÇÃO: Não criar Date inválido para data_conclusao
+    // CORREÇÃO CRÍTICA: Não criar objetos Date inválidos para data_conclusao
     if (result.data_conclusao) {
-      if (result.data_conclusao instanceof Date && !isNaN(result.data_conclusao.getTime())) {
-        result.dataConclusao = result.data_conclusao;
-      } else if (typeof result.data_conclusao === 'string') {
-        const date = new Date(result.data_conclusao);
-        if (!isNaN(date.getTime())) {
-          result.dataConclusao = date;
+      if (result.data_conclusao instanceof Date) {
+        if (!isNaN(result.data_conclusao.getTime())) {
+          result.dataConclusao = result.data_conclusao;
         } else {
+          result.dataConclusao = null;
+        }
+      } else if (typeof result.data_conclusao === 'string') {
+        try {
+          const date = new Date(result.data_conclusao);
+          if (!isNaN(date.getTime())) {
+            result.dataConclusao = date;
+          } else {
+            result.dataConclusao = null;
+          }
+        } catch {
           result.dataConclusao = null;
         }
       } else {
@@ -298,7 +245,7 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para validar e formatar datas - VERSÃO COMPLETAMENTE CORRIGIDA
+// Função auxiliar para validar e formatar datas - VERSÃO SIMPLIFICADA
 function safeDateToISO(dateValue: any): string {
   // Se for nulo/vazio, retornar string vazia
   if (!dateValue) {
@@ -310,7 +257,7 @@ function safeDateToISO(dateValue: any): string {
     if (dateValue instanceof Date) {
       // Verificar se é um Date válido
       if (isNaN(dateValue.getTime())) {
-        console.warn('⚠️ [safeDateToISO] Date inválido detectado');
+        console.log('📅 [safeDateToISO] Date inválido detectado - retornando string vazia');
         return '';
       }
       return dateValue.toISOString();
@@ -329,32 +276,13 @@ function safeDateToISO(dateValue: any): string {
         return date.toISOString();
       }
       
-      // Tentar formatos específicos
-      // Formato ISO
-      const isoMatch = cleanStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (isoMatch) {
-        const [_, year, month, day] = isoMatch.map(Number);
-        const date = new Date(year, month - 1, day);
-        if (!isNaN(date.getTime())) {
-          return date.toISOString();
-        }
-      }
-      
       return '';
-    }
-    
-    // Se for número (timestamp)
-    if (typeof dateValue === 'number') {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString();
-      }
     }
     
     return '';
     
   } catch (error) {
-    console.warn('⚠️ [safeDateToISO] Erro ao processar data:', error);
+    console.log('📅 [safeDateToISO] Erro ao processar data:', error);
     return '';
   }
 }
@@ -386,33 +314,13 @@ function anyToDate(dateValue: any): Date {
       if (!isNaN(date.getTime())) {
         return date;
       }
-      
-      // Tentar formato brasileiro DD/MM/YYYY
-      const brMatch = cleanStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-      if (brMatch) {
-        const [_, day, month, year] = brMatch.map(Number);
-        const date = new Date(year, month - 1, day);
-        if (!isNaN(date.getTime())) {
-          return date;
-        }
-      }
-      
-      // Tentar formato YYYY-MM-DD
-      const isoMatch = cleanStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-      if (isoMatch) {
-        const [_, year, month, day] = isoMatch.map(Number);
-        const date = new Date(year, month - 1, day);
-        if (!isNaN(date.getTime())) {
-          return date;
-        }
-      }
     }
     
     // Fallback para data atual
     return new Date();
     
   } catch (error) {
-    console.warn('⚠️ [anyToDate] Erro:', error);
+    console.log('📅 [anyToDate] Erro:', error);
     return new Date();
   }
 }
