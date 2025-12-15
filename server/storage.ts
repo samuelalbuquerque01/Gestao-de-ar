@@ -252,20 +252,98 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para validar e formatar datas
+// Função auxiliar para validar e formatar datas - VERSÃO MELHORADA
 function safeDateToISO(dateValue: any): string {
-  if (!dateValue) return new Date().toISOString();
+  if (!dateValue) {
+    console.log('📅 [safeDateToISO] Valor nulo/vazio, usando data atual');
+    return new Date().toISOString();
+  }
   
   try {
+    // Se já for uma string ISO, retornar como está
+    if (typeof dateValue === 'string' && dateValue.endsWith('Z')) {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return dateValue;
+      }
+    }
+    
+    // Tentar criar Date
     const date = new Date(dateValue);
+    
     if (isNaN(date.getTime())) {
-      console.warn('⚠️ [STORAGE] Data inválida em safeDateToISO:', dateValue);
+      console.warn('⚠️ [safeDateToISO] Data inválida:', dateValue, 'Tipo:', typeof dateValue);
+      console.log('🔄 [safeDateToISO] Usando data atual');
       return new Date().toISOString();
     }
+    
     return date.toISOString();
   } catch (error) {
-    console.warn('⚠️ [STORAGE] Erro em safeDateToISO:', error);
+    console.warn('⚠️ [safeDateToISO] Erro:', error);
+    console.log('🔄 [safeDateToISO] Usando data atual como fallback');
     return new Date().toISOString();
+  }
+}
+
+// Função auxiliar para converter qualquer valor para Date
+function anyToDate(dateValue: any): Date {
+  if (!dateValue) {
+    console.log('📅 [anyToDate] Valor nulo/vazio, usando data atual');
+    return new Date();
+  }
+  
+  try {
+    // Se já for Date, retornar como está
+    if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) {
+        console.warn('⚠️ [anyToDate] Date inválido, usando data atual');
+        return new Date();
+      }
+      return dateValue;
+    }
+    
+    // Se for string, tentar parse
+    if (typeof dateValue === 'string') {
+      // Remover espaços
+      const cleanStr = dateValue.trim();
+      
+      // Tentar parse ISO
+      const date = new Date(cleanStr);
+      
+      if (!isNaN(date.getTime())) {
+        console.log('📅 [anyToDate] String parseada com sucesso:', cleanStr, '→', date.toISOString());
+        return date;
+      }
+      
+      // Tentar formato brasileiro DD/MM/YYYY
+      const brMatch = cleanStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if (brMatch) {
+        const [_, day, month, year] = brMatch.map(Number);
+        const date = new Date(year, month - 1, day);
+        console.log('📅 [anyToDate] Formato BR parseado:', cleanStr, '→', date.toISOString());
+        return date;
+      }
+      
+      // Tentar formato YYYY-MM-DD
+      const isoMatch = cleanStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const [_, year, month, day] = isoMatch.map(Number);
+        const date = new Date(year, month - 1, day);
+        console.log('📅 [anyToDate] Formato YYYY-MM-DD parseado:', cleanStr, '→', date.toISOString());
+        return date;
+      }
+      
+      console.warn('⚠️ [anyToDate] String não pôde ser parseada:', cleanStr);
+    }
+    
+    // Fallback para data atual
+    console.log('📅 [anyToDate] Usando data atual como fallback');
+    return new Date();
+    
+  } catch (error) {
+    console.warn('⚠️ [anyToDate] Erro:', error);
+    console.log('📅 [anyToDate] Usando data atual como fallback');
+    return new Date();
   }
 }
 
@@ -584,7 +662,7 @@ export class DatabaseStorage implements IStorage {
         locationFloor: machineData.localizacaoAndar || 0,
         branch: machineData.filial || 'Matriz',
         installationDate: machineData.dataInstalacao 
-          ? new Date(machineData.dataInstalacao)
+          ? anyToDate(machineData.dataInstalacao)
           : new Date(),
         status: machineData.status || 'ATIVO',
         observacoes: machineData.observacoes || ''
@@ -641,7 +719,7 @@ export class DatabaseStorage implements IStorage {
       if (machineData.localizacaoAndar !== undefined) updateData.locationFloor = machineData.localizacaoAndar;
       if (machineData.filial !== undefined) updateData.branch = machineData.filial;
       if (machineData.dataInstalacao !== undefined) {
-        updateData.installationDate = new Date(machineData.dataInstalacao);
+        updateData.installationDate = anyToDate(machineData.dataInstalacao);
       }
       if (machineData.status !== undefined) updateData.status = machineData.status;
       if (machineData.observacoes !== undefined) updateData.observacoes = machineData.observacoes;
@@ -1017,70 +1095,15 @@ export class DatabaseStorage implements IStorage {
       const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
       
-      // CORREÇÃO: Processar data_agendamento corretamente
-      let dataAgendamento: Date;
-      try {
-        if (typeof serviceData.data_agendamento === 'string') {
-          const dateStr = serviceData.data_agendamento;
-          console.log('📅 [STORAGE] Processando data string:', dateStr);
-          
-          // Tentar parse ISO
-          dataAgendamento = new Date(dateStr);
-          
-          if (isNaN(dataAgendamento.getTime())) {
-            console.warn('⚠️ [STORAGE] Data string inválida, tentando parse manual:', dateStr);
-            
-            // Tentar parse manual de diferentes formatos
-            const isoMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-            if (isoMatch) {
-              const [_, year, month, day, hour, minute] = isoMatch.map(Number);
-              dataAgendamento = new Date(Date.UTC(year, month - 1, day, hour, minute));
-              console.log('📅 [STORAGE] Data parseada do padrão ISO:', dataAgendamento.toISOString());
-            } else {
-              // Tentar formato simples YYYY-MM-DDTHH:MM
-              const simpleMatch = dateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-              if (simpleMatch) {
-                const [_, year, month, day, hour, minute] = simpleMatch.map(Number);
-                dataAgendamento = new Date(Date.UTC(year, month - 1, day, hour, minute));
-                console.log('📅 [STORAGE] Data parseada do padrão simples:', dataAgendamento.toISOString());
-              } else {
-                // Fallback para data atual
-                dataAgendamento = new Date();
-                console.log('📅 [STORAGE] Usando data atual como fallback');
-              }
-            }
-          } else {
-            console.log('📅 [STORAGE] Data parseada com sucesso:', dataAgendamento.toISOString());
-          }
-        } else if (serviceData.data_agendamento instanceof Date) {
-          dataAgendamento = serviceData.data_agendamento;
-          console.log('📅 [STORAGE] Data Date recebida:', dataAgendamento.toISOString());
-        } else {
-          console.warn('⚠️ [STORAGE] Tipo de data desconhecido, usando data atual');
-          dataAgendamento = new Date();
-        }
-      } catch (error) {
-        console.error('❌ [STORAGE] Erro ao processar data, usando data atual:', error);
-        dataAgendamento = new Date();
-      }
-      
-      console.log('📅 [STORAGE] Data processada:', dataAgendamento.toISOString());
+      // Processar data_agendamento usando anyToDate
+      const dataAgendamento = anyToDate(serviceData.data_agendamento);
+      console.log('📅 [STORAGE] Data agendamento processada:', dataAgendamento.toISOString());
       
       // Processar data_conclusao se existir
       let dataConclusao: Date | null = null;
       if (serviceData.data_conclusao) {
-        try {
-          if (typeof serviceData.data_conclusao === 'string') {
-            const date = new Date(serviceData.data_conclusao);
-            if (!isNaN(date.getTime())) {
-              dataConclusao = date;
-            }
-          } else if (serviceData.data_conclusao instanceof Date) {
-            dataConclusao = serviceData.data_conclusao;
-          }
-        } catch (error) {
-          console.error('❌ [STORAGE] Erro ao processar data_conclusao:', error);
-        }
+        dataConclusao = anyToDate(serviceData.data_conclusao);
+        console.log('📅 [STORAGE] Data conclusão processada:', dataConclusao?.toISOString() || 'null');
       }
       
       // Processar dados
@@ -1161,37 +1184,20 @@ export class DatabaseStorage implements IStorage {
       if (serviceData.descricao_servico !== undefined) updateData.descricao_servico = serviceData.descricao_servico;
       if (serviceData.descricao_problema !== undefined) updateData.descricao_problema = serviceData.descricao_problema;
       
-      // CORREÇÃO: Processar data_agendamento corretamente
+      // Processar data_agendamento se fornecida
       if (serviceData.data_agendamento !== undefined) {
-        try {
-          let dataAgendamento: Date;
-          if (typeof serviceData.data_agendamento === 'string') {
-            const dateStr = serviceData.data_agendamento;
-            console.log('📅 [STORAGE] Processando data para atualização:', dateStr);
-            
-            dataAgendamento = new Date(dateStr);
-            
-            if (isNaN(dataAgendamento.getTime())) {
-              console.warn('⚠️ [STORAGE] Data inválida para atualização, mantendo data existente');
-              // Não atualizar a data se for inválida
-            } else {
-              updateData.data_agendamento = dataAgendamento;
-              console.log('📅 [STORAGE] Data processada para atualização:', dataAgendamento.toISOString());
-            }
-          } else if (serviceData.data_agendamento instanceof Date) {
-            updateData.data_agendamento = serviceData.data_agendamento;
-            console.log('📅 [STORAGE] Data Date recebida para atualização:', serviceData.data_agendamento.toISOString());
-          }
-        } catch (error: any) {
-          console.warn('⚠️ [STORAGE] Erro ao processar data para atualização:', error.message);
-        }
+        updateData.data_agendamento = anyToDate(serviceData.data_agendamento);
+        console.log('📅 [STORAGE] Data agendamento processada para atualização:', updateData.data_agendamento.toISOString());
       }
       
+      // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
-        try {
-          updateData.data_conclusao = serviceData.data_conclusao ? new Date(serviceData.data_conclusao) : null;
-        } catch (error) {
-          console.warn('⚠️ [STORAGE] Data conclusão inválida:', serviceData.data_conclusao);
+        if (serviceData.data_conclusao) {
+          updateData.data_conclusao = anyToDate(serviceData.data_conclusao);
+          console.log('📅 [STORAGE] Data conclusão processada para atualização:', updateData.data_conclusao?.toISOString());
+        } else {
+          updateData.data_conclusao = null;
+          console.log('📅 [STORAGE] Data conclusão definida como null');
         }
       }
       
