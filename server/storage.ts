@@ -252,45 +252,71 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para validar e formatar datas - VERSÃO CORRIGIDA
-function safeDateToISO(dateValue: any): string | undefined {
-  // Retornar undefined para valores nulos/vazios
-  if (!dateValue || dateValue === null || dateValue === undefined) {
-    console.log('📅 [safeDateToISO] Valor nulo/vazio, retornando undefined');
-    return undefined;
+// Função auxiliar para validar e formatar datas - VERSÃO FINAL CORRIGIDA
+function safeDateToISO(dateValue: any): string {
+  // Se for nulo/vazio, retornar string vazia
+  if (!dateValue || dateValue === null || dateValue === undefined || dateValue === '') {
+    console.log('📅 [safeDateToISO] Valor nulo/vazio, retornando string vazia');
+    return '';
   }
   
   try {
-    // Se já for uma string ISO, retornar como está
+    // Se já for uma string ISO válida, retornar como está
     if (typeof dateValue === 'string') {
-      if (dateValue.endsWith('Z')) {
-        const date = new Date(dateValue);
+      // Limpar a string
+      const cleanStr = dateValue.trim();
+      
+      // Se já terminar com Z, verificar se é válida
+      if (cleanStr.endsWith('Z')) {
+        const date = new Date(cleanStr);
         if (!isNaN(date.getTime())) {
-          return dateValue;
+          return cleanStr;
         }
-      } else if (dateValue.includes('T')) {
-        // Tentar adicionar Z se não tiver
-        const date = new Date(dateValue + 'Z');
+      }
+      
+      // Tentar parsear como Date
+      const date = new Date(cleanStr);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+      
+      // Tentar formatos específicos
+      // Formato YYYY-MM-DD
+      const dateRegex = /^(\d{4})-(\d{2})-(\d{2})/;
+      const match = cleanStr.match(dateRegex);
+      if (match) {
+        const [_, year, month, day] = match.map(Number);
+        const date = new Date(year, month - 1, day);
         if (!isNaN(date.getTime())) {
           return date.toISOString();
         }
       }
+      
+      console.warn('⚠️ [safeDateToISO] String não pôde ser parseada:', cleanStr);
+      return '';
     }
     
-    // Tentar criar Date
-    const date = new Date(dateValue);
-    
-    if (isNaN(date.getTime())) {
-      console.warn('⚠️ [safeDateToISO] Data inválida:', dateValue, 'Tipo:', typeof dateValue);
-      console.log('📅 [safeDateToISO] Retornando undefined');
-      return undefined;
+    // Se for número (timestamp)
+    if (typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
     }
     
-    return date.toISOString();
+    // Se for objeto Date
+    if (dateValue instanceof Date) {
+      if (!isNaN(dateValue.getTime())) {
+        return dateValue.toISOString();
+      }
+    }
+    
+    console.warn('⚠️ [safeDateToISO] Tipo não suportado ou valor inválido:', typeof dateValue, 'Valor:', dateValue);
+    return '';
+    
   } catch (error) {
-    console.warn('⚠️ [safeDateToISO] Erro:', error);
-    console.log('📅 [safeDateToISO] Retornando undefined');
-    return undefined;
+    console.warn('⚠️ [safeDateToISO] Erro ao processar data:', error);
+    return '';
   }
 }
 
@@ -799,7 +825,7 @@ export class DatabaseStorage implements IStorage {
         dataAgendamento: safeDateToISO(service.data_agendamento),
         dataConclusao: service.data_conclusao 
           ? safeDateToISO(service.data_conclusao)
-          : undefined,
+          : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -817,7 +843,7 @@ export class DatabaseStorage implements IStorage {
     try {
       const servicesList = await db.select().from(services).orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -827,7 +853,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -835,16 +863,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços:', error);
@@ -859,7 +877,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(services.maquina_id, machineId))
         .orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -869,7 +887,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -877,16 +897,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por máquina:', error);
@@ -901,7 +911,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(services.tecnico_id, technicianId))
         .orderBy(desc(services.data_agendamento));
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -911,7 +921,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -919,16 +931,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por técnico:', error);
@@ -949,7 +951,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -959,7 +961,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -967,16 +971,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por data:', error);
@@ -992,7 +986,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1002,7 +996,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1010,16 +1006,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por status:', error);
@@ -1035,7 +1021,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1045,7 +1031,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1053,16 +1041,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços por tipo:', error);
@@ -1088,7 +1066,7 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1098,7 +1076,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1106,16 +1086,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços concluídos:', error);
@@ -1141,7 +1111,7 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        const result = {
+        return {
           ...mapDbToCamelCase(service, 'services'),
           id: service.id,
           tipoServico: service.tipo_servico || 'PREVENTIVA',
@@ -1151,7 +1121,9 @@ export class DatabaseStorage implements IStorage {
           descricaoServico: service.descricao_servico || '',
           descricaoProblema: service.descricao_problema || '',
           dataAgendamento: safeDateToISO(service.data_agendamento),
-          dataConclusao: undefined as string | undefined,
+          dataConclusao: service.data_conclusao 
+            ? safeDateToISO(service.data_conclusao)
+            : '',
           prioridade: service.prioridade || 'MEDIA',
           status: service.status || 'AGENDADO',
           custo: service.custo ? service.custo.toString() : '',
@@ -1159,16 +1131,6 @@ export class DatabaseStorage implements IStorage {
           createdAt: service.created_at || new Date(),
           updatedAt: service.updated_at || new Date()
         };
-        
-        // Usar safeDateToISO corrigido para data_conclusao
-        if (service.data_conclusao) {
-          const conclusao = safeDateToISO(service.data_conclusao);
-          if (conclusao) {
-            result.dataConclusao = conclusao;
-          }
-        }
-        
-        return result;
       });
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços com custos:', error);
@@ -1228,7 +1190,7 @@ export class DatabaseStorage implements IStorage {
       });
       
       // Retornar no formato correto
-      const result = {
+      return {
         id: service.id,
         tipoServico: service.tipo_servico || 'PREVENTIVA',
         maquinaId: service.maquina_id || '',
@@ -1237,7 +1199,9 @@ export class DatabaseStorage implements IStorage {
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
         dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: undefined as string | undefined,
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -1245,16 +1209,6 @@ export class DatabaseStorage implements IStorage {
         createdAt: service.created_at || new Date(),
         updatedAt: service.updated_at || new Date()
       };
-      
-      // Usar safeDateToISO corrigido para data_conclusao
-      if (service.data_conclusao) {
-        const conclusao = safeDateToISO(service.data_conclusao);
-        if (conclusao) {
-          result.dataConclusao = conclusao;
-        }
-      }
-      
-      return result;
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
@@ -1329,7 +1283,7 @@ export class DatabaseStorage implements IStorage {
       console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
       
       // Retornar no formato correto
-      const result = {
+      return {
         id: service.id,
         tipoServico: service.tipo_servico || 'PREVENTIVA',
         maquinaId: service.maquina_id || '',
@@ -1338,7 +1292,9 @@ export class DatabaseStorage implements IStorage {
         descricaoServico: service.descricao_servico || '',
         descricaoProblema: service.descricao_problema || '',
         dataAgendamento: safeDateToISO(service.data_agendamento),
-        dataConclusao: undefined as string | undefined,
+        dataConclusao: service.data_conclusao 
+          ? safeDateToISO(service.data_conclusao)
+          : '',
         prioridade: service.prioridade || 'MEDIA',
         status: service.status || 'AGENDADO',
         custo: service.custo ? service.custo.toString() : '',
@@ -1346,16 +1302,6 @@ export class DatabaseStorage implements IStorage {
         createdAt: service.created_at || new Date(),
         updatedAt: service.updated_at || new Date()
       };
-      
-      // Usar safeDateToISO corrigido para data_conclusao
-      if (service.data_conclusao) {
-        const conclusao = safeDateToISO(service.data_conclusao);
-        if (conclusao) {
-          result.dataConclusao = conclusao;
-        }
-      }
-      
-      return result;
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao atualizar serviço:', error.message);
       console.error('❌ [STORAGE] Stack:', error.stack);
