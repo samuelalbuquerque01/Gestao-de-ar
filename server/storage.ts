@@ -107,6 +107,7 @@ export interface IStorage {
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
+  // Criar uma cópia profunda para não modificar o objeto original
   const result = { ...data };
   
   // Mapeamentos específicos por tabela
@@ -141,18 +142,23 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   }
   
   if (tableName === 'services') {
-    if (result.tipo_servico) result.tipoServico = result.tipo_servico;
-    if (result.maquina_id) result.maquinaId = result.maquina_id;
-    if (result.tecnico_id) result.tecnicoId = result.tecnico_id;
-    if (result.tecnico_nome) result.tecnicoNome = result.tecnico_nome;
-    if (result.descricao_servico) result.descricaoServico = result.descricao_servico;
-    if (result.descricao_problema) result.descricaoProblema = result.descricao_problema;
-    if (result.data_agendamento) result.dataAgendamento = result.data_agendamento;
-    if (result.data_conclusao) result.dataConclusao = result.data_conclusao;
-    if (result.custo !== null && result.custo !== undefined) result.custo = result.custo.toString();
-    if (result.created_at) result.createdAt = result.created_at;
-    if (result.updated_at) result.updatedAt = result.updated_at;
+    // CORREÇÃO: Mapear todos os campos ANTES de deletar
+    if (result.tipo_servico !== undefined) result.tipoServico = result.tipo_servico;
+    if (result.maquina_id !== undefined) result.maquinaId = result.maquina_id;
+    if (result.tecnico_id !== undefined) result.tecnicoId = result.tecnico_id;
+    if (result.tecnico_nome !== undefined) result.tecnicoNome = result.tecnico_nome;
+    if (result.descricao_servico !== undefined) result.descricaoServico = result.descricao_servico;
+    if (result.descricao_problema !== undefined) result.descricaoProblema = result.descricao_problema;
+    if (result.data_agendamento !== undefined) result.dataAgendamento = result.data_agendamento;
+    if (result.data_conclusao !== undefined) result.dataConclusao = result.data_conclusao;
+    if (result.prioridade !== undefined) result.prioridade = result.prioridade;
+    if (result.status !== undefined) result.status = result.status;
+    if (result.custo !== undefined) result.custo = result.custo;
+    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
+    if (result.created_at !== undefined) result.createdAt = result.created_at;
+    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
     
+    // Agora deletar os campos snake_case
     delete result.tipo_servico;
     delete result.maquina_id;
     delete result.tecnico_id;
@@ -161,7 +167,10 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     delete result.descricao_problema;
     delete result.data_agendamento;
     delete result.data_conclusao;
+    delete result.prioridade;
+    delete result.status;
     delete result.custo;
+    delete result.observacoes;
     delete result.created_at;
     delete result.updated_at;
   }
@@ -223,7 +232,10 @@ function mapCamelToDb(data: any, tableName: string): any {
     if (result.descricaoProblema) result.descricao_problema = result.descricaoProblema;
     if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
     if (result.dataConclusao) result.data_conclusao = result.dataConclusao;
-    if (result.custo) result.custo = result.custo;
+    if (result.prioridade) result.prioridade = result.prioridade;
+    if (result.status) result.status = result.status;
+    if (result.custo !== undefined) result.custo = result.custo;
+    if (result.observacoes) result.observacoes = result.observacoes;
     if (result.createdAt) result.created_at = result.createdAt;
     if (result.updatedAt) result.updated_at = result.updatedAt;
     
@@ -235,7 +247,10 @@ function mapCamelToDb(data: any, tableName: string): any {
     delete result.descricaoProblema;
     delete result.dataAgendamento;
     delete result.dataConclusao;
+    delete result.prioridade;
+    delete result.status;
     delete result.custo;
+    delete result.observacoes;
     delete result.createdAt;
     delete result.updatedAt;
   }
@@ -846,19 +861,22 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
+      // Primeiro mapear com a função corrigida
+      const mappedService = mapDbToCamelCase(service, 'services');
+      
       // Processar datas com anyToDate
       let dataAgendamentoFormatted = '';
       let dataConclusaoFormatted = '';
       
-      if (service.data_agendamento) {
-        const date = anyToDate(service.data_agendamento);
+      if (mappedService.dataAgendamento) {
+        const date = anyToDate(mappedService.dataAgendamento);
         if (date) {
           dataAgendamentoFormatted = date.toISOString();
         }
       }
       
-      if (service.data_conclusao) {
-        const date = anyToDate(service.data_conclusao);
+      if (mappedService.dataConclusao) {
+        const date = anyToDate(mappedService.dataConclusao);
         if (date) {
           dataConclusaoFormatted = date.toISOString();
         }
@@ -867,22 +885,22 @@ export class DatabaseStorage implements IStorage {
       console.log('📅 [STORAGE] Data agendamento final:', dataAgendamentoFormatted);
       
       return {
-        ...mapDbToCamelCase(service, 'services'),
+        ...mappedService,
         id: service.id,
-        tipoServico: service.tipo_servico || 'PREVENTIVA',
-        maquinaId: service.maquina_id || '',
-        tecnicoId: service.tecnico_id || '',
-        tecnicoNome: service.tecnico_nome || 'Desconhecido',
-        descricaoServico: service.descricao_servico || '',
-        descricaoProblema: service.descricao_problema || '',
+        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+        maquinaId: mappedService.maquinaId || '',
+        tecnicoId: mappedService.tecnicoId || '',
+        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+        descricaoServico: mappedService.descricaoServico || '',
+        descricaoProblema: mappedService.descricaoProblema || '',
         dataAgendamento: dataAgendamentoFormatted,
         dataConclusao: dataConclusaoFormatted,
-        prioridade: service.prioridade || 'MEDIA',
-        status: service.status || 'AGENDADO',
-        custo: service.custo ? service.custo.toString() : '',
-        observacoes: service.observacoes || '',
-        createdAt: service.created_at || new Date(),
-        updatedAt: service.updated_at || new Date()
+        prioridade: mappedService.prioridade || 'MEDIA',
+        status: mappedService.status || 'AGENDADO',
+        custo: mappedService.custo ? mappedService.custo.toString() : '',
+        observacoes: mappedService.observacoes || '',
+        createdAt: mappedService.createdAt || new Date(),
+        updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviço:', error);
@@ -898,41 +916,44 @@ export class DatabaseStorage implements IStorage {
       console.log(`✅ [STORAGE] Encontrados ${servicesList.length} serviços no banco`);
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -949,41 +970,44 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1000,41 +1024,44 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1056,41 +1083,44 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1107,41 +1137,44 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1158,41 +1191,44 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1219,41 +1255,44 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1280,41 +1319,44 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
+        // Primeiro mapear com a função corrigida
+        const mappedService = mapDbToCamelCase(service, 'services');
+        
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
-        if (service.data_agendamento) {
-          const date = anyToDate(service.data_agendamento);
+        if (mappedService.dataAgendamento) {
+          const date = anyToDate(mappedService.dataAgendamento);
           if (date) {
             dataAgendamentoFormatted = date.toISOString();
           }
         }
         
-        if (service.data_conclusao) {
-          const date = anyToDate(service.data_conclusao);
+        if (mappedService.dataConclusao) {
+          const date = anyToDate(mappedService.dataConclusao);
           if (date) {
             dataConclusaoFormatted = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(service, 'services'),
+          ...mappedService,
           id: service.id,
-          tipoServico: service.tipo_servico || 'PREVENTIVA',
-          maquinaId: service.maquina_id || '',
-          tecnicoId: service.tecnico_id || '',
-          tecnicoNome: service.tecnico_nome || 'Desconhecido',
-          descricaoServico: service.descricao_servico || '',
-          descricaoProblema: service.descricao_problema || '',
+          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+          maquinaId: mappedService.maquinaId || '',
+          tecnicoId: mappedService.tecnicoId || '',
+          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+          descricaoServico: mappedService.descricaoServico || '',
+          descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: service.prioridade || 'MEDIA',
-          status: service.status || 'AGENDADO',
-          custo: service.custo ? service.custo.toString() : '',
-          observacoes: service.observacoes || '',
-          createdAt: service.created_at || new Date(),
-          updatedAt: service.updated_at || new Date()
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
+          custo: mappedService.custo ? mappedService.custo.toString() : '',
+          observacoes: mappedService.observacoes || '',
+          createdAt: mappedService.createdAt || new Date(),
+          updatedAt: mappedService.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -1397,29 +1439,32 @@ export class DatabaseStorage implements IStorage {
         observacao: "Serviço criado"
       });
       
-      // Retornar no formato correto
-      const createdDataAgendamento = service.data_agendamento ? 
-        anyToDate(service.data_agendamento)?.toISOString() || '' : '';
+      // Primeiro mapear com a função corrigida
+      const mappedService = mapDbToCamelCase(service, 'services');
       
-      const createdDataConclusao = service.data_conclusao ? 
-        anyToDate(service.data_conclusao)?.toISOString() || '' : '';
+      // Retornar no formato correto
+      const createdDataAgendamento = mappedService.dataAgendamento ? 
+        anyToDate(mappedService.dataAgendamento)?.toISOString() || '' : '';
+      
+      const createdDataConclusao = mappedService.dataConclusao ? 
+        anyToDate(mappedService.dataConclusao)?.toISOString() || '' : '';
       
       return {
         id: service.id,
-        tipoServico: service.tipo_servico || 'PREVENTIVA',
-        maquinaId: service.maquina_id || '',
-        tecnicoId: service.tecnico_id || '',
-        tecnicoNome: service.tecnico_nome || 'Desconhecido',
-        descricaoServico: service.descricao_servico || '',
-        descricaoProblema: service.descricao_problema || '',
+        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+        maquinaId: mappedService.maquinaId || '',
+        tecnicoId: mappedService.tecnicoId || '',
+        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+        descricaoServico: mappedService.descricaoServico || '',
+        descricaoProblema: mappedService.descricaoProblema || '',
         dataAgendamento: createdDataAgendamento,
         dataConclusao: createdDataConclusao,
-        prioridade: service.prioridade || 'MEDIA',
-        status: service.status || 'AGENDADO',
-        custo: service.custo ? service.custo.toString() : '',
-        observacoes: service.observacoes || '',
-        createdAt: service.created_at || new Date(),
-        updatedAt: service.updated_at || new Date()
+        prioridade: mappedService.prioridade || 'MEDIA',
+        status: mappedService.status || 'AGENDADO',
+        custo: mappedService.custo ? mappedService.custo.toString() : '',
+        observacoes: mappedService.observacoes || '',
+        createdAt: mappedService.createdAt || new Date(),
+        updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
@@ -1506,29 +1551,32 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
       
-      // Retornar no formato correto
-      const updatedDataAgendamento = service.data_agendamento ? 
-        anyToDate(service.data_agendamento)?.toISOString() || '' : '';
+      // Primeiro mapear com a função corrigida
+      const mappedService = mapDbToCamelCase(service, 'services');
       
-      const updatedDataConclusao = service.data_conclusao ? 
-        anyToDate(service.data_conclusao)?.toISOString() || '' : '';
+      // Retornar no formato correto
+      const updatedDataAgendamento = mappedService.dataAgendamento ? 
+        anyToDate(mappedService.dataAgendamento)?.toISOString() || '' : '';
+      
+      const updatedDataConclusao = mappedService.dataConclusao ? 
+        anyToDate(mappedService.dataConclusao)?.toISOString() || '' : '';
       
       return {
         id: service.id,
-        tipoServico: service.tipo_servico || 'PREVENTIVA',
-        maquinaId: service.maquina_id || '',
-        tecnicoId: service.tecnico_id || '',
-        tecnicoNome: service.tecnico_nome || 'Desconhecido',
-        descricaoServico: service.descricao_servico || '',
-        descricaoProblema: service.descricao_problema || '',
+        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
+        maquinaId: mappedService.maquinaId || '',
+        tecnicoId: mappedService.tecnicoId || '',
+        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
+        descricaoServico: mappedService.descricaoServico || '',
+        descricaoProblema: mappedService.descricaoProblema || '',
         dataAgendamento: updatedDataAgendamento,
         dataConclusao: updatedDataConclusao,
-        prioridade: service.prioridade || 'MEDIA',
-        status: service.status || 'AGENDADO',
-        custo: service.custo ? service.custo.toString() : '',
-        observacoes: service.observacoes || '',
-        createdAt: service.created_at || new Date(),
-        updatedAt: service.updated_at || new Date()
+        prioridade: mappedService.prioridade || 'MEDIA',
+        status: mappedService.status || 'AGENDADO',
+        custo: mappedService.custo ? mappedService.custo.toString() : '',
+        observacoes: mappedService.observacoes || '',
+        createdAt: mappedService.createdAt || new Date(),
+        updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao atualizar serviço:', error.message);
