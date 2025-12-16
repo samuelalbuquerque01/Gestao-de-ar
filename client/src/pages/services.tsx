@@ -24,7 +24,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +40,22 @@ const serviceSchema = z.object({
   status: z.string(),
   observacoes: z.string().optional(),
 });
+
+// Função auxiliar para formatar data com segurança
+const formatServiceDate = (dateString: string): string => {
+  if (!dateString) return 'Data não informada';
+  
+  try {
+    const date = new Date(dateString);
+    if (!isValid(date) || isNaN(date.getTime())) {
+      return 'Data inválida';
+    }
+    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('❌ Erro ao formatar data do serviço:', error);
+    return 'Data não informada';
+  }
+};
 
 export default function ServicesPage() {
   const { services, machines, technicians, createService, updateService, deleteService } = useData();
@@ -516,18 +532,16 @@ export default function ServicesPage() {
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
-            let serviceDate = new Date();
             
-            try {
-              if (service.dataAgendamento) {
-                const parsedDate = new Date(service.dataAgendamento);
-                if (!isNaN(parsedDate.getTime())) {
-                  serviceDate = parsedDate;
-                }
-              }
-            } catch (error) {
-              console.error('Erro ao parsear data:', error);
-            }
+            // CORREÇÃO: Usar a função formatServiceDate para mostrar a data REAL do serviço
+            const dataFormatada = formatServiceDate(service.dataAgendamento);
+            
+            console.log('🔍 DEBUG Serviço:', {
+              id: service.id,
+              dataAgendamentoRaw: service.dataAgendamento,
+              dataFormatada: dataFormatada,
+              descricao: service.descricaoServico
+            });
             
             return (
               <div 
@@ -574,7 +588,7 @@ export default function ServicesPage() {
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>{format(serviceDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                    <span>{dataFormatada}</span> {/* CORREÇÃO: Usar dataFormatada em vez de criar nova data */}
                   </div>
                   
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
