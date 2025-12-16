@@ -600,7 +600,7 @@ export async function registerRoutes(
     }
   });
 
-  // POST criar novo serviço (VERSÃO CORRIGIDA - ÚNICA)
+  // POST criar novo serviço (VERSÃO CORRIGIDA - COM TRATAMENTO DE FUSO HORÁRIO)
   app.post('/api/services', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Criando novo serviço...');
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
@@ -609,35 +609,47 @@ export async function registerRoutes(
       const validatedData = serviceRequestSchema.parse(req.body);
       console.log('✅ [SERVICES] Dados validados:', validatedData);
       
-      // CORREÇÃO: Processar data corretamente
+      // CORREÇÃO: Processar data corretamente (corrigindo fuso horário)
       let dataAgendamentoISO: string;
       const horaAgendamento = validatedData.horaAgendamento || '08:00';
       
       try {
-        // Primeiro, tentar parsear como data ISO
+        // Se a data já está no formato ISO (vindo do frontend)
         const dateFromISO = new Date(validatedData.dataAgendamento);
         
         if (!isNaN(dateFromISO.getTime())) {
-          // Se for uma data ISO válida, extrair a data (YYYY-MM-DD)
-          const dataStr = dateFromISO.toISOString().split('T')[0];
-          // Combinar com a hora
-          dataAgendamentoISO = `${dataStr}T${horaAgendamento}:00.000Z`;
-          console.log('📅 [SERVICES] Data combinada a partir de ISO:', dataAgendamentoISO);
+          // Extrair apenas a parte da data (YYYY-MM-DD) ignorando o horário do frontend
+          const dateStr = validatedData.dataAgendamento.split('T')[0];
+          
+          // Combinar com a hora especificada pelo usuário
+          // Usar o formato ISO completo com timezone local
+          const localDateTime = `${dateStr}T${horaAgendamento}:00`;
+          const combinedDate = new Date(localDateTime);
+          
+          // Verificar se a data é válida
+          if (!isNaN(combinedDate.getTime())) {
+            // Usar a data local (não converter para UTC)
+            dataAgendamentoISO = combinedDate.toISOString();
+            console.log('📅 [SERVICES] Data local combinada:', dataAgendamentoISO);
+            
+            // DEBUG: Mostrar diferentes representações
+            console.log('⏰ [SERVICES] DEBUG - Original:', validatedData.dataAgendamento);
+            console.log('⏰ [SERVICES] DEBUG - Hora especificada:', horaAgendamento);
+            console.log('⏰ [SERVICES] DEBUG - Data local:', combinedDate.toLocaleString('pt-BR'));
+            console.log('⏰ [SERVICES] DEBUG - Data UTC:', combinedDate.toUTCString());
+          } else {
+            // Fallback: usar data atual
+            throw new Error('Data combinada inválida');
+          }
         } else {
-          // Se não for ISO, tratar como data simples (YYYY-MM-DD)
+          // Se não for ISO, tentar criar data a partir do formato YYYY-MM-DD
           dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
-          console.log('📅 [SERVICES] Data simples combinada com hora:', dataAgendamentoISO);
-        }
-        
-        // Validar se a data é válida
-        const finalDate = new Date(dataAgendamentoISO);
-        if (isNaN(finalDate.getTime())) {
-          throw new Error('Data inválida após processamento');
+          console.log('📅 [SERVICES] Data ISO criada a partir de string:', dataAgendamentoISO);
         }
         
       } catch (error) {
         console.error('❌ [SERVICES] Erro ao processar data:', error);
-        // Fallback: usar data atual
+        // Fallback: usar data atual com hora especificada
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
         dataAgendamentoISO = `${todayStr}T${horaAgendamento}:00.000Z`;
@@ -692,7 +704,7 @@ export async function registerRoutes(
     }
   });
 
-  // PUT atualizar serviço (VERSÃO CORRIGIDA - ÚNICA)
+  // PUT atualizar serviço (VERSÃO CORRIGIDA - COM TRATAMENTO DE FUSO HORÁRIO)
   app.put('/api/services/:id', authenticateToken, async (req, res) => {
     console.log('🔍 [SERVICES] Atualizando serviço:', req.params.id);
     console.log('📥 [SERVICES] Dados recebidos:', JSON.stringify(req.body, null, 2));
@@ -712,28 +724,46 @@ export async function registerRoutes(
         observacoes: validatedData.observacoes
       };
       
-      // CORREÇÃO: Processar data_agendamento se fornecida
+      // CORREÇÃO: Processar data_agendamento se fornecida (corrigindo fuso horário)
       if (validatedData.dataAgendamento) {
         const horaAgendamento = validatedData.horaAgendamento || '08:00';
         let dataAgendamentoISO: string;
         
         try {
+          // Se a data já está no formato ISO
           const dateFromISO = new Date(validatedData.dataAgendamento);
           
           if (!isNaN(dateFromISO.getTime())) {
-            // Se for uma data ISO válida
-            const dataStr = dateFromISO.toISOString().split('T')[0];
-            dataAgendamentoISO = `${dataStr}T${horaAgendamento}:00.000Z`;
+            // Extrair apenas a parte da data (YYYY-MM-DD)
+            const dateStr = validatedData.dataAgendamento.split('T')[0];
+            
+            // Combinar com a hora especificada pelo usuário
+            const localDateTime = `${dateStr}T${horaAgendamento}:00`;
+            const combinedDate = new Date(localDateTime);
+            
+            // Verificar se a data é válida
+            if (!isNaN(combinedDate.getTime())) {
+              dataAgendamentoISO = combinedDate.toISOString();
+              console.log('📅 [SERVICES] Data para atualização (local):', dataAgendamentoISO);
+              console.log('⏰ [SERVICES] Data local formatada:', combinedDate.toLocaleString('pt-BR'));
+            } else {
+              // Fallback: usar a data ISO original
+              dataAgendamentoISO = validatedData.dataAgendamento;
+              console.log('📅 [SERVICES] Usando data ISO original:', dataAgendamentoISO);
+            }
           } else {
             // Se for data simples (YYYY-MM-DD)
             dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
+            console.log('📅 [SERVICES] Data simples combinada:', dataAgendamentoISO);
           }
           
           // Validar a data
           const finalDate = new Date(dataAgendamentoISO);
           if (!isNaN(finalDate.getTime())) {
             serviceData.data_agendamento = dataAgendamentoISO;
-            console.log('📅 [SERVICES] Data para atualização:', dataAgendamentoISO);
+            console.log('✅ [SERVICES] Data válida para atualização:', dataAgendamentoISO);
+          } else {
+            console.warn('⚠️ [SERVICES] Data inválida após processamento');
           }
         } catch (error) {
           console.warn('⚠️ [SERVICES] Erro ao processar data para atualização:', error);
