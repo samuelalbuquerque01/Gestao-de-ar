@@ -103,7 +103,7 @@ export interface IStorage {
   }>>;
 }
 
-// Função auxiliar para converter snake_case para camelCase
+// Função auxiliar para converter snake_case para camelCase - VERSÃO CORRIGIDA
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
@@ -112,27 +112,27 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   
   // Mapeamentos específicos por tabela
   if (tableName === 'users') {
-    if (result.password_hash) result.password = result.password_hash;
-    if (result.created_at) result.createdAt = result.created_at;
-    if (result.updated_at) result.updatedAt = result.updated_at;
+    if (result.password_hash !== undefined) result.password = result.password_hash;
+    if (result.created_at !== undefined) result.createdAt = result.created_at;
+    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
     delete result.password_hash;
     delete result.created_at;
     delete result.updated_at;
   }
   
   if (tableName === 'technicians') {
-    if (result.created_at) result.createdAt = result.created_at;
-    if (result.updated_at) result.updatedAt = result.updated_at;
+    if (result.created_at !== undefined) result.createdAt = result.created_at;
+    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
     delete result.created_at;
     delete result.updated_at;
   }
   
   if (tableName === 'machines') {
-    if (result.location_type) result.locationType = result.location_type;
+    if (result.location_type !== undefined) result.locationType = result.location_type;
     if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
-    if (result.installation_date) result.installationDate = result.installation_date;
-    if (result.created_at) result.createdAt = result.created_at;
-    if (result.updated_at) result.updatedAt = result.updated_at;
+    if (result.installation_date !== undefined) result.installationDate = result.installation_date;
+    if (result.created_at !== undefined) result.createdAt = result.created_at;
+    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
     
     delete result.location_type;
     delete result.location_floor;
@@ -142,7 +142,8 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   }
   
   if (tableName === 'services') {
-    // CORREÇÃO: Mapear todos os campos ANTES de deletar
+    // CORREÇÃO CRÍTICA: Mapear todos os campos ANTES de deletar
+    // Usar !== undefined para incluir valores null
     if (result.tipo_servico !== undefined) result.tipoServico = result.tipo_servico;
     if (result.maquina_id !== undefined) result.maquinaId = result.maquina_id;
     if (result.tecnico_id !== undefined) result.tecnicoId = result.tecnico_id;
@@ -176,9 +177,9 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   }
   
   if (tableName === 'service_history') {
-    if (result.service_id) result.serviceId = result.service_id;
-    if (result.created_at) result.createdAt = result.created_at;
-    if (result.created_by) result.createdBy = result.created_by;
+    if (result.service_id !== undefined) result.serviceId = result.service_id;
+    if (result.created_at !== undefined) result.createdAt = result.created_at;
+    if (result.created_by !== undefined) result.createdBy = result.created_by;
     delete result.service_id;
     delete result.created_at;
     delete result.created_by;
@@ -194,27 +195,27 @@ function mapCamelToDb(data: any, tableName: string): any {
   const result = { ...data };
   
   if (tableName === 'users') {
-    if (result.password) result.password_hash = result.password;
-    if (result.createdAt) result.created_at = result.createdAt;
-    if (result.updatedAt) result.updated_at = result.updatedAt;
+    if (result.password !== undefined) result.password_hash = result.password;
+    if (result.createdAt !== undefined) result.created_at = result.createdAt;
+    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
     delete result.password;
     delete result.createdAt;
     delete result.updatedAt;
   }
   
   if (tableName === 'technicians') {
-    if (result.createdAt) result.created_at = result.createdAt;
-    if (result.updatedAt) result.updated_at = result.updatedAt;
+    if (result.createdAt !== undefined) result.created_at = result.createdAt;
+    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
     delete result.createdAt;
     delete result.updatedAt;
   }
   
   if (tableName === 'machines') {
-    if (result.locationType) result.location_type = result.locationType;
+    if (result.locationType !== undefined) result.location_type = result.locationType;
     if (result.locationFloor !== undefined) result.location_floor = result.locationFloor;
-    if (result.installationDate) result.installation_date = result.installationDate;
-    if (result.createdAt) result.created_at = result.createdAt;
-    if (result.updatedAt) result.updated_at = result.updatedAt;
+    if (result.installationDate !== undefined) result.installation_date = result.installationDate;
+    if (result.createdAt !== undefined) result.created_at = result.createdAt;
+    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
     
     delete result.locationType;
     delete result.locationFloor;
@@ -224,20 +225,20 @@ function mapCamelToDb(data: any, tableName: string): any {
   }
   
   if (tableName === 'services') {
-    if (result.tipoServico) result.tipo_servico = result.tipoServico;
-    if (result.maquinaId) result.maquina_id = result.maquinaId;
-    if (result.tecnicoId) result.tecnico_id = result.tecnicoId;
-    if (result.tecnicoNome) result.tecnico_nome = result.tecnicoNome;
-    if (result.descricaoServico) result.descricao_servico = result.descricaoServico;
-    if (result.descricaoProblema) result.descricao_problema = result.descricaoProblema;
-    if (result.dataAgendamento) result.data_agendamento = result.dataAgendamento;
-    if (result.dataConclusao) result.data_conclusao = result.dataConclusao;
-    if (result.prioridade) result.prioridade = result.prioridade;
-    if (result.status) result.status = result.status;
+    if (result.tipoServico !== undefined) result.tipo_servico = result.tipoServico;
+    if (result.maquinaId !== undefined) result.maquina_id = result.maquinaId;
+    if (result.tecnicoId !== undefined) result.tecnico_id = result.tecnicoId;
+    if (result.tecnicoNome !== undefined) result.tecnico_nome = result.tecnicoNome;
+    if (result.descricaoServico !== undefined) result.descricao_servico = result.descricaoServico;
+    if (result.descricaoProblema !== undefined) result.descricao_problema = result.descricaoProblema;
+    if (result.dataAgendamento !== undefined) result.data_agendamento = result.dataAgendamento;
+    if (result.dataConclusao !== undefined) result.data_conclusao = result.dataConclusao;
+    if (result.prioridade !== undefined) result.prioridade = result.prioridade;
+    if (result.status !== undefined) result.status = result.status;
     if (result.custo !== undefined) result.custo = result.custo;
-    if (result.observacoes) result.observacoes = result.observacoes;
-    if (result.createdAt) result.created_at = result.createdAt;
-    if (result.updatedAt) result.updated_at = result.updatedAt;
+    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
+    if (result.createdAt !== undefined) result.created_at = result.createdAt;
+    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
     
     delete result.tipoServico;
     delete result.maquinaId;
@@ -256,9 +257,9 @@ function mapCamelToDb(data: any, tableName: string): any {
   }
   
   if (tableName === 'service_history') {
-    if (result.serviceId) result.service_id = result.serviceId;
-    if (result.createdAt) result.created_at = result.createdAt;
-    if (result.createdBy) result.created_by = result.createdBy;
+    if (result.serviceId !== undefined) result.service_id = result.serviceId;
+    if (result.createdAt !== undefined) result.created_at = result.createdAt;
+    if (result.createdBy !== undefined) result.created_by = result.createdBy;
     delete result.serviceId;
     delete result.createdAt;
     delete result.createdBy;
@@ -505,17 +506,20 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
       if (!machine) return undefined;
       
+      // Primeiro mapear com a função corrigida
+      const mappedMachine = mapDbToCamelCase(machine, 'machines');
+      
       // Tratar data de instalação
       let dataInstalacao = '';
-      if (machine.installation_date) {
-        const date = anyToDate(machine.installation_date);
+      if (mappedMachine.installationDate) {
+        const date = anyToDate(mappedMachine.installationDate);
         if (date) {
           dataInstalacao = date.toISOString();
         }
       }
       
       return {
-        ...mapDbToCamelCase(machine, 'machines'),
+        ...mappedMachine,
         id: machine.id,
         codigo: machine.codigo || '',
         modelo: machine.model || '',
@@ -523,15 +527,15 @@ export class DatabaseStorage implements IStorage {
         tipo: machine.type || 'SPLIT',
         capacidadeBTU: machine.capacity || 9000,
         voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoTipo: mappedMachine.locationType || 'SALA',
         localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
+        localizacaoAndar: mappedMachine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
         dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
+        createdAt: mappedMachine.createdAt || new Date(),
+        updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar máquina:', error);
@@ -545,17 +549,20 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
       if (!machine) return undefined;
       
+      // Primeiro mapear com a função corrigida
+      const mappedMachine = mapDbToCamelCase(machine, 'machines');
+      
       // Tratar data de instalação
       let dataInstalacao = '';
-      if (machine.installation_date) {
-        const date = anyToDate(machine.installation_date);
+      if (mappedMachine.installationDate) {
+        const date = anyToDate(mappedMachine.installationDate);
         if (date) {
           dataInstalacao = date.toISOString();
         }
       }
       
       return {
-        ...mapDbToCamelCase(machine, 'machines'),
+        ...mappedMachine,
         id: machine.id,
         codigo: machine.codigo || '',
         modelo: machine.model || '',
@@ -563,15 +570,15 @@ export class DatabaseStorage implements IStorage {
         tipo: machine.type || 'SPLIT',
         capacidadeBTU: machine.capacity || 9000,
         voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoTipo: mappedMachine.locationType || 'SALA',
         localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
+        localizacaoAndar: mappedMachine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
         dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
+        createdAt: mappedMachine.createdAt || new Date(),
+        updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error.message);
@@ -584,11 +591,14 @@ export class DatabaseStorage implements IStorage {
       const machinesList = await db.select().from(machines).orderBy(machines.codigo);
       
       return machinesList.map(machine => {
+        // Primeiro mapear com a função corrigida
+        const mappedMachine = mapDbToCamelCase(machine, 'machines');
+        
         // Tratar data de instalação com cuidado
         let dataInstalacao = '';
         try {
-          if (machine.installation_date) {
-            const date = anyToDate(machine.installation_date);
+          if (mappedMachine.installationDate) {
+            const date = anyToDate(mappedMachine.installationDate);
             if (date) {
               dataInstalacao = date.toISOString();
             }
@@ -598,7 +608,7 @@ export class DatabaseStorage implements IStorage {
         }
         
         return {
-          ...mapDbToCamelCase(machine, 'machines'),
+          ...mappedMachine,
           id: machine.id,
           codigo: machine.codigo || '',
           modelo: machine.model || '',
@@ -606,15 +616,15 @@ export class DatabaseStorage implements IStorage {
           tipo: machine.type || 'SPLIT',
           capacidadeBTU: machine.capacity || 9000,
           voltagem: machine.voltage || 'V220',
-          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoTipo: mappedMachine.locationType || 'SALA',
           localizacaoDescricao: machine.location || '',
-          localizacaoAndar: machine.locationFloor || 0,
+          localizacaoAndar: mappedMachine.locationFloor || 0,
           filial: machine.branch || 'Matriz',
           dataInstalacao: dataInstalacao,
           status: machine.status || 'ATIVO',
           observacoes: machine.observacoes || '',
-          createdAt: machine.createdAt || new Date(),
-          updatedAt: machine.updatedAt || new Date()
+          createdAt: mappedMachine.createdAt || new Date(),
+          updatedAt: mappedMachine.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -631,17 +641,20 @@ export class DatabaseStorage implements IStorage {
         .orderBy(machines.codigo);
       
       return machinesList.map(machine => {
+        // Primeiro mapear com a função corrigida
+        const mappedMachine = mapDbToCamelCase(machine, 'machines');
+        
         // Tratar data de instalação
         let dataInstalacao = '';
-        if (machine.installation_date) {
-          const date = anyToDate(machine.installation_date);
+        if (mappedMachine.installationDate) {
+          const date = anyToDate(mappedMachine.installationDate);
           if (date) {
             dataInstalacao = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(machine, 'machines'),
+          ...mappedMachine,
           id: machine.id,
           codigo: machine.codigo || '',
           modelo: machine.model || '',
@@ -649,15 +662,15 @@ export class DatabaseStorage implements IStorage {
           tipo: machine.type || 'SPLIT',
           capacidadeBTU: machine.capacity || 9000,
           voltagem: machine.voltage || 'V220',
-          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoTipo: mappedMachine.locationType || 'SALA',
           localizacaoDescricao: machine.location || '',
-          localizacaoAndar: machine.locationFloor || 0,
+          localizacaoAndar: mappedMachine.locationFloor || 0,
           filial: machine.branch || 'Matriz',
           dataInstalacao: dataInstalacao,
           status: machine.status || 'ATIVO',
           observacoes: machine.observacoes || '',
-          createdAt: machine.createdAt || new Date(),
-          updatedAt: machine.updatedAt || new Date()
+          createdAt: mappedMachine.createdAt || new Date(),
+          updatedAt: mappedMachine.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -674,17 +687,20 @@ export class DatabaseStorage implements IStorage {
         .orderBy(machines.codigo);
       
       return machinesList.map(machine => {
+        // Primeiro mapear com a função corrigida
+        const mappedMachine = mapDbToCamelCase(machine, 'machines');
+        
         // Tratar data de instalação
         let dataInstalacao = '';
-        if (machine.installation_date) {
-          const date = anyToDate(machine.installation_date);
+        if (mappedMachine.installationDate) {
+          const date = anyToDate(mappedMachine.installationDate);
           if (date) {
             dataInstalacao = date.toISOString();
           }
         }
         
         return {
-          ...mapDbToCamelCase(machine, 'machines'),
+          ...mappedMachine,
           id: machine.id,
           codigo: machine.codigo || '',
           modelo: machine.model || '',
@@ -692,15 +708,15 @@ export class DatabaseStorage implements IStorage {
           tipo: machine.type || 'SPLIT',
           capacidadeBTU: machine.capacity || 9000,
           voltagem: machine.voltage || 'V220',
-          localizacaoTipo: machine.locationType || 'SALA',
+          localizacaoTipo: mappedMachine.locationType || 'SALA',
           localizacaoDescricao: machine.location || '',
-          localizacaoAndar: machine.locationFloor || 0,
+          localizacaoAndar: mappedMachine.locationFloor || 0,
           filial: machine.branch || 'Matriz',
           dataInstalacao: dataInstalacao,
           status: machine.status || 'ATIVO',
           observacoes: machine.observacoes || '',
-          createdAt: machine.createdAt || new Date(),
-          updatedAt: machine.updatedAt || new Date()
+          createdAt: mappedMachine.createdAt || new Date(),
+          updatedAt: mappedMachine.updatedAt || new Date()
         };
       });
     } catch (error) {
@@ -740,10 +756,13 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
       
+      // Primeiro mapear com a função corrigida
+      const mappedMachine = mapDbToCamelCase(machine, 'machines');
+      
       // Retornar data tratada
       let dataInstalacao = '';
-      if (machine.installation_date) {
-        const date = anyToDate(machine.installation_date);
+      if (mappedMachine.installationDate) {
+        const date = anyToDate(mappedMachine.installationDate);
         if (date) {
           dataInstalacao = date.toISOString();
         }
@@ -757,15 +776,15 @@ export class DatabaseStorage implements IStorage {
         tipo: machine.type || 'SPLIT',
         capacidadeBTU: machine.capacity || 9000,
         voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoTipo: mappedMachine.locationType || 'SALA',
         localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
+        localizacaoAndar: mappedMachine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
         dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
+        createdAt: mappedMachine.createdAt || new Date(),
+        updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
@@ -808,10 +827,13 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
       
+      // Primeiro mapear com a função corrigida
+      const mappedMachine = mapDbToCamelCase(machine, 'machines');
+      
       // Retornar data tratada
       let dataInstalacao = '';
-      if (machine.installation_date) {
-        const date = anyToDate(machine.installation_date);
+      if (mappedMachine.installationDate) {
+        const date = anyToDate(mappedMachine.installationDate);
         if (date) {
           dataInstalacao = date.toISOString();
         }
@@ -825,15 +847,15 @@ export class DatabaseStorage implements IStorage {
         tipo: machine.type || 'SPLIT',
         capacidadeBTU: machine.capacity || 9000,
         voltagem: machine.voltage || 'V220',
-        localizacaoTipo: machine.locationType || 'SALA',
+        localizacaoTipo: mappedMachine.locationType || 'SALA',
         localizacaoDescricao: machine.location || '',
-        localizacaoAndar: machine.locationFloor || 0,
+        localizacaoAndar: mappedMachine.locationFloor || 0,
         filial: machine.branch || 'Matriz',
         dataInstalacao: dataInstalacao,
         status: machine.status || 'ATIVO',
         observacoes: machine.observacoes || '',
-        createdAt: machine.createdAt || new Date(),
-        updatedAt: machine.updatedAt || new Date()
+        createdAt: mappedMachine.createdAt || new Date(),
+        updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao atualizar máquina:', error);
@@ -863,6 +885,12 @@ export class DatabaseStorage implements IStorage {
       
       // Primeiro mapear com a função corrigida
       const mappedService = mapDbToCamelCase(service, 'services');
+      
+      console.log('📅 [STORAGE] Serviço mapeado:', {
+        dataAgendamentoRaw: mappedService.dataAgendamento,
+        tipo: typeof mappedService.dataAgendamento,
+        temData: !!mappedService.dataAgendamento
+      });
       
       // Processar datas com anyToDate
       let dataAgendamentoFormatted = '';
@@ -915,9 +943,19 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`✅ [STORAGE] Encontrados ${servicesList.length} serviços no banco`);
       
-      return servicesList.map(service => {
+      const mappedServices = servicesList.map(service => {
         // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
+        
+        // Debug do mapeamento
+        console.log('📊 [STORAGE] Mapeando serviço:', {
+          id: service.id,
+          data_agendamento_db: service.data_agendamento,
+          dataAgendamento_mapped: mappedService.dataAgendamento,
+          tipo_mapped: mappedService.tipoServico,
+          status_mapped: mappedService.status,
+          prioridade_mapped: mappedService.prioridade
+        });
         
         // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
@@ -956,6 +994,11 @@ export class DatabaseStorage implements IStorage {
           updatedAt: mappedService.updatedAt || new Date()
         };
       });
+      
+      // Debug adicional
+      console.log('📊 [STORAGE] Primeiro serviço mapeado:', mappedServices[0]);
+      
+      return mappedServices;
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar serviços:', error);
       return [];
