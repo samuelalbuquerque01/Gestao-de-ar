@@ -110,20 +110,14 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   // Criar uma cópia PROFUNDA
   const result = JSON.parse(JSON.stringify(data));
   
-  console.log(`🔍 [mapDbToCamelCase] Tabela: ${tableName}, Campos:`, Object.keys(result));
+  console.log(`🔍 [mapDbToCamelCase] Tabela: ${tableName}, Campos originais:`, Object.keys(result));
   
   if (tableName === 'users') {
     console.log('👤 [mapDbToCamelCase] Mapeando USUÁRIO');
-    console.log('📊 Campos originais:', {
-      has_password_hash: 'password_hash' in result,
-      password_hash_present: 'password_hash' in result ? '***[HASHED]***' : 'AUSENTE',
-      has_username: 'username' in result,
-      username_value: result.username || 'N/A'
-    });
     
     // MAPEAMENTO CRÍTICO PARA USERS
     if ('password_hash' in result) {
-      result.password = result.password_hash; // ← LINHA MAIS IMPORTANTE!
+      result.password = result.password_hash;
       console.log('✅ Mapeado: password_hash → password');
     }
     
@@ -149,19 +143,25 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     
     keysToDelete.forEach(key => {
       if (key in result) {
-        console.log(`🗑️  Deletando campo snake_case: ${key}`);
         delete result[key];
       }
     });
     
     console.log('✅ [mapDbToCamelCase] USUÁRIO mapeado. Campos finais:', Object.keys(result));
-    console.log('🔐 Campo password presente?', 'password' in result);
     
   } else if (tableName === 'services') {
-    console.log('🔧 [mapDbToCamelCase] Mapeando SERVICES');
+    console.log('🔧 [mapDbToCamelCase] Mapeando SERVICES - VERIFICANDO STATUS');
     
-    // MAPEAMENTO para services
-    if ('tipo_servico' in result) result.tipoServico = result.tipo_servico;
+    // DEBUG: Verificar quais campos existem
+    console.log('🔍 Campos presentes:', Object.keys(result));
+    console.log('🔍 Campo "status" presente?', 'status' in result, 'Valor:', result.status);
+    console.log('🔍 Campo "prioridade" presente?', 'prioridade' in result, 'Valor:', result.prioridade);
+    
+    // MAPEAMENTO para services - GARANTIR que todos os campos sejam mapeados
+    if ('tipo_servico' in result) {
+      result.tipoServico = result.tipo_servico;
+      console.log('✅ Mapeado: tipo_servico → tipoServico =', result.tipoServico);
+    }
     if ('maquina_id' in result) result.maquinaId = result.maquina_id;
     if ('tecnico_id' in result) result.tecnicoId = result.tecnico_id;
     if ('tecnico_nome' in result) result.tecnicoNome = result.tecnico_nome;
@@ -169,18 +169,33 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if ('descricao_problema' in result) result.descricaoProblema = result.descricao_problema;
     if ('data_agendamento' in result) result.dataAgendamento = result.data_agendamento;
     if ('data_conclusao' in result) result.dataConclusao = result.data_conclusao;
-    if ('prioridade' in result) result.prioridade = result.prioridade;
-    if ('status' in result) result.status = result.status;
+    
+    // CRÍTICO: Garantir mapeamento de prioridade
+    if ('prioridade' in result) {
+      result.prioridade = result.prioridade;
+      console.log('✅ Mapeado: prioridade → prioridade =', result.prioridade);
+    } else {
+      console.log('⚠️ Campo "prioridade" NÃO ENCONTRADO no resultado');
+    }
+    
+    // CRÍTICO: Garantir mapeamento de status
+    if ('status' in result) {
+      result.status = result.status;
+      console.log('✅ Mapeado: status → status =', result.status);
+    } else {
+      console.log('❌ ERRO: Campo "status" NÃO ENCONTRADO no resultado!');
+    }
+    
     if ('custo' in result) result.custo = result.custo;
     if ('observacoes' in result) result.observacoes = result.observacoes;
     if ('created_at' in result) result.createdAt = result.created_at;
     if ('updated_at' in result) result.updatedAt = result.updated_at;
     
-    // DELETAR campos snake_case
+    // DELETAR campos snake_case - NÃO DELETAR 'prioridade' e 'status'!
     const keysToDelete = [
       'tipo_servico', 'maquina_id', 'tecnico_id', 'tecnico_nome',
       'descricao_servico', 'descricao_problema', 'data_agendamento',
-      'data_conclusao', 'prioridade', 'status', 'custo', 'observacoes',
+      'data_conclusao', 'custo', 'observacoes',
       'created_at', 'updated_at'
     ];
     
@@ -189,6 +204,10 @@ function mapDbToCamelCase(data: any, tableName: string): any {
         delete result[key];
       }
     });
+    
+    console.log('✅ [mapDbToCamelCase] Serviço mapeado. Campos finais:', Object.keys(result));
+    console.log('📊 Status final:', result.status);
+    console.log('📊 Prioridade final:', result.prioridade);
     
   } else if (tableName === 'machines') {
     if ('location_type' in result) result.locationType = result.location_type;
@@ -233,7 +252,7 @@ function mapCamelToDb(data: any, tableName: string): any {
     console.log('👤 [mapCamelToDb] Convertendo USUÁRIO para banco');
     
     if ('password' in result) {
-      result.password_hash = result.password; // ← IMPORTANTE!
+      result.password_hash = result.password;
       console.log('✅ Convertido: password → password_hash');
     }
     
@@ -412,7 +431,6 @@ export class DatabaseStorage implements IStorage {
       if (user) {
         console.log('✅ [STORAGE] Usuário encontrado por ID:', user.username);
         const mappedUser = mapDbToCamelCase(user, 'users');
-        console.log('🔐 [STORAGE] Campo password no mappedUser?', 'password' in mappedUser);
         return mappedUser;
       }
       
@@ -438,20 +456,10 @@ export class DatabaseStorage implements IStorage {
         console.log('✅ [STORAGE] Usuário encontrado:', {
           id: user.id,
           username: user.username,
-          email: user.email,
-          hasPasswordHash: 'password_hash' in user,
-          passwordHashLength: user.password_hash ? user.password_hash.length : 0
+          email: user.email
         });
         
         const mappedUser = mapDbToCamelCase(user, 'users');
-        
-        console.log('🔍 [STORAGE] Após mapeamento:', {
-          id: mappedUser.id,
-          username: mappedUser.username,
-          hasPasswordField: 'password' in mappedUser,
-          allFields: Object.keys(mappedUser)
-        });
-        
         return mappedUser;
       }
       
@@ -491,21 +499,8 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: InsertUser): Promise<User> {
     try {
       console.log('👤 [STORAGE] Criando usuário:', userData.username);
-      console.log('📝 [STORAGE] Dados recebidos:', {
-        username: userData.username,
-        email: userData.email,
-        hasPassword: !!userData.password,
-        passwordLength: userData.password ? userData.password.length : 0
-      });
       
       const dbData = mapCamelToDb(userData, 'users');
-      
-      console.log('📝 [STORAGE] Dados para banco:', {
-        username: dbData.username,
-        email: dbData.email,
-        hasPasswordHash: !!dbData.password_hash,
-        passwordHashLength: dbData.password_hash ? dbData.password_hash.length : 0
-      });
       
       const [user] = await db.insert(users)
         .values({
@@ -986,16 +981,16 @@ export class DatabaseStorage implements IStorage {
       return {
         ...mappedService,
         id: service.id,
-        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-        maquinaId: mappedService.maquinaId || '',
-        tecnicoId: mappedService.tecnicoId || '',
-        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-        descricaoServico: mappedService.descricaoServico || '',
-        descricaoProblema: mappedService.descricaoProblema || '',
+        tipoServico: mappedService.tipoServico,
+        maquinaId: mappedService.maquinaId,
+        tecnicoId: mappedService.tecnicoId,
+        tecnicoNome: mappedService.tecnicoNome,
+        descricaoServico: mappedService.descricaoServico,
+        descricaoProblema: mappedService.descricaoProblema,
         dataAgendamento: dataAgendamentoFormatted,
         dataConclusao: dataConclusaoFormatted,
-        prioridade: mappedService.prioridade || 'MEDIA',
-        status: mappedService.status || 'AGENDADO',
+        prioridade: mappedService.prioridade,
+        status: mappedService.status,
         custo: mappedService.custo ? mappedService.custo.toString() : '',
         observacoes: mappedService.observacoes || '',
         createdAt: mappedService.createdAt || new Date(),
@@ -1017,13 +1012,11 @@ export class DatabaseStorage implements IStorage {
       const mappedServices = servicesList.map(service => {
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        console.log('📊 [STORAGE] Mapeando serviço:', {
+        console.log('📊 [STORAGE] Serviço após mapeamento:', {
           id: service.id,
-          data_agendamento_db: service.data_agendamento,
-          dataAgendamento_mapped: mappedService.dataAgendamento,
-          tipo_mapped: mappedService.tipoServico,
           status_mapped: mappedService.status,
-          prioridade_mapped: mappedService.prioridade
+          prioridade_mapped: mappedService.prioridade,
+          tipo_mapped: mappedService.tipoServico
         });
         
         let dataAgendamentoFormatted = '';
@@ -1053,16 +1046,17 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          // USAR VALORES MAPEADOS, NÃO VALORES DEFAULT
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1070,7 +1064,10 @@ export class DatabaseStorage implements IStorage {
         };
       });
       
-      console.log('📊 [STORAGE] Primeiro serviço mapeado:', mappedServices[0]);
+      // DEBUG: Verificar o primeiro serviço
+      if (mappedServices.length > 0) {
+        console.log('🔍🔍🔍 [STORAGE DEBUG] PRIMEIRO SERVIÇO COMPLETO:', mappedServices[0]);
+      }
       
       return mappedServices;
     } catch (error) {
@@ -1114,16 +1111,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1171,16 +1168,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1233,16 +1230,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1290,16 +1287,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1347,16 +1344,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1414,16 +1411,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1481,16 +1478,16 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-          maquinaId: mappedService.maquinaId || '',
-          tecnicoId: mappedService.tecnicoId || '',
-          tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-          descricaoServico: mappedService.descricaoServico || '',
-          descricaoProblema: mappedService.descricaoProblema || '',
+          tipoServico: mappedService.tipoServico,
+          maquinaId: mappedService.maquinaId,
+          tecnicoId: mappedService.tecnicoId,
+          tecnicoNome: mappedService.tecnicoNome,
+          descricaoServico: mappedService.descricaoServico,
+          descricaoProblema: mappedService.descricaoProblema,
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade,
+          status: mappedService.status,
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1580,16 +1577,16 @@ export class DatabaseStorage implements IStorage {
       
       return {
         id: service.id,
-        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-        maquinaId: mappedService.maquinaId || '',
-        tecnicoId: mappedService.tecnicoId || '',
-        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-        descricaoServico: mappedService.descricaoServico || '',
-        descricaoProblema: mappedService.descricaoProblema || '',
+        tipoServico: mappedService.tipoServico,
+        maquinaId: mappedService.maquinaId,
+        tecnicoId: mappedService.tecnicoId,
+        tecnicoNome: mappedService.tecnicoNome,
+        descricaoServico: mappedService.descricaoServico,
+        descricaoProblema: mappedService.descricaoProblema,
         dataAgendamento: createdDataAgendamento,
         dataConclusao: createdDataConclusao,
-        prioridade: mappedService.prioridade || 'MEDIA',
-        status: mappedService.status || 'AGENDADO',
+        prioridade: mappedService.prioridade,
+        status: mappedService.status,
         custo: mappedService.custo ? mappedService.custo.toString() : '',
         observacoes: mappedService.observacoes || '',
         createdAt: mappedService.createdAt || new Date(),
@@ -1603,11 +1600,17 @@ export class DatabaseStorage implements IStorage {
 
   async updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined> {
     try {
-      console.log('📝 [STORAGE] Atualizando serviço:', id);
-      console.log('📝 [STORAGE] Dados recebidos:', JSON.stringify(serviceData, null, 2));
+      console.log('🔍🔍🔍 [STORAGE UPDATE] INICIANDO ATUALIZAÇÃO DO SERVIÇO:', id);
+      console.log('📥 [STORAGE UPDATE] Dados RECEBIDOS para atualização:', JSON.stringify(serviceData, null, 2));
+      
+      // DEBUG DETALHADO - verificar todos os campos
+      console.log('🔍 [STORAGE UPDATE] Status recebido:', serviceData.status, '(tipo:', typeof serviceData.status, ')');
+      console.log('🔍 [STORAGE UPDATE] Prioridade recebida:', serviceData.prioridade, '(tipo:', typeof serviceData.prioridade, ')');
+      console.log('🔍 [STORAGE UPDATE] Tipo serviço recebido:', serviceData.tipo_servico);
       
       const updateData: any = {};
       
+      // MAPEAMENTO CORRETO - usar os nomes EXATOS das colunas do banco
       if (serviceData.tipo_servico !== undefined) updateData.tipo_servico = serviceData.tipo_servico;
       if (serviceData.maquina_id !== undefined) updateData.maquina_id = serviceData.maquina_id;
       if (serviceData.tecnico_id !== undefined) {
@@ -1618,37 +1621,61 @@ export class DatabaseStorage implements IStorage {
       if (serviceData.descricao_servico !== undefined) updateData.descricao_servico = serviceData.descricao_servico;
       if (serviceData.descricao_problema !== undefined) updateData.descricao_problema = serviceData.descricao_problema;
       
+      // CRÍTICO: Garantir que status seja sempre passado
+      if (serviceData.status !== undefined) {
+        updateData.status = serviceData.status;
+        console.log('✅ [STORAGE UPDATE] Status definido para atualização:', serviceData.status);
+      } else {
+        console.log('⚠️ [STORAGE UPDATE] Status NÃO fornecido na atualização');
+      }
+      
+      // CRÍTICO: Garantir que prioridade seja sempre passada
+      if (serviceData.prioridade !== undefined) {
+        updateData.prioridade = serviceData.prioridade;
+        console.log('✅ [STORAGE UPDATE] Prioridade definida para atualização:', serviceData.prioridade);
+      } else {
+        console.log('⚠️ [STORAGE UPDATE] Prioridade NÃO fornecida na atualização');
+      }
+      
+      // Processar data_agendamento se fornecida
       if (serviceData.data_agendamento !== undefined) {
-        console.log('📅 [STORAGE] Processando data_agendamento para atualização:', serviceData.data_agendamento);
+        console.log('📅 [STORAGE UPDATE] Processando data_agendamento para atualização:', serviceData.data_agendamento);
         
         const parsedDate = anyToDate(serviceData.data_agendamento);
         if (parsedDate) {
           updateData.data_agendamento = parsedDate;
-          console.log('✅ [STORAGE] Data_agendamento parseada para atualização:', parsedDate.toISOString());
+          console.log('✅ [STORAGE UPDATE] Data_agendamento parseada:', parsedDate.toISOString());
+        } else {
+          console.log('❌ [STORAGE UPDATE] Falha ao parsear data_agendamento');
         }
       }
       
+      // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
         if (serviceData.data_conclusao) {
           const parsedDate = anyToDate(serviceData.data_conclusao);
           if (parsedDate) {
             updateData.data_conclusao = parsedDate;
-            console.log('✅ [STORAGE] Data_conclusao parseada para atualização:', parsedDate.toISOString());
+            console.log('✅ [STORAGE UPDATE] Data_conclusao parseada:', parsedDate.toISOString());
           }
         } else {
           updateData.data_conclusao = null;
-          console.log('📅 [STORAGE] Data_conclusao definida como null');
+          console.log('📅 [STORAGE UPDATE] Data_conclusao definida como null');
         }
       }
       
-      if (serviceData.prioridade !== undefined) updateData.prioridade = serviceData.prioridade;
-      if (serviceData.status !== undefined) updateData.status = serviceData.status;
       if (serviceData.custo !== undefined) updateData.custo = serviceData.custo;
       if (serviceData.observacoes !== undefined) updateData.observacoes = serviceData.observacoes;
       
       updateData.updated_at = new Date();
       
-      console.log('📝 [STORAGE] Dados para atualização no banco:', JSON.stringify(updateData, null, 2));
+      console.log('📝 [STORAGE UPDATE] Dados FINAIS para atualização no banco:', JSON.stringify(updateData, null, 2));
+      
+      // VERIFICAR se há dados para atualizar
+      if (Object.keys(updateData).length === 0) {
+        console.log('❌ [STORAGE UPDATE] Nenhum dado para atualizar!');
+        return undefined;
+      }
       
       const [service] = await db.update(services)
         .set(updateData)
@@ -1656,10 +1683,11 @@ export class DatabaseStorage implements IStorage {
         .returning();
       
       if (!service) {
-        console.log('❌ [STORAGE] Serviço não encontrado para atualização:', id);
+        console.log('❌ [STORAGE UPDATE] Serviço não encontrado para atualização:', id);
         return undefined;
       }
       
+      // Adicionar ao histórico se o status mudou
       if (serviceData.status) {
         await this.addServiceHistory({
           serviceId: id,
@@ -1668,7 +1696,7 @@ export class DatabaseStorage implements IStorage {
         });
       }
       
-      console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
+      console.log('✅ [STORAGE UPDATE] Serviço atualizado com ID:', service.id);
       
       const mappedService = mapDbToCamelCase(service, 'services');
       
@@ -1680,23 +1708,23 @@ export class DatabaseStorage implements IStorage {
       
       return {
         id: service.id,
-        tipoServico: mappedService.tipoServico || 'PREVENTIVA',
-        maquinaId: mappedService.maquinaId || '',
-        tecnicoId: mappedService.tecnicoId || '',
-        tecnicoNome: mappedService.tecnicoNome || 'Desconhecido',
-        descricaoServico: mappedService.descricaoServico || '',
-        descricaoProblema: mappedService.descricaoProblema || '',
+        tipoServico: mappedService.tipoServico,
+        maquinaId: mappedService.maquinaId,
+        tecnicoId: mappedService.tecnicoId,
+        tecnicoNome: mappedService.tecnicoNome,
+        descricaoServico: mappedService.descricaoServico,
+        descricaoProblema: mappedService.descricaoProblema,
         dataAgendamento: updatedDataAgendamento,
         dataConclusao: updatedDataConclusao,
-        prioridade: mappedService.prioridade || 'MEDIA',
-        status: mappedService.status || 'AGENDADO',
+        prioridade: mappedService.prioridade,
+        status: mappedService.status,
         custo: mappedService.custo ? mappedService.custo.toString() : '',
         observacoes: mappedService.observacoes || '',
         createdAt: mappedService.createdAt || new Date(),
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao atualizar serviço:', error.message);
+      console.error('❌ [STORAGE UPDATE] Erro ao atualizar serviço:', error.message);
       return undefined;
     }
   }
