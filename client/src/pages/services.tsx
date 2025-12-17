@@ -41,85 +41,84 @@ const serviceSchema = z.object({
   observacoes: z.string().optional(),
 });
 
-// Função auxiliar para formatar data com segurança - VERSÃO SIMPLIFICADA E ROBUSTA
+// Função auxiliar para formatar data com segurança - VERSÃO CORRIGIDA E ROBUSTA
 const formatServiceDate = (dateString: string): string => {
   console.log('📅 formatServiceDate chamada com:', dateString);
   
-  if (!dateString || dateString.trim() === '' || dateString === 'Invalid Date') {
-    console.log('❌ String vazia ou inválida');
+  if (!dateString || dateString.trim() === '' || dateString === 'Invalid Date' || dateString.includes('Invalid Date')) {
+    console.log('❌ String vazia ou inválida:', dateString);
     return 'Data não informada';
   }
   
   try {
-    // Tentar criar data diretamente
-    let date: Date;
-    
     // Se já for um objeto Date
     if (dateString instanceof Date) {
-      date = dateString;
-    } 
-    // Se for string ISO
-    else if (typeof dateString === 'string') {
-      // Remover caracteres problemáticos
+      if (isValid(dateString)) {
+        return format(dateString, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+      }
+      return 'Data inválida';
+    }
+    
+    // Se for string
+    if (typeof dateString === 'string') {
       const cleanString = dateString.trim().replace(/["']/g, '');
       
-      // Tentar parsear como ISO
-      date = new Date(cleanString);
+      // Verificar se é string vazia ou "Invalid Date"
+      if (cleanString === '' || cleanString.toLowerCase().includes('invalid date')) {
+        return 'Data não informada';
+      }
       
-      // Se não funcionar, tentar outras abordagens
-      if (isNaN(date.getTime())) {
+      // Tentar parsear como ISO
+      const date = new Date(cleanString);
+      
+      if (!isValid(date) || isNaN(date.getTime())) {
         console.log('⚠️  ISO falhou, tentando timestamp...');
         const timestamp = Date.parse(cleanString);
         if (!isNaN(timestamp)) {
-          date = new Date(timestamp);
-        } else {
-          console.log('❌ Todas as tentativas falharam');
-          return 'Data inválida';
+          const timestampDate = new Date(timestamp);
+          if (isValid(timestampDate)) {
+            return format(timestampDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+          }
         }
+        
+        // Tentar formato brasileiro
+        const brMatch = cleanString.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (brMatch) {
+          const [, day, month, year] = brMatch;
+          const brDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          if (isValid(brDate)) {
+            return format(brDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+          }
+        }
+        
+        console.log('❌ Todas as tentativas falharam');
+        return 'Data não informada';
       }
-    } else {
-      console.log('❌ Tipo não suportado:', typeof dateString);
-      return 'Data inválida';
-    }
-    
-    if (isNaN(date.getTime())) {
-      console.log('❌ Data NaN após processamento');
-      return 'Data inválida';
-    }
-    
-    console.log('✅ Data válida:', date.toISOString(), 'Local:', date.toLocaleString('pt-BR'));
-    
-    // Formatar para exibição usando date-fns
-    try {
-      return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-    } catch (formatError) {
-      console.log('⚠️  date-fns falhou, usando formatação manual');
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
       
-      return `${day}/${month}/${year} às ${hours}:${minutes}`;
+      // Se chegou aqui, a data é válida
+      return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     }
+    
+    console.log('❌ Tipo não suportado:', typeof dateString);
+    return 'Data inválida';
   } catch (error) {
     console.error('❌ Erro crítico ao formatar data:', error, 'String original:', dateString);
     return 'Data não informada';
   }
 };
 
-// Função auxiliar para extrair data e hora do formato ISO
+// Função auxiliar para extrair data e hora do formato ISO - VERSÃO CORRIGIDA
 const extractDateTimeFromISO = (isoString: string) => {
   console.log('🔍 extractDateTimeFromISO chamada com:', isoString);
   
-  if (!isoString || isoString.trim() === '') {
-    console.log('❌ String vazia');
+  if (!isoString || isoString.trim() === '' || isoString.includes('Invalid Date')) {
+    console.log('❌ String vazia ou inválida');
     return { date: '', time: '08:00' };
   }
   
   try {
     const date = new Date(isoString);
-    if (isNaN(date.getTime())) {
+    if (!isValid(date) || isNaN(date.getTime())) {
       console.log('❌ Data inválida ao extrair');
       return { date: '', time: '08:00' };
     }
@@ -150,6 +149,25 @@ export default function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [machineSearch, setMachineSearch] = useState('');
   const [filteredMachines, setFilteredMachines] = useState(machines);
+
+  // DEBUG: Monitorar dados recebidos
+  useEffect(() => {
+    console.log('🔍 [SERVICES PAGE DEBUG] Services data:', {
+      count: services.length,
+      sample: services[0] ? {
+        id: services[0].id,
+        dataAgendamento: services[0].dataAgendamento,
+        status: services[0].status,
+        prioridade: services[0].prioridade,
+        tipoServico: services[0].tipoServico
+      } : 'No services'
+    });
+    
+    // Log detalhado do primeiro serviço
+    if (services.length > 0) {
+      console.log('🔍 [SERVICES PAGE DEBUG] Primeiro serviço completo:', services[0]);
+    }
+  }, [services]);
 
   useEffect(() => {
     if (machineSearch.trim() === '') {
@@ -253,6 +271,8 @@ export default function ServicesPage() {
     console.log('📝 Editando serviço:', service.id);
     console.log('📅 Data do serviço do banco (raw):', service.dataAgendamento);
     console.log('📊 Tipo da data:', typeof service.dataAgendamento);
+    console.log('📊 Status do serviço:', service.status);
+    console.log('📊 Prioridade do serviço:', service.prioridade);
     
     setEditingService(service);
     
@@ -263,15 +283,15 @@ export default function ServicesPage() {
     console.log('⏰ Hora extraída:', time);
     
     form.reset({
-      tipoServico: service.tipoServico,
-      maquinaId: service.maquinaId,
+      tipoServico: service.tipoServico || 'PREVENTIVA',
+      maquinaId: service.maquinaId || '',
       dataAgendamento: date || format(new Date(), 'yyyy-MM-dd'),
       horaAgendamento: time || '08:00',
       tecnicoId: service.tecnicoId || '',
-      descricaoServico: service.descricaoServico,
+      descricaoServico: service.descricaoServico || '',
       descricaoProblema: service.descricaoProblema || '',
-      prioridade: service.prioridade,
-      status: service.status,
+      prioridade: service.prioridade || 'MEDIA',
+      status: service.status || 'AGENDADO',
       observacoes: service.observacoes || ''
     });
     

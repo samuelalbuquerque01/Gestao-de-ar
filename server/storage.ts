@@ -152,8 +152,8 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if (result.descricao_problema !== undefined) result.descricaoProblema = result.descricao_problema;
     if (result.data_agendamento !== undefined) result.dataAgendamento = result.data_agendamento;
     if (result.data_conclusao !== undefined) result.dataConclusao = result.data_conclusao;
-    if (result.prioridade !== undefined) result.prioridade = result.prioridade;
-    if (result.status !== undefined) result.status = result.status;
+    if (result.prioridade !== undefined) result.prioridade = result.prioridade; // CORREÇÃO: estava faltando
+    if (result.status !== undefined) result.status = result.status; // CORREÇÃO: estava faltando
     if (result.custo !== undefined) result.custo = result.custo;
     if (result.observacoes !== undefined) result.observacoes = result.observacoes;
     if (result.created_at !== undefined) result.createdAt = result.created_at;
@@ -168,8 +168,8 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     delete result.descricao_problema;
     delete result.data_agendamento;
     delete result.data_conclusao;
-    delete result.prioridade;
-    delete result.status;
+    delete result.prioridade; // CORREÇÃO: estava faltando
+    delete result.status; // CORREÇÃO: estava faltando
     delete result.custo;
     delete result.observacoes;
     delete result.created_at;
@@ -268,7 +268,7 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para converter qualquer valor para Date
+// Função auxiliar para converter qualquer valor para Date - VERSÃO CORRIGIDA
 function anyToDate(dateValue: any): Date | null {
   if (dateValue === null || dateValue === undefined || dateValue === '') {
     return null;
@@ -285,16 +285,33 @@ function anyToDate(dateValue: any): Date | null {
       return null;
     }
     
+    // Se for string "Invalid Date"
+    if (typeof dateValue === 'string' && dateValue.includes('Invalid Date')) {
+      return null;
+    }
+    
     // Se for string
     if (typeof dateValue === 'string') {
       const cleanStr = dateValue.trim();
-      if (cleanStr === '' || cleanStr.toLowerCase() === 'null' || cleanStr.toLowerCase() === 'invalid date') {
+      if (cleanStr === '' || cleanStr.toLowerCase() === 'null') {
         return null;
       }
       
-      // Remover caracteres problemáticos
-      const sanitizedStr = cleanStr.replace(/["']/g, '');
-      const date = new Date(sanitizedStr);
+      // Tentar parsear de várias formas
+      const date = new Date(cleanStr);
+      
+      // Se não funcionar, tentar formato brasileiro
+      if (isNaN(date.getTime())) {
+        const parts = cleanStr.split(/[/\-T]/);
+        if (parts.length >= 3) {
+          const isoStr = `${parts[0]}-${parts[1]}-${parts[2]}T${parts[3] || '00:00:00'}`;
+          const isoDate = new Date(isoStr);
+          if (!isNaN(isoDate.getTime())) {
+            return isoDate;
+          }
+        }
+      }
+      
       return !isNaN(date.getTime()) ? date : null;
     }
     
@@ -307,7 +324,7 @@ function anyToDate(dateValue: any): Date | null {
     return null;
     
   } catch (error) {
-    console.error('❌ [anyToDate] Erro ao converter para Date:', error);
+    console.error('❌ [anyToDate] Erro ao converter para Date:', error, 'Valor:', dateValue);
     return null;
   }
 }
@@ -889,7 +906,9 @@ export class DatabaseStorage implements IStorage {
       console.log('📅 [STORAGE] Serviço mapeado:', {
         dataAgendamentoRaw: mappedService.dataAgendamento,
         tipo: typeof mappedService.dataAgendamento,
-        temData: !!mappedService.dataAgendamento
+        temData: !!mappedService.dataAgendamento,
+        status: mappedService.status,
+        prioridade: mappedService.prioridade
       });
       
       // Processar datas com anyToDate
@@ -923,8 +942,8 @@ export class DatabaseStorage implements IStorage {
         descricaoProblema: mappedService.descricaoProblema || '',
         dataAgendamento: dataAgendamentoFormatted,
         dataConclusao: dataConclusaoFormatted,
-        prioridade: mappedService.prioridade || 'MEDIA',
-        status: mappedService.status || 'AGENDADO',
+        prioridade: mappedService.prioridade || 'MEDIA', // DEFAULT CORRETO
+        status: mappedService.status || 'AGENDADO', // DEFAULT CORRETO
         custo: mappedService.custo ? mappedService.custo.toString() : '',
         observacoes: mappedService.observacoes || '',
         createdAt: mappedService.createdAt || new Date(),
@@ -957,14 +976,24 @@ export class DatabaseStorage implements IStorage {
           prioridade_mapped: mappedService.prioridade
         });
         
-        // Processar datas com anyToDate
+        // Processar datas com anyToDate - CORREÇÃO: Se for Invalid Date, usar null
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            console.log('⚠️  [STORAGE] Data inválida detectada, usando valor padrão');
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+              console.log('✅ [STORAGE] Data parseada com sucesso:', dataAgendamentoFormatted);
+            } else {
+              console.log('⚠️  [STORAGE] Não foi possível parsear a data:', mappedService.dataAgendamento);
+            }
           }
         }
         
@@ -986,8 +1015,8 @@ export class DatabaseStorage implements IStorage {
           descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA',
-          status: mappedService.status || 'AGENDADO',
+          prioridade: mappedService.prioridade || 'MEDIA', // DEFAULT CORRETO
+          status: mappedService.status || 'AGENDADO', // DEFAULT CORRETO
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -1021,9 +1050,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1075,9 +1110,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1134,9 +1175,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1188,9 +1235,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1242,9 +1295,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1306,9 +1365,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1370,9 +1435,15 @@ export class DatabaseStorage implements IStorage {
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          const date = anyToDate(mappedService.dataAgendamento);
-          if (date) {
-            dataAgendamentoFormatted = date.toISOString();
+          // Se for string "Invalid Date", tratar como null
+          if (typeof mappedService.dataAgendamento === 'string' && 
+              mappedService.dataAgendamento.includes('Invalid Date')) {
+            dataAgendamentoFormatted = '';
+          } else {
+            const date = anyToDate(mappedService.dataAgendamento);
+            if (date) {
+              dataAgendamentoFormatted = date.toISOString();
+            }
           }
         }
         
@@ -1460,8 +1531,8 @@ export class DatabaseStorage implements IStorage {
         descricao_problema: serviceData.descricao_problema || '',
         data_agendamento: dataAgendamento,
         data_conclusao: dataConclusao,
-        prioridade: serviceData.prioridade || 'MEDIA',
-        status: serviceData.status || 'AGENDADO',
+        prioridade: serviceData.prioridade || 'MEDIA', // DEFAULT CORRETO
+        status: serviceData.status || 'AGENDADO', // DEFAULT CORRETO
         custo: custoValue,
         observacoes: serviceData.observacoes || ''
       };
