@@ -1,4 +1,4 @@
-// ========== STORAGE COMPLETO ATUALIZADO E CORRIGIDO ==========
+// ========== STORAGE COMPLETO CORRIGIDO ==========
 
 import { 
   type User, type InsertUser,
@@ -103,47 +103,74 @@ export interface IStorage {
   }>>;
 }
 
-// ========== FUNÇÃO mapDbToCamelCase - VERSÃO FINAL ==========
+// ========== FUNÇÃO mapDbToCamelCase - VERSÃO CORRIGIDA ==========
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
   // Criar uma cópia PROFUNDA
   const result = JSON.parse(JSON.stringify(data));
   
-  if (tableName === 'services') {
-    console.log('🔍 [mapDbToCamelCase] INICIANDO mapeamento para services');
-    console.log('📊 Dados recebidos:', {
-      has_data_agendamento: 'data_agendamento' in result,
-      data_agendamento_value: result.data_agendamento,
-      has_status: 'status' in result,
-      status_value: result.status,
-      has_prioridade: 'prioridade' in result,
-      prioridade_value: result.prioridade,
-      has_tipo_servico: 'tipo_servico' in result,
-      tipo_servico_value: result.tipo_servico,
-      ALL_KEYS: Object.keys(result)
+  console.log(`🔍 [mapDbToCamelCase] Tabela: ${tableName}, Campos:`, Object.keys(result));
+  
+  if (tableName === 'users') {
+    console.log('👤 [mapDbToCamelCase] Mapeando USUÁRIO');
+    console.log('📊 Campos originais:', {
+      has_password_hash: 'password_hash' in result,
+      password_hash_present: 'password_hash' in result ? '***[HASHED]***' : 'AUSENTE',
+      has_username: 'username' in result,
+      username_value: result.username || 'N/A'
     });
     
-    // MAPEAMENTO CORRETO - na ordem que o banco retorna
+    // MAPEAMENTO CRÍTICO PARA USERS
+    if ('password_hash' in result) {
+      result.password = result.password_hash; // ← LINHA MAIS IMPORTANTE!
+      console.log('✅ Mapeado: password_hash → password');
+    }
+    
+    if ('created_at' in result) {
+      result.createdAt = result.created_at;
+      console.log('✅ Mapeado: created_at → createdAt');
+    }
+    
+    if ('updated_at' in result) {
+      result.updatedAt = result.updated_at;
+      console.log('✅ Mapeado: updated_at → updatedAt');
+    }
+    
+    if ('is_active' in result) {
+      result.isActive = result.is_active;
+      console.log('✅ Mapeado: is_active → isActive');
+    }
+    
+    // DELETAR campos snake_case
+    const keysToDelete = [
+      'password_hash', 'created_at', 'updated_at', 'is_active'
+    ];
+    
+    keysToDelete.forEach(key => {
+      if (key in result) {
+        console.log(`🗑️  Deletando campo snake_case: ${key}`);
+        delete result[key];
+      }
+    });
+    
+    console.log('✅ [mapDbToCamelCase] USUÁRIO mapeado. Campos finais:', Object.keys(result));
+    console.log('🔐 Campo password presente?', 'password' in result);
+    
+  } else if (tableName === 'services') {
+    console.log('🔧 [mapDbToCamelCase] Mapeando SERVICES');
+    
+    // MAPEAMENTO para services
     if ('tipo_servico' in result) result.tipoServico = result.tipo_servico;
     if ('maquina_id' in result) result.maquinaId = result.maquina_id;
     if ('tecnico_id' in result) result.tecnicoId = result.tecnico_id;
     if ('tecnico_nome' in result) result.tecnicoNome = result.tecnico_nome;
     if ('descricao_servico' in result) result.descricaoServico = result.descricao_servico;
     if ('descricao_problema' in result) result.descricaoProblema = result.descricao_problema;
-    if ('data_agendamento' in result) {
-      console.log('📅 [mapDbToCamelCase] Mapeando data_agendamento:', result.data_agendamento);
-      result.dataAgendamento = result.data_agendamento;
-    }
+    if ('data_agendamento' in result) result.dataAgendamento = result.data_agendamento;
     if ('data_conclusao' in result) result.dataConclusao = result.data_conclusao;
-    if ('prioridade' in result) {
-      console.log('🎯 [mapDbToCamelCase] Mapeando prioridade:', result.prioridade);
-      result.prioridade = result.prioridade;
-    }
-    if ('status' in result) {
-      console.log('📊 [mapDbToCamelCase] Mapeando status:', result.status);
-      result.status = result.status;
-    }
+    if ('prioridade' in result) result.prioridade = result.prioridade;
+    if ('status' in result) result.status = result.status;
     if ('custo' in result) result.custo = result.custo;
     if ('observacoes' in result) result.observacoes = result.observacoes;
     if ('created_at' in result) result.createdAt = result.created_at;
@@ -163,13 +190,34 @@ function mapDbToCamelCase(data: any, tableName: string): any {
       }
     });
     
-    console.log('✅ [mapDbToCamelCase] Mapeamento concluído:', {
-      dataAgendamento: result.dataAgendamento,
-      status: result.status,
-      prioridade: result.prioridade,
-      tipoServico: result.tipoServico,
-      REMAINING_KEYS: Object.keys(result)
-    });
+  } else if (tableName === 'machines') {
+    if ('location_type' in result) result.locationType = result.location_type;
+    if ('location_floor' in result) result.locationFloor = result.location_floor;
+    if ('installation_date' in result) result.installationDate = result.installation_date;
+    if ('created_at' in result) result.createdAt = result.created_at;
+    if ('updated_at' in result) result.updatedAt = result.updated_at;
+    
+    delete result.location_type;
+    delete result.location_floor;
+    delete result.installation_date;
+    delete result.created_at;
+    delete result.updated_at;
+    
+  } else if (tableName === 'technicians') {
+    if ('created_at' in result) result.createdAt = result.created_at;
+    if ('updated_at' in result) result.updatedAt = result.updated_at;
+    
+    delete result.created_at;
+    delete result.updated_at;
+    
+  } else if (tableName === 'service_history') {
+    if ('service_id' in result) result.serviceId = result.service_id;
+    if ('created_at' in result) result.createdAt = result.created_at;
+    if ('created_by' in result) result.createdBy = result.created_by;
+    
+    delete result.service_id;
+    delete result.created_at;
+    delete result.created_by;
   }
   
   return result;
@@ -181,10 +229,24 @@ function mapCamelToDb(data: any, tableName: string): any {
   
   const result = JSON.parse(JSON.stringify(data));
   
-  if (tableName === 'services') {
-    console.log('🔍 [mapCamelToDb] Convertendo para banco');
+  if (tableName === 'users') {
+    console.log('👤 [mapCamelToDb] Convertendo USUÁRIO para banco');
     
-    // Converter de camelCase para snake_case
+    if ('password' in result) {
+      result.password_hash = result.password; // ← IMPORTANTE!
+      console.log('✅ Convertido: password → password_hash');
+    }
+    
+    if ('createdAt' in result) result.created_at = result.createdAt;
+    if ('updatedAt' in result) result.updated_at = result.updatedAt;
+    if ('isActive' in result) result.is_active = result.isActive;
+    
+    delete result.password;
+    delete result.createdAt;
+    delete result.updatedAt;
+    delete result.isActive;
+    
+  } else if (tableName === 'services') {
     if ('tipoServico' in result) result.tipo_servico = result.tipoServico;
     if ('maquinaId' in result) result.maquina_id = result.maquinaId;
     if ('tecnicoId' in result) result.tecnico_id = result.tecnicoId;
@@ -200,57 +262,81 @@ function mapCamelToDb(data: any, tableName: string): any {
     if ('createdAt' in result) result.created_at = result.createdAt;
     if ('updatedAt' in result) result.updated_at = result.updatedAt;
     
-    // Deletar campos camelCase
-    const keysToDelete = [
-      'tipoServico', 'maquinaId', 'tecnicoId', 'tecnicoNome',
-      'descricaoServico', 'descricaoProblema', 'dataAgendamento',
-      'dataConclusao', 'prioridade', 'status', 'custo', 'observacoes',
-      'createdAt', 'updatedAt'
-    ];
+    delete result.tipoServico;
+    delete result.maquinaId;
+    delete result.tecnicoId;
+    delete result.tecnicoNome;
+    delete result.descricaoServico;
+    delete result.descricaoProblema;
+    delete result.dataAgendamento;
+    delete result.dataConclusao;
+    delete result.prioridade;
+    delete result.status;
+    delete result.custo;
+    delete result.observacoes;
+    delete result.createdAt;
+    delete result.updatedAt;
     
-    keysToDelete.forEach(key => {
-      if (key in result) {
-        delete result[key];
-      }
-    });
+  } else if (tableName === 'machines') {
+    if ('locationType' in result) result.location_type = result.locationType;
+    if ('locationFloor' in result) result.location_floor = result.locationFloor;
+    if ('installationDate' in result) result.installation_date = result.installationDate;
+    if ('createdAt' in result) result.created_at = result.createdAt;
+    if ('updatedAt' in result) result.updated_at = result.updatedAt;
+    
+    delete result.locationType;
+    delete result.locationFloor;
+    delete result.installationDate;
+    delete result.createdAt;
+    delete result.updatedAt;
+    
+  } else if (tableName === 'technicians') {
+    if ('createdAt' in result) result.created_at = result.createdAt;
+    if ('updatedAt' in result) result.updated_at = result.updatedAt;
+    
+    delete result.createdAt;
+    delete result.updatedAt;
+    
+  } else if (tableName === 'service_history') {
+    if ('serviceId' in result) result.service_id = result.serviceId;
+    if ('createdAt' in result) result.created_at = result.createdAt;
+    if ('createdBy' in result) result.created_by = result.createdBy;
+    
+    delete result.serviceId;
+    delete result.createdAt;
+    delete result.createdBy;
   }
   
   return result;
 }
 
-// Função auxiliar para converter qualquer valor para Date - VERSÃO CORRIGIDA
+// Função auxiliar para converter qualquer valor para Date
 function anyToDate(dateValue: any): Date | null {
   if (dateValue === null || dateValue === undefined || dateValue === '') {
     return null;
   }
   
   try {
-    // Se já for Date válido, retornar como está
     if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
       return dateValue;
     }
     
-    // Se for Date inválido
     if (dateValue instanceof Date && isNaN(dateValue.getTime())) {
       return null;
     }
     
-    // Se for string "Invalid Date"
     if (typeof dateValue === 'string' && dateValue.includes('Invalid Date')) {
       return null;
     }
     
-    // Se for string
     if (typeof dateValue === 'string') {
       const cleanStr = dateValue.trim();
       if (cleanStr === '' || cleanStr.toLowerCase() === 'null') {
         return null;
       }
       
-      // Tentar parsear de várias formas
       const date = new Date(cleanStr);
       
-      // Se não funcionar, tentar formato brasileiro
       if (isNaN(date.getTime())) {
         const parts = cleanStr.split(/[/\-T]/);
         if (parts.length >= 3) {
@@ -265,7 +351,6 @@ function anyToDate(dateValue: any): Date | null {
       return !isNaN(date.getTime()) ? date : null;
     }
     
-    // Se for número (timestamp)
     if (typeof dateValue === 'number') {
       const date = new Date(dateValue);
       return !isNaN(date.getTime()) ? date : null;
@@ -279,21 +364,19 @@ function anyToDate(dateValue: any): Date | null {
   }
 }
 
-// Função auxiliar para validar e formatar datas - VERSÃO CORRIGIDA E SIMPLIFICADA
+// Função auxiliar para validar e formatar datas
 function safeDateToISO(dateValue: any): string {
   if (dateValue === null || dateValue === undefined) {
     return '';
   }
   
   try {
-    // Se for string vazia ou "null"
     if (typeof dateValue === 'string') {
       const trimmed = dateValue.trim();
       if (trimmed === '' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'invalid date') {
         return '';
       }
       
-      // Testar se já é uma data ISO válida
       const testDate = new Date(trimmed);
       if (!isNaN(testDate.getTime())) {
         return testDate.toISOString();
@@ -302,17 +385,14 @@ function safeDateToISO(dateValue: any): string {
       return '';
     }
     
-    // Se for Date inválido
     if (dateValue instanceof Date && isNaN(dateValue.getTime())) {
       return '';
     }
     
-    // Se for Date válido
     if (dateValue instanceof Date) {
       return dateValue.toISOString();
     }
     
-    // Para outros tipos
     const date = new Date(dateValue);
     return !isNaN(date.getTime()) ? date.toISOString() : '';
     
@@ -328,7 +408,15 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('🔍 [STORAGE] Buscando usuário por ID:', id);
       const [user] = await db.select().from(users).where(eq(users.id, id));
-      return user ? mapDbToCamelCase(user, 'users') : undefined;
+      
+      if (user) {
+        console.log('✅ [STORAGE] Usuário encontrado por ID:', user.username);
+        const mappedUser = mapDbToCamelCase(user, 'users');
+        console.log('🔐 [STORAGE] Campo password no mappedUser?', 'password' in mappedUser);
+        return mappedUser;
+      }
+      
+      return undefined;
     } catch (error) {
       console.error('❌ [STORAGE] Erro ao buscar usuário por ID:', error);
       return undefined;
@@ -340,17 +428,38 @@ export class DatabaseStorage implements IStorage {
       console.log('🔍 [STORAGE] Buscando usuário por username:', username);
       
       if (!username || username.trim() === '') {
-        console.log('⚠️  [STORAGE] Username vazio, retornando undefined');
+        console.log('⚠️  [STORAGE] Username vazio');
         return undefined;
       }
       
       const [user] = await db.select().from(users).where(eq(users.username, String(username).trim()));
-      console.log('📋 [STORAGE] Resultado:', user ? `Encontrado: ${user.username}` : 'Não encontrado');
-      return user ? mapDbToCamelCase(user, 'users') : undefined;
+      
+      if (user) {
+        console.log('✅ [STORAGE] Usuário encontrado:', {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          hasPasswordHash: 'password_hash' in user,
+          passwordHashLength: user.password_hash ? user.password_hash.length : 0
+        });
+        
+        const mappedUser = mapDbToCamelCase(user, 'users');
+        
+        console.log('🔍 [STORAGE] Após mapeamento:', {
+          id: mappedUser.id,
+          username: mappedUser.username,
+          hasPasswordField: 'password' in mappedUser,
+          allFields: Object.keys(mappedUser)
+        });
+        
+        return mappedUser;
+      }
+      
+      console.log('⚠️  [STORAGE] Usuário não encontrado');
+      return undefined;
       
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao buscar por username:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       return undefined;
     }
   }
@@ -360,17 +469,21 @@ export class DatabaseStorage implements IStorage {
       console.log('🔍 [STORAGE] Buscando usuário por email:', email || '(vazio)');
       
       if (!email || email.trim() === '') {
-        console.log('⚠️  [STORAGE] Email vazio, retornando undefined');
+        console.log('⚠️  [STORAGE] Email vazio');
         return undefined;
       }
       
       const [user] = await db.select().from(users).where(eq(users.email, String(email).trim()));
-      console.log('📋 [STORAGE] Resultado:', user ? `Encontrado: ${user.email}` : 'Não encontrado');
-      return user ? mapDbToCamelCase(user, 'users') : undefined;
+      
+      if (user) {
+        console.log('✅ [STORAGE] Usuário encontrado por email:', user.email);
+        return mapDbToCamelCase(user, 'users');
+      }
+      
+      return undefined;
       
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao buscar por email:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       return undefined;
     }
   }
@@ -378,17 +491,26 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: InsertUser): Promise<User> {
     try {
       console.log('👤 [STORAGE] Criando usuário:', userData.username);
-      console.log('📝 [STORAGE] Dados do usuário:', {
-        ...userData,
-        password: '***[HASHED]***'
+      console.log('📝 [STORAGE] Dados recebidos:', {
+        username: userData.username,
+        email: userData.email,
+        hasPassword: !!userData.password,
+        passwordLength: userData.password ? userData.password.length : 0
       });
       
       const dbData = mapCamelToDb(userData, 'users');
       
+      console.log('📝 [STORAGE] Dados para banco:', {
+        username: dbData.username,
+        email: dbData.email,
+        hasPasswordHash: !!dbData.password_hash,
+        passwordHashLength: dbData.password_hash ? dbData.password_hash.length : 0
+      });
+      
       const [user] = await db.insert(users)
         .values({
           ...dbData,
-          role: 'technician',
+          role: userData.role || 'technician',
           created_at: new Date(),
           updated_at: new Date()
         })
@@ -398,7 +520,6 @@ export class DatabaseStorage implements IStorage {
       return mapDbToCamelCase(user, 'users');
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar usuário:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       throw error;
     }
   }
@@ -473,10 +594,8 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
       if (!machine) return undefined;
       
-      // Primeiro mapear com a função corrigida
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
-      // Tratar data de instalação
       let dataInstalacao = '';
       if (mappedMachine.installationDate) {
         const date = anyToDate(mappedMachine.installationDate);
@@ -516,10 +635,8 @@ export class DatabaseStorage implements IStorage {
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
       if (!machine) return undefined;
       
-      // Primeiro mapear com a função corrigida
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
-      // Tratar data de instalação
       let dataInstalacao = '';
       if (mappedMachine.installationDate) {
         const date = anyToDate(mappedMachine.installationDate);
@@ -558,10 +675,8 @@ export class DatabaseStorage implements IStorage {
       const machinesList = await db.select().from(machines).orderBy(machines.codigo);
       
       return machinesList.map(machine => {
-        // Primeiro mapear com a função corrigida
         const mappedMachine = mapDbToCamelCase(machine, 'machines');
         
-        // Tratar data de instalação com cuidado
         let dataInstalacao = '';
         try {
           if (mappedMachine.installationDate) {
@@ -608,10 +723,8 @@ export class DatabaseStorage implements IStorage {
         .orderBy(machines.codigo);
       
       return machinesList.map(machine => {
-        // Primeiro mapear com a função corrigida
         const mappedMachine = mapDbToCamelCase(machine, 'machines');
         
-        // Tratar data de instalação
         let dataInstalacao = '';
         if (mappedMachine.installationDate) {
           const date = anyToDate(mappedMachine.installationDate);
@@ -654,10 +767,8 @@ export class DatabaseStorage implements IStorage {
         .orderBy(machines.codigo);
       
       return machinesList.map(machine => {
-        // Primeiro mapear com a função corrigida
         const mappedMachine = mapDbToCamelCase(machine, 'machines');
         
-        // Tratar data de instalação
         let dataInstalacao = '';
         if (mappedMachine.installationDate) {
           const date = anyToDate(mappedMachine.installationDate);
@@ -723,10 +834,8 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
       
-      // Primeiro mapear com a função corrigida
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
-      // Retornar data tratada
       let dataInstalacao = '';
       if (mappedMachine.installationDate) {
         const date = anyToDate(mappedMachine.installationDate);
@@ -755,7 +864,6 @@ export class DatabaseStorage implements IStorage {
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       throw error;
     }
   }
@@ -794,10 +902,8 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
       
-      // Primeiro mapear com a função corrigida
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
-      // Retornar data tratada
       let dataInstalacao = '';
       if (mappedMachine.installationDate) {
         const date = anyToDate(mappedMachine.installationDate);
@@ -850,18 +956,14 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
-      // Primeiro mapear com a função corrigida
       const mappedService = mapDbToCamelCase(service, 'services');
       
       console.log('📅 [STORAGE] Serviço mapeado:', {
         dataAgendamentoRaw: mappedService.dataAgendamento,
-        tipo: typeof mappedService.dataAgendamento,
-        temData: !!mappedService.dataAgendamento,
         status: mappedService.status,
         prioridade: mappedService.prioridade
       });
       
-      // Processar datas com anyToDate
       let dataAgendamentoFormatted = '';
       let dataConclusaoFormatted = '';
       
@@ -892,8 +994,8 @@ export class DatabaseStorage implements IStorage {
         descricaoProblema: mappedService.descricaoProblema || '',
         dataAgendamento: dataAgendamentoFormatted,
         dataConclusao: dataConclusaoFormatted,
-        prioridade: mappedService.prioridade || 'MEDIA', // DEFAULT CORRETO
-        status: mappedService.status || 'AGENDADO', // DEFAULT CORRETO
+        prioridade: mappedService.prioridade || 'MEDIA',
+        status: mappedService.status || 'AGENDADO',
         custo: mappedService.custo ? mappedService.custo.toString() : '',
         observacoes: mappedService.observacoes || '',
         createdAt: mappedService.createdAt || new Date(),
@@ -913,10 +1015,8 @@ export class DatabaseStorage implements IStorage {
       console.log(`✅ [STORAGE] Encontrados ${servicesList.length} serviços no banco`);
       
       const mappedServices = servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Debug do mapeamento
         console.log('📊 [STORAGE] Mapeando serviço:', {
           id: service.id,
           data_agendamento_db: service.data_agendamento,
@@ -926,23 +1026,19 @@ export class DatabaseStorage implements IStorage {
           prioridade_mapped: mappedService.prioridade
         });
         
-        // Processar datas com anyToDate - CORREÇÃO: Se for Invalid Date, usar null
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
-            console.log('⚠️  [STORAGE] Data inválida detectada, usando valor padrão');
+            console.log('⚠️  [STORAGE] Data inválida detectada');
             dataAgendamentoFormatted = '';
           } else {
             const date = anyToDate(mappedService.dataAgendamento);
             if (date) {
               dataAgendamentoFormatted = date.toISOString();
               console.log('✅ [STORAGE] Data parseada com sucesso:', dataAgendamentoFormatted);
-            } else {
-              console.log('⚠️  [STORAGE] Não foi possível parsear a data:', mappedService.dataAgendamento);
             }
           }
         }
@@ -965,8 +1061,8 @@ export class DatabaseStorage implements IStorage {
           descricaoProblema: mappedService.descricaoProblema || '',
           dataAgendamento: dataAgendamentoFormatted,
           dataConclusao: dataConclusaoFormatted,
-          prioridade: mappedService.prioridade || 'MEDIA', // DEFAULT CORRETO
-          status: mappedService.status || 'AGENDADO', // DEFAULT CORRETO
+          prioridade: mappedService.prioridade || 'MEDIA',
+          status: mappedService.status || 'AGENDADO',
           custo: mappedService.custo ? mappedService.custo.toString() : '',
           observacoes: mappedService.observacoes || '',
           createdAt: mappedService.createdAt || new Date(),
@@ -974,7 +1070,6 @@ export class DatabaseStorage implements IStorage {
         };
       });
       
-      // Debug adicional
       console.log('📊 [STORAGE] Primeiro serviço mapeado:', mappedServices[0]);
       
       return mappedServices;
@@ -992,15 +1087,12 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1052,15 +1144,12 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1117,15 +1206,12 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1177,15 +1263,12 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1237,15 +1320,12 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1307,15 +1387,12 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1377,15 +1454,12 @@ export class DatabaseStorage implements IStorage {
       const servicesList = await query.orderBy(desc(services.data_agendamento));
       
       return servicesList.map(service => {
-        // Primeiro mapear com a função corrigida
         const mappedService = mapDbToCamelCase(service, 'services');
         
-        // Processar datas com anyToDate
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
-          // Se for string "Invalid Date", tratar como null
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
             dataAgendamentoFormatted = '';
@@ -1433,32 +1507,27 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
       
-      // Obter nome do técnico
       const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
       
-      // Processar data_agendamento
       let dataAgendamento: Date | null = null;
       
       if (serviceData.data_agendamento) {
         dataAgendamento = anyToDate(serviceData.data_agendamento);
       }
       
-      // Se não conseguir parsear, usar data atual
       if (!dataAgendamento) {
-        console.log('⚠️  [STORAGE] Data_agendamento não fornecida ou inválida, usando data atual');
+        console.log('⚠️  [STORAGE] Data_agendamento não fornecida, usando data atual');
         dataAgendamento = new Date();
       }
       
       console.log('📅 [STORAGE] Data_agendamento final para banco:', dataAgendamento.toISOString());
       
-      // Processar data_conclusao se existir
       let dataConclusao: Date | null = null;
       if (serviceData.data_conclusao) {
         dataConclusao = anyToDate(serviceData.data_conclusao);
       }
       
-      // Processar custo
       let custoValue = null;
       if (serviceData.custo) {
         if (typeof serviceData.custo === 'string') {
@@ -1471,7 +1540,6 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      // Preparar dados para o banco
       const processedData = {
         tipo_servico: serviceData.tipo_servico || 'PREVENTIVA',
         maquina_id: serviceData.maquina_id,
@@ -1481,8 +1549,8 @@ export class DatabaseStorage implements IStorage {
         descricao_problema: serviceData.descricao_problema || '',
         data_agendamento: dataAgendamento,
         data_conclusao: dataConclusao,
-        prioridade: serviceData.prioridade || 'MEDIA', // DEFAULT CORRETO
-        status: serviceData.status || 'AGENDADO', // DEFAULT CORRETO
+        prioridade: serviceData.prioridade || 'MEDIA',
+        status: serviceData.status || 'AGENDADO',
         custo: custoValue,
         observacoes: serviceData.observacoes || ''
       };
@@ -1496,17 +1564,14 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Serviço criado com ID:', service.id);
       
-      // Adicionar ao histórico
       await this.addServiceHistory({
         serviceId: service.id,
         status: service.status || 'AGENDADO',
         observacao: "Serviço criado"
       });
       
-      // Primeiro mapear com a função corrigida
       const mappedService = mapDbToCamelCase(service, 'services');
       
-      // Retornar no formato correto
       const createdDataAgendamento = mappedService.dataAgendamento ? 
         anyToDate(mappedService.dataAgendamento)?.toISOString() || '' : '';
       
@@ -1532,7 +1597,6 @@ export class DatabaseStorage implements IStorage {
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       throw error;
     }
   }
@@ -1544,19 +1608,16 @@ export class DatabaseStorage implements IStorage {
       
       const updateData: any = {};
       
-      // Mapear campos do frontend para o banco
       if (serviceData.tipo_servico !== undefined) updateData.tipo_servico = serviceData.tipo_servico;
       if (serviceData.maquina_id !== undefined) updateData.maquina_id = serviceData.maquina_id;
       if (serviceData.tecnico_id !== undefined) {
         updateData.tecnico_id = serviceData.tecnico_id;
-        // Buscar nome do técnico se o ID mudou
         const technician = await this.getTechnician(serviceData.tecnico_id);
         updateData.tecnico_nome = technician?.nome || "Desconhecido";
       }
       if (serviceData.descricao_servico !== undefined) updateData.descricao_servico = serviceData.descricao_servico;
       if (serviceData.descricao_problema !== undefined) updateData.descricao_problema = serviceData.descricao_problema;
       
-      // Processar data_agendamento se fornecida
       if (serviceData.data_agendamento !== undefined) {
         console.log('📅 [STORAGE] Processando data_agendamento para atualização:', serviceData.data_agendamento);
         
@@ -1564,20 +1625,15 @@ export class DatabaseStorage implements IStorage {
         if (parsedDate) {
           updateData.data_agendamento = parsedDate;
           console.log('✅ [STORAGE] Data_agendamento parseada para atualização:', parsedDate.toISOString());
-        } else {
-          console.log('❌ [STORAGE] Data_agendamento inválida, mantendo a atual');
         }
       }
       
-      // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
         if (serviceData.data_conclusao) {
           const parsedDate = anyToDate(serviceData.data_conclusao);
           if (parsedDate) {
             updateData.data_conclusao = parsedDate;
             console.log('✅ [STORAGE] Data_conclusao parseada para atualização:', parsedDate.toISOString());
-          } else {
-            console.log('❌ [STORAGE] Data_conclusao inválida, mantendo a atual');
           }
         } else {
           updateData.data_conclusao = null;
@@ -1604,7 +1660,6 @@ export class DatabaseStorage implements IStorage {
         return undefined;
       }
       
-      // Adicionar ao histórico se status mudou
       if (serviceData.status) {
         await this.addServiceHistory({
           serviceId: id,
@@ -1615,10 +1670,8 @@ export class DatabaseStorage implements IStorage {
       
       console.log('✅ [STORAGE] Serviço atualizado com ID:', service.id);
       
-      // Primeiro mapear com a função corrigida
       const mappedService = mapDbToCamelCase(service, 'services');
       
-      // Retornar no formato correto
       const updatedDataAgendamento = mappedService.dataAgendamento ? 
         anyToDate(mappedService.dataAgendamento)?.toISOString() || '' : '';
       
@@ -1644,7 +1697,6 @@ export class DatabaseStorage implements IStorage {
       };
     } catch (error: any) {
       console.error('❌ [STORAGE] Erro ao atualizar serviço:', error.message);
-      console.error('❌ [STORAGE] Stack:', error.stack);
       return undefined;
     }
   }
@@ -1696,7 +1748,6 @@ export class DatabaseStorage implements IStorage {
     avgServiceCost: number;
   }> {
     try {
-      // Contar máquinas por status
       const [activeResult] = await db.select({ count: count() })
         .from(machines)
         .where(eq(machines.status, 'ATIVO'));
@@ -1709,7 +1760,6 @@ export class DatabaseStorage implements IStorage {
         .from(machines)
         .where(eq(machines.status, 'DEFEITO'));
       
-      // Contar serviços por status
       const [pendingResult] = await db.select({ count: count() })
         .from(services)
         .where(sql`status IN ('AGENDADO', 'PENDENTE', 'EM_ANDAMENTO')`);
@@ -1718,7 +1768,6 @@ export class DatabaseStorage implements IStorage {
         .from(services)
         .where(eq(services.status, 'CONCLUIDO'));
       
-      // Calcular custos
       const [costResult] = await db.select({ 
         total: sum(services.custo),
         avg: avg(services.custo)
@@ -1910,7 +1959,6 @@ export class DatabaseStorage implements IStorage {
         whereClause = sql`${whereClause} AND ${services.data_agendamento} >= ${startDate} AND ${services.data_agendamento} <= ${endDate}`;
       }
       
-      // Por tipo
       const byTypeResult = await db.select({
         type: services.tipo_servico,
         count: count(),
@@ -1921,7 +1969,6 @@ export class DatabaseStorage implements IStorage {
       .where(whereClause)
       .groupBy(services.tipo_servico);
       
-      // Por técnico
       const byTechnicianResult = await db.select({
         technicianName: services.tecnico_nome,
         count: count(),
@@ -1933,7 +1980,6 @@ export class DatabaseStorage implements IStorage {
       .groupBy(services.tecnico_nome)
       .orderBy(sql`${sum(services.custo)} DESC`);
       
-      // Por filial
       const byBranchResult = await db.select({
         branch: machines.branch,
         count: count(services.id),
@@ -1946,7 +1992,6 @@ export class DatabaseStorage implements IStorage {
       .groupBy(machines.branch)
       .orderBy(sql`${sum(services.custo)} DESC`);
       
-      // Por prioridade
       const byPriorityResult = await db.select({
         priority: services.prioridade,
         count: count(),
@@ -2006,7 +2051,6 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
       
-      // Ordenar por data
       const sortedServices = servicesList.sort((a, b) => {
         const dateA = a.dataAgendamento ? new Date(a.dataAgendamento) : new Date(0);
         const dateB = b.dataAgendamento ? new Date(b.dataAgendamento) : new Date(0);
