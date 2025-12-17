@@ -103,86 +103,73 @@ export interface IStorage {
   }>>;
 }
 
-// Função auxiliar para converter snake_case para camelCase - VERSÃO CORRIGIDA
+// ========== FUNÇÃO mapDbToCamelCase - VERSÃO FINAL ==========
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
-  // Criar uma cópia profunda para não modificar o objeto original
-  const result = { ...data };
-  
-  // Mapeamentos específicos por tabela
-  if (tableName === 'users') {
-    if (result.password_hash !== undefined) result.password = result.password_hash;
-    if (result.created_at !== undefined) result.createdAt = result.created_at;
-    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
-    delete result.password_hash;
-    delete result.created_at;
-    delete result.updated_at;
-  }
-  
-  if (tableName === 'technicians') {
-    if (result.created_at !== undefined) result.createdAt = result.created_at;
-    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
-    delete result.created_at;
-    delete result.updated_at;
-  }
-  
-  if (tableName === 'machines') {
-    if (result.location_type !== undefined) result.locationType = result.location_type;
-    if (result.location_floor !== undefined) result.locationFloor = result.location_floor;
-    if (result.installation_date !== undefined) result.installationDate = result.installation_date;
-    if (result.created_at !== undefined) result.createdAt = result.created_at;
-    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
-    
-    delete result.location_type;
-    delete result.location_floor;
-    delete result.installation_date;
-    delete result.created_at;
-    delete result.updated_at;
-  }
+  // Criar uma cópia PROFUNDA
+  const result = JSON.parse(JSON.stringify(data));
   
   if (tableName === 'services') {
-    // CORREÇÃO CRÍTICA: Mapear todos os campos ANTES de deletar
-    // Usar !== undefined para incluir valores null
-    if (result.tipo_servico !== undefined) result.tipoServico = result.tipo_servico;
-    if (result.maquina_id !== undefined) result.maquinaId = result.maquina_id;
-    if (result.tecnico_id !== undefined) result.tecnicoId = result.tecnico_id;
-    if (result.tecnico_nome !== undefined) result.tecnicoNome = result.tecnico_nome;
-    if (result.descricao_servico !== undefined) result.descricaoServico = result.descricao_servico;
-    if (result.descricao_problema !== undefined) result.descricaoProblema = result.descricao_problema;
-    if (result.data_agendamento !== undefined) result.dataAgendamento = result.data_agendamento;
-    if (result.data_conclusao !== undefined) result.dataConclusao = result.data_conclusao;
-    if (result.prioridade !== undefined) result.prioridade = result.prioridade; // CORREÇÃO: estava faltando
-    if (result.status !== undefined) result.status = result.status; // CORREÇÃO: estava faltando
-    if (result.custo !== undefined) result.custo = result.custo;
-    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
-    if (result.created_at !== undefined) result.createdAt = result.created_at;
-    if (result.updated_at !== undefined) result.updatedAt = result.updated_at;
+    console.log('🔍 [mapDbToCamelCase] INICIANDO mapeamento para services');
+    console.log('📊 Dados recebidos:', {
+      has_data_agendamento: 'data_agendamento' in result,
+      data_agendamento_value: result.data_agendamento,
+      has_status: 'status' in result,
+      status_value: result.status,
+      has_prioridade: 'prioridade' in result,
+      prioridade_value: result.prioridade,
+      has_tipo_servico: 'tipo_servico' in result,
+      tipo_servico_value: result.tipo_servico,
+      ALL_KEYS: Object.keys(result)
+    });
     
-    // Agora deletar os campos snake_case
-    delete result.tipo_servico;
-    delete result.maquina_id;
-    delete result.tecnico_id;
-    delete result.tecnico_nome;
-    delete result.descricao_servico;
-    delete result.descricao_problema;
-    delete result.data_agendamento;
-    delete result.data_conclusao;
-    delete result.prioridade; // CORREÇÃO: estava faltando
-    delete result.status; // CORREÇÃO: estava faltando
-    delete result.custo;
-    delete result.observacoes;
-    delete result.created_at;
-    delete result.updated_at;
-  }
-  
-  if (tableName === 'service_history') {
-    if (result.service_id !== undefined) result.serviceId = result.service_id;
-    if (result.created_at !== undefined) result.createdAt = result.created_at;
-    if (result.created_by !== undefined) result.createdBy = result.created_by;
-    delete result.service_id;
-    delete result.created_at;
-    delete result.created_by;
+    // MAPEAMENTO CORRETO - na ordem que o banco retorna
+    if ('tipo_servico' in result) result.tipoServico = result.tipo_servico;
+    if ('maquina_id' in result) result.maquinaId = result.maquina_id;
+    if ('tecnico_id' in result) result.tecnicoId = result.tecnico_id;
+    if ('tecnico_nome' in result) result.tecnicoNome = result.tecnico_nome;
+    if ('descricao_servico' in result) result.descricaoServico = result.descricao_servico;
+    if ('descricao_problema' in result) result.descricaoProblema = result.descricao_problema;
+    if ('data_agendamento' in result) {
+      console.log('📅 [mapDbToCamelCase] Mapeando data_agendamento:', result.data_agendamento);
+      result.dataAgendamento = result.data_agendamento;
+    }
+    if ('data_conclusao' in result) result.dataConclusao = result.data_conclusao;
+    if ('prioridade' in result) {
+      console.log('🎯 [mapDbToCamelCase] Mapeando prioridade:', result.prioridade);
+      result.prioridade = result.prioridade;
+    }
+    if ('status' in result) {
+      console.log('📊 [mapDbToCamelCase] Mapeando status:', result.status);
+      result.status = result.status;
+    }
+    if ('custo' in result) result.custo = result.custo;
+    if ('observacoes' in result) result.observacoes = result.observacoes;
+    if ('created_at' in result) result.createdAt = result.created_at;
+    if ('updated_at' in result) result.updatedAt = result.updated_at;
+    
+    // DELETAR campos snake_case
+    const keysToDelete = [
+      'tipo_servico', 'maquina_id', 'tecnico_id', 'tecnico_nome',
+      'descricao_servico', 'descricao_problema', 'data_agendamento',
+      'data_conclusao', 'prioridade', 'status', 'custo', 'observacoes',
+      'created_at', 'updated_at'
+    ];
+    
+    keysToDelete.forEach(key => {
+      if (key in result) {
+        delete result[key];
+      }
+    });
+    
+    console.log('✅ [mapDbToCamelCase] Mapeamento concluído:', {
+      dataAgendamento: result.dataAgendamento,
+      status: result.status,
+      prioridade: result.prioridade,
+      tipoServico: result.tipoServico,
+      REMAINING_KEYS: Object.keys(result)
+    });
   }
   
   return result;
@@ -192,77 +179,40 @@ function mapDbToCamelCase(data: any, tableName: string): any {
 function mapCamelToDb(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
-  const result = { ...data };
-  
-  if (tableName === 'users') {
-    if (result.password !== undefined) result.password_hash = result.password;
-    if (result.createdAt !== undefined) result.created_at = result.createdAt;
-    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
-    delete result.password;
-    delete result.createdAt;
-    delete result.updatedAt;
-  }
-  
-  if (tableName === 'technicians') {
-    if (result.createdAt !== undefined) result.created_at = result.createdAt;
-    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
-    delete result.createdAt;
-    delete result.updatedAt;
-  }
-  
-  if (tableName === 'machines') {
-    if (result.locationType !== undefined) result.location_type = result.locationType;
-    if (result.locationFloor !== undefined) result.location_floor = result.locationFloor;
-    if (result.installationDate !== undefined) result.installation_date = result.installationDate;
-    if (result.createdAt !== undefined) result.created_at = result.createdAt;
-    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
-    
-    delete result.locationType;
-    delete result.locationFloor;
-    delete result.installationDate;
-    delete result.createdAt;
-    delete result.updatedAt;
-  }
+  const result = JSON.parse(JSON.stringify(data));
   
   if (tableName === 'services') {
-    if (result.tipoServico !== undefined) result.tipo_servico = result.tipoServico;
-    if (result.maquinaId !== undefined) result.maquina_id = result.maquinaId;
-    if (result.tecnicoId !== undefined) result.tecnico_id = result.tecnicoId;
-    if (result.tecnicoNome !== undefined) result.tecnico_nome = result.tecnicoNome;
-    if (result.descricaoServico !== undefined) result.descricao_servico = result.descricaoServico;
-    if (result.descricaoProblema !== undefined) result.descricao_problema = result.descricaoProblema;
-    if (result.dataAgendamento !== undefined) result.data_agendamento = result.dataAgendamento;
-    if (result.dataConclusao !== undefined) result.data_conclusao = result.dataConclusao;
-    if (result.prioridade !== undefined) result.prioridade = result.prioridade;
-    if (result.status !== undefined) result.status = result.status;
-    if (result.custo !== undefined) result.custo = result.custo;
-    if (result.observacoes !== undefined) result.observacoes = result.observacoes;
-    if (result.createdAt !== undefined) result.created_at = result.createdAt;
-    if (result.updatedAt !== undefined) result.updated_at = result.updatedAt;
+    console.log('🔍 [mapCamelToDb] Convertendo para banco');
     
-    delete result.tipoServico;
-    delete result.maquinaId;
-    delete result.tecnicoId;
-    delete result.tecnicoNome;
-    delete result.descricaoServico;
-    delete result.descricaoProblema;
-    delete result.dataAgendamento;
-    delete result.dataConclusao;
-    delete result.prioridade;
-    delete result.status;
-    delete result.custo;
-    delete result.observacoes;
-    delete result.createdAt;
-    delete result.updatedAt;
-  }
-  
-  if (tableName === 'service_history') {
-    if (result.serviceId !== undefined) result.service_id = result.serviceId;
-    if (result.createdAt !== undefined) result.created_at = result.createdAt;
-    if (result.createdBy !== undefined) result.created_by = result.createdBy;
-    delete result.serviceId;
-    delete result.createdAt;
-    delete result.createdBy;
+    // Converter de camelCase para snake_case
+    if ('tipoServico' in result) result.tipo_servico = result.tipoServico;
+    if ('maquinaId' in result) result.maquina_id = result.maquinaId;
+    if ('tecnicoId' in result) result.tecnico_id = result.tecnicoId;
+    if ('tecnicoNome' in result) result.tecnico_nome = result.tecnicoNome;
+    if ('descricaoServico' in result) result.descricao_servico = result.descricaoServico;
+    if ('descricaoProblema' in result) result.descricao_problema = result.descricaoProblema;
+    if ('dataAgendamento' in result) result.data_agendamento = result.dataAgendamento;
+    if ('dataConclusao' in result) result.data_conclusao = result.dataConclusao;
+    if ('prioridade' in result) result.prioridade = result.prioridade;
+    if ('status' in result) result.status = result.status;
+    if ('custo' in result) result.custo = result.custo;
+    if ('observacoes' in result) result.observacoes = result.observacoes;
+    if ('createdAt' in result) result.created_at = result.createdAt;
+    if ('updatedAt' in result) result.updated_at = result.updatedAt;
+    
+    // Deletar campos camelCase
+    const keysToDelete = [
+      'tipoServico', 'maquinaId', 'tecnicoId', 'tecnicoNome',
+      'descricaoServico', 'descricaoProblema', 'dataAgendamento',
+      'dataConclusao', 'prioridade', 'status', 'custo', 'observacoes',
+      'createdAt', 'updatedAt'
+    ];
+    
+    keysToDelete.forEach(key => {
+      if (key in result) {
+        delete result[key];
+      }
+    });
   }
   
   return result;
