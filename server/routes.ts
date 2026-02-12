@@ -1057,13 +1057,9 @@ export async function registerRoutes(
         return acc;
       }, {} as Record<string, { label: string; completed: number; pending: number; total: number }>);
       
-      const monthlyData = Object.values(servicesByMonth)
-        .sort((a, b) => {
-          const [aYear, aMonth] = a.label.split('/');
-          const [bYear, bMonth] = b.label.split('/');
-          return new Date(parseInt(aYear), aMonth.charCodeAt(0) - 97).getTime() - 
-                 new Date(parseInt(bYear), bMonth.charCodeAt(0) - 97).getTime();
-        });
+      const monthlyData = Object.entries(servicesByMonth)
+        .sort(([aKey], [bKey]) => aKey.localeCompare(bKey))
+        .map(([, value]) => value);
       
       const urgentServices = filteredServices.filter(s => 
         s.prioridade === 'URGENTE' || s.prioridade === 'ALTA'

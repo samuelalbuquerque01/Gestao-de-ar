@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useData, ServiceStatus, MachineStatus } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Fan, Wrench, AlertTriangle, CheckCircle2, Clock, Activity, Loader2 } from 'lucide-react';
@@ -18,32 +18,32 @@ import {
 import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Função auxiliar para validar e formatar datas com segurança - VERSÃO CORRIGIDA
+// FunÃ§Ã£o auxiliar para validar e formatar datas com seguranÃ§a - VERSÃƒO CORRIGIDA
 const safeDateFormat = (dateValue: any): string => {
-  if (!dateValue) return 'Data não informada';
+  if (!dateValue) return 'Data nÃ£o informada';
   
   try {
-    // Se for string, verificar se está vazia
+    // Se for string, verificar se estÃ¡ vazia
     if (typeof dateValue === 'string' && dateValue.trim() === '') {
-      return 'Data não informada';
+      return 'Data nÃ£o informada';
     }
     
     // Criar objeto Date
     const date = new Date(dateValue);
     
-    // Verificar se é válido
+    // Verificar se Ã© vÃ¡lido
     if (!isValid(date) || isNaN(date.getTime())) {
-      return 'Data não informada';
+      return 'Data nÃ£o informada';
     }
     
     return format(date, "dd 'de' MMMM", { locale: ptBR });
   } catch (error) {
-    console.error('❌ Erro ao formatar data:', error);
-    return 'Data não informada';
+    console.error('âŒ Erro ao formatar data:', error);
+    return 'Data nÃ£o informada';
   }
 };
 
-// Função segura para comparar datas
+// FunÃ§Ã£o segura para comparar datas
 const safeDateCompare = (dateValue: any): number => {
   if (!dateValue) return 0;
   
@@ -73,10 +73,18 @@ export default function Dashboard() {
     );
   }
 
+  const normalizeMachineStatus = (status?: string) =>
+    (status || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase();
+
   // Stats Calculations
-  const activeMachines = machines.filter(m => m.status === 'ATIVO').length;
-  const maintenanceMachines = machines.filter(m => m.status === 'MANUTENCAO').length;
-  const defectMachines = machines.filter(m => m.status === 'DEFEITO').length;
+  const activeMachines = machines.filter(m => normalizeMachineStatus(m.status) === 'ATIVO').length;
+  const maintenanceMachines = machines.filter(m => normalizeMachineStatus(m.status) === 'MANUTENCAO').length;
+  const defectMachines = machines.filter(m => normalizeMachineStatus(m.status) === 'DEFEITO').length;
+  const machinesNeedingAttention = maintenanceMachines + defectMachines;
   
   const pendingServices = services.filter(s => s.status === 'AGENDADO' || s.status === 'PENDENTE').length;
   const completedServices = services.filter(s => s.status === 'CONCLUIDO').length;
@@ -104,40 +112,42 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do sistema de ar condicionado.</p>
+        <p className="text-muted-foreground">VisÃ£o geral do sistema de ar condicionado.</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Máquinas Ativas</CardTitle>
+            <CardTitle className="text-sm font-medium">MÃ¡quinas Ativas</CardTitle>
             <Fan className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeMachines}</div>
             <p className="text-xs text-muted-foreground">
-              de {machines.length} máquinas totais
+              de {machines.length} mÃ¡quinas totais
             </p>
           </CardContent>
         </Card>
         
         <Card className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Manutenção</CardTitle>
+            <CardTitle className="text-sm font-medium">Em ManutenÃ§Ã£o</CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{maintenanceMachines}</div>
+            <div className="text-2xl font-bold">{machinesNeedingAttention}</div>
             <p className="text-xs text-muted-foreground">
-              {defectMachines > 0 ? `${defectMachines} com defeito crítico` : 'Operação normal'}
+              {machinesNeedingAttention > 0
+                ? `${maintenanceMachines} em manutenÃ§Ã£o • ${defectMachines} com defeito crÃ­tico`
+                : 'OperaÃ§Ã£o normal'}
             </p>
           </CardContent>
         </Card>
         
         <Card className="border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium">ServiÃ§os Pendentes</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -150,13 +160,13 @@ export default function Dashboard() {
         
         <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Serviços Concluídos</CardTitle>
+            <CardTitle className="text-sm font-medium">ServiÃ§os ConcluÃ­dos</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedServices}</div>
             <p className="text-xs text-muted-foreground">
-              Total histórico
+              Total histÃ³rico
             </p>
           </CardContent>
         </Card>
@@ -166,8 +176,8 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 shadow-sm">
           <CardHeader>
-            <CardTitle>Tipos de Serviço</CardTitle>
-            <CardDescription>Distribuição de manutenções realizadas e agendadas.</CardDescription>
+            <CardTitle>Tipos de ServiÃ§o</CardTitle>
+            <CardDescription>DistribuiÃ§Ã£o de manutenÃ§Ãµes realizadas e agendadas.</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <ResponsiveContainer width="100%" height={300}>
@@ -199,8 +209,8 @@ export default function Dashboard() {
         
         <Card className="col-span-3 shadow-sm">
           <CardHeader>
-            <CardTitle>Tipos de Máquina</CardTitle>
-            <CardDescription>Inventário por categoria.</CardDescription>
+            <CardTitle>Tipos de MÃ¡quina</CardTitle>
+            <CardDescription>InventÃ¡rio por categoria.</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -231,8 +241,8 @@ export default function Dashboard() {
       {/* Recent Services List */}
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>Próximos Serviços</CardTitle>
-          <CardDescription>Manutenções agendadas para os próximos dias.</CardDescription>
+          <CardTitle>PrÃ³ximos ServiÃ§os</CardTitle>
+          <CardDescription>ManutenÃ§Ãµes agendadas para os prÃ³ximos dias.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -259,8 +269,8 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{service.descricaoServico}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>{machine?.codigo || 'Sem máquina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
-                          <span>•</span>
+                          <span>{machine?.codigo || 'Sem mÃ¡quina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
+                          <span>â€¢</span>
                           <span>{safeDateFormat(service.dataAgendamento)}</span>
                         </div>
                       </div>
@@ -279,7 +289,7 @@ export default function Dashboard() {
             })}
             {services.filter(s => s.status === 'AGENDADO').length === 0 && (
                <div className="text-center py-8 text-muted-foreground">
-                 Nenhum serviço agendado.
+                 Nenhum serviÃ§o agendado.
                </div>
             )}
           </div>
