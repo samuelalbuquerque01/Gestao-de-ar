@@ -32,38 +32,23 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-const DEBUG_DATA_LOGS = false;
-const debugLog = (...args: any[]) => {
-  if (DEBUG_DATA_LOGS) console.log(...args);
-};
 
 
-// FunÃ§Ã£o auxiliar para verificar token
 const checkToken = () => {
   const token = localStorage.getItem('token');
   const isValid = token && token !== 'undefined' && token.length > 10;
-  debugLog('ðŸ” [DATA] Verificando token:', {
-    temToken: !!token,
-    isValid,
-    length: token?.length
-  });
   return isValid;
 };
 
-// FunÃ§Ã£o para esperar token vÃ¡lido
 const waitForValidToken = async (maxWait = 3000) => {
   const startTime = Date.now();
   
   while (Date.now() - startTime < maxWait) {
     if (checkToken()) {
-      debugLog('âœ… [DATA] Token vÃ¡lido encontrado apÃ³s', Date.now() - startTime, 'ms');
       return true;
     }
-    debugLog('â³ [DATA] Aguardando token vÃ¡lido...');
     await new Promise(resolve => setTimeout(resolve, 200)); // Espera 200ms
   }
-  
-  debugLog('âŒ [DATA] Timeout aguardando token vÃ¡lido');
   return false;
 };
 
@@ -72,21 +57,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [machinesInitialLoad, setMachinesInitialLoad] = useState(true);
   const [hasValidToken, setHasValidToken] = useState(false);
 
-  // Verificar token quando o componente monta
   useEffect(() => {
     const tokenCheck = async () => {
       const isValid = await waitForValidToken(2000);
       setHasValidToken(isValid);
       if (!isValid) {
-        debugLog('âš ï¸ [DATA] Sem token vÃ¡lido, nÃ£o carregando dados');
       }
     };
     
     tokenCheck();
     
-    // Listener para mudanÃ§as no localStorage
     const handleStorageChange = () => {
-      debugLog('ðŸ“ [DATA] localStorage alterado, verificando token...');
       setHasValidToken(checkToken());
     };
     
@@ -94,7 +75,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // ========== TÃ‰CNICOS ==========
   const { 
     data: techniciansData = [], 
     isLoading: isLoadingTechnicians,
@@ -104,18 +84,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['technicians'],
     queryFn: async () => {
       try {
-        // Espera por token vÃ¡lido
         if (!checkToken()) {
           const hasToken = await waitForValidToken(1000);
           if (!hasToken) {
-            debugLog('âŒ [DATA] Sem token para buscar tÃ©cnicos');
             return [];
           }
         }
-        
-        debugLog('ðŸ“Š [DATA] Buscando tÃ©cnicos...');
         const response = await api.get('/technicians');
-        debugLog('âœ… [DATA] TÃ©cnicos recebidos:', response.data.data?.length || 0);
         return response.data.data || [];
       } catch (error: any) {
         console.error('âŒ [DATA] Erro ao buscar tÃ©cnicos:', error.message);
@@ -132,7 +107,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const createTechnicianMutation = useMutation({
     mutationFn: (data: any) => api.post('/technicians', data),
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] TÃ©cnico criado com sucesso');
       queryClient.setQueryData(['technicians'], (old: any[] = []) => {
         return [...old, response.data.data];
       });
@@ -144,7 +118,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     mutationFn: ({ id, data }: { id: string, data: any }) => 
       api.put(`/technicians/${id}`, data),
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] TÃ©cnico atualizado com sucesso');
       queryClient.setQueryData(['technicians'], (old: any[] = []) => 
         old.map(tech => tech.id === response.data.data?.id ? response.data.data : tech)
       );
@@ -155,7 +128,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const deleteTechnicianMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/technicians/${id}`),
     onSuccess: (_, id) => {
-      debugLog('âœ… [DATA] TÃ©cnico deletado com sucesso');
       queryClient.setQueryData(['technicians'], (old: any[] = []) => 
         old.filter(tech => tech.id !== id)
       );
@@ -163,7 +135,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  // ========== MÃQUINAS ==========
   const { 
     data: machinesData = [], 
     isLoading: isLoadingMachines,
@@ -174,32 +145,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['machines'],
     queryFn: async () => {
       try {
-        // ESPERA 300ms para garantir que tudo estÃ¡ pronto
         await new Promise(resolve => setTimeout(resolve, 300));
         
-        // Verifica token novamente
         if (!checkToken()) {
-          debugLog('âš ï¸ [DATA] Token invÃ¡lido ao buscar mÃ¡quinas, tentando novamente...');
           const hasToken = await waitForValidToken(1500);
           if (!hasToken) {
-            debugLog('âŒ [DATA] Abortando busca de mÃ¡quinas - sem token');
             return [];
           }
         }
-        
-        debugLog('ðŸ“Š [DATA] Buscando mÃ¡quinas...');
         const startTime = Date.now();
         const response = await api.get('/machines');
         const endTime = Date.now();
-        debugLog(`âœ… [DATA] MÃ¡quinas recebidas em ${endTime - startTime}ms:`, response.data.data?.length || 0);
         
         if (response.data.data && response.data.data.length > 0) {
-          debugLog('ðŸ“‹ [DATA] Primeira mÃ¡quina:', {
-            id: response.data.data[0].id,
-            codigo: response.data.data[0].codigo,
-            modelo: response.data.data[0].modelo,
-            marca: response.data.data[0].marca
-          });
         }
         
         return response.data.data || [];
@@ -220,9 +178,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoadingMachines) {
       if (machinesData.length > 0) {
-        debugLog('âœ… [DATA] MÃ¡quinas carregadas com sucesso:', machinesData.length);
       }
-      // ApÃ³s 1 segundo, marca como carregado (mesmo se vazio)
       const timer = setTimeout(() => {
         setMachinesInitialLoad(false);
       }, 1000);
@@ -232,22 +188,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const createMachineMutation = useMutation({
     mutationFn: (data: any) => {
-      debugLog('ðŸ“¤ [DATA] Criando mÃ¡quina:', data);
       return api.post('/machines', data);
     },
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] MÃ¡quina criada com sucesso:', response.data.data?.id);
       
-      // AtualizaÃ§Ã£o otimista - mostra imediatamente
       queryClient.setQueryData(['machines'], (old: any[] = []) => {
         const newData = [...old, response.data.data];
-        debugLog('ðŸ”„ [DATA] Cache atualizado instantaneamente');
         return newData;
       });
       
-      // Sincronizar com backend apÃ³s 300ms
       setTimeout(() => {
-        debugLog('ðŸ”„ [DATA] Sincronizando com backend...');
         refetchMachines();
       }, 300);
     },
@@ -258,13 +208,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const updateMachineMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: any }) => {
-      debugLog('ðŸ“¤ [DATA] Atualizando mÃ¡quina:', id);
       return api.put(`/machines/${id}`, data);
     },
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] MÃ¡quina atualizada com sucesso');
       
-      // AtualizaÃ§Ã£o otimista
       queryClient.setQueryData(['machines'], (old: any[] = []) => 
         old.map(machine => 
           machine.id === response.data.data?.id ? response.data.data : machine
@@ -277,13 +224,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const deleteMachineMutation = useMutation({
     mutationFn: (id: string) => {
-      debugLog('ðŸ“¤ [DATA] Deletando mÃ¡quina:', id);
       return api.delete(`/machines/${id}`);
     },
     onSuccess: (_, id) => {
-      debugLog('âœ… [DATA] MÃ¡quina deletada com sucesso');
       
-      // AtualizaÃ§Ã£o otimista
       queryClient.setQueryData(['machines'], (old: any[] = []) => 
         old.filter(machine => machine.id !== id)
       );
@@ -292,7 +236,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  // ========== SERVIÃ‡OS ==========
   const { 
     data: servicesData = [], 
     isLoading: isLoadingServices,
@@ -302,18 +245,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['services'],
     queryFn: async () => {
       try {
-        // Espera por token vÃ¡lido
         if (!checkToken()) {
           const hasToken = await waitForValidToken(1000);
           if (!hasToken) {
-            debugLog('âŒ [DATA] Sem token para buscar serviÃ§os');
             return [];
           }
         }
-        
-        debugLog('ðŸ“Š [DATA] Buscando serviÃ§os...');
         const response = await api.get('/services');
-        debugLog('âœ… [DATA] ServiÃ§os recebidos:', response.data.data?.length || 0);
         return response.data.data || [];
       } catch (error: any) {
         console.error('âŒ [DATA] Erro ao buscar serviÃ§os:', error.message);
@@ -330,7 +268,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const createServiceMutation = useMutation({
     mutationFn: (data: any) => api.post('/services', data),
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] ServiÃ§o criado com sucesso');
       queryClient.setQueryData(['services'], (old: any[] = []) => {
         return [...old, response.data.data];
       });
@@ -342,7 +279,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     mutationFn: ({ id, data }: { id: string, data: any }) => 
       api.put(`/services/${id}`, data),
     onSuccess: (response) => {
-      debugLog('âœ… [DATA] ServiÃ§o atualizado com sucesso');
       queryClient.setQueryData(['services'], (old: any[] = []) => 
         old.map(service => 
           service.id === response.data.data?.id ? response.data.data : service
@@ -355,7 +291,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const deleteServiceMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/services/${id}`),
     onSuccess: (_, id) => {
-      debugLog('âœ… [DATA] ServiÃ§o deletado com sucesso');
       queryClient.setQueryData(['services'], (old: any[] = []) => 
         old.filter(service => service.id !== id)
       );
@@ -363,7 +298,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  // ========== DASHBOARD STATS ==========
   const { 
     data: dashboardStatsData = {}, 
     isLoading: isLoadingStats,
@@ -373,18 +307,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       try {
-        // Espera por token vÃ¡lido
         if (!checkToken()) {
           const hasToken = await waitForValidToken(1000);
           if (!hasToken) {
-            debugLog('âŒ [DATA] Sem token para buscar estatÃ­sticas');
             return {};
           }
         }
-        
-        debugLog('ðŸ“Š [DATA] Buscando estatÃ­sticas...');
         const response = await api.get('/dashboard/stats');
-        debugLog('âœ… [DATA] EstatÃ­sticas recebidas');
         return response.data.data || {};
       } catch (error: any) {
         console.error('âŒ [DATA] Erro ao buscar estatÃ­sticas:', error.message);
@@ -397,13 +326,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     cacheTime: 1000 * 60 * 5,
   });
 
-  // FunÃ§Ã£o para refetch de tudo
   const refetchAll = async () => {
-    debugLog('ðŸ”„ [DATA] Refetch de todos os dados...');
     
-    // Verifica token antes de refetch
     if (!checkToken()) {
-      debugLog('âš ï¸ [DATA] Token invÃ¡lido ao tentar refetch');
       return;
     }
     
@@ -414,7 +339,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         refetchServices(),
         refetchStats()
       ]);
-      debugLog('âœ… [DATA] Todos os dados refetchados com sucesso');
     } catch (error) {
       console.error('âŒ [DATA] Erro ao fazer refetch:', error);
     }
@@ -466,3 +390,6 @@ export function useData() {
   }
   return context;
 }
+
+
+

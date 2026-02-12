@@ -41,13 +41,11 @@ const serviceSchema = z.object({
   observacoes: z.string().optional(),
 });
 
-// Função auxiliar para formatar data com segurança - VERSÃO CORRIGIDA E ROBUSTA
 const formatServiceDate = (dateString: string): string => {  
   if (!dateString || dateString.trim() === '' || dateString === 'Invalid Date' || dateString.includes('Invalid Date')) {    return 'Data não informada';
   }
   
   try {
-    // Se jÃ¡ for um objeto Date
     if (dateString instanceof Date) {
       if (isValid(dateString)) {
         return format(dateString, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
@@ -55,16 +53,13 @@ const formatServiceDate = (dateString: string): string => {
       return 'Data inválida';
     }
     
-    // Se for string
     if (typeof dateString === 'string') {
       const cleanString = dateString.trim().replace(/["']/g, '');
       
-      // Verificar se é string vazia ou "Invalid Date"
       if (cleanString === '' || cleanString.toLowerCase().includes('invalid date')) {
         return 'Data não informada';
       }
       
-      // Tentar parsear como ISO
       const date = new Date(cleanString);
       
       if (!isValid(date) || isNaN(date.getTime())) {        const timestamp = Date.parse(cleanString);
@@ -75,7 +70,6 @@ const formatServiceDate = (dateString: string): string => {
           }
         }
         
-        // Tentar formato brasileiro
         const brMatch = cleanString.match(/(\d{2})\/(\d{2})\/(\d{4})/);
         if (brMatch) {
           const [, day, month, year] = brMatch;
@@ -86,7 +80,6 @@ const formatServiceDate = (dateString: string): string => {
         }        return 'Data não informada';
       }
       
-      // Se chegou aqui, a data é válida
       return format(date, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
     }    return 'Data inválida';
   } catch (error) {
@@ -95,7 +88,6 @@ const formatServiceDate = (dateString: string): string => {
   }
 };
 
-// Função auxiliar para extrair data e hora do formato ISO - VERSÃO CORRIGIDA
 const extractDateTimeFromISO = (isoString: string) => {  
   if (!isoString || isoString.trim() === '' || isoString.includes('Invalid Date')) {    return { date: '', time: '08:00' };
   }
@@ -171,13 +163,10 @@ export default function ServicesPage() {
   });
 
   const onSubmit = (data: z.infer<typeof serviceSchema>) => {
-    // Criar data ISO corretamente
     const dateOnly = data.dataAgendamento; // YYYY-MM-DD
     const timeOnly = data.horaAgendamento; // HH:MM
     
-    // Criar string ISO no formato correto
     const isoString = `${dateOnly}T${timeOnly}:00.000Z`;    
-    // Verificar se a data é válida
     const testDate = new Date(isoString);
     if (isNaN(testDate.getTime())) {
       console.error('Data invalida:', isoString);
@@ -212,7 +201,6 @@ export default function ServicesPage() {
   const handleEdit = (service: Service) => {    
     setEditingService(service);
     
-    // Extrair data e hora usando a função auxiliar
     const { date, time } = extractDateTimeFromISO(service.dataAgendamento);    
     form.reset({
       tipoServico: service.tipoServico || 'PREVENTIVA',
@@ -227,7 +215,6 @@ export default function ServicesPage() {
       observacoes: service.observacoes || ''
     });
     
-    // Definir busca da mÃ¡quina atual
     const machine = machines.find(m => m.id === service.maquinaId);
     if (machine) {
       setMachineSearch(machine.codigo);
@@ -560,10 +547,8 @@ export default function ServicesPage() {
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
             
-            // Usar a função formatServiceDate para mostrar a data real do serviço
             const dataFormatada = formatServiceDate(service.dataAgendamento);
             
-            // Log detalhado para debug            
             return (
               <div 
                 key={service.id} 
@@ -639,5 +624,6 @@ export default function ServicesPage() {
     </div>
   );
 }
+
 
 

@@ -1,5 +1,4 @@
-// ========== STORAGE COMPLETO CORRIGIDO ==========
-
+﻿
 import { 
   type User, type InsertUser,
   type Technician, type InsertTechnician,
@@ -14,20 +13,17 @@ import {
 import { eq, and, desc, sql, count, gte, lte, sum, avg } from "drizzle-orm";
 
 export interface IStorage {
-  // USERS
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(userData: InsertUser): Promise<User>;
   
-  // TECHNICIANS
   getTechnician(id: string): Promise<Technician | undefined>;
   getAllTechnicians(): Promise<Technician[]>;
   createTechnician(technicianData: InsertTechnician): Promise<Technician>;
   updateTechnician(id: string, technicianData: Partial<InsertTechnician>): Promise<Technician | undefined>;
   deleteTechnician(id: string): Promise<boolean>;
   
-  // MACHINES
   getMachine(id: string): Promise<Machine | undefined>;
   getMachineByCodigo(codigo: string): Promise<Machine | undefined>;
   getAllMachines(): Promise<Machine[]>;
@@ -37,7 +33,6 @@ export interface IStorage {
   updateMachine(id: string, machineData: Partial<InsertMachine>): Promise<Machine | undefined>;
   deleteMachine(id: string): Promise<boolean>;
   
-  // SERVICES
   getService(id: string): Promise<Service | undefined>;
   getAllServices(): Promise<Service[]>;
   getServicesByMachine(machineId: string): Promise<Service[]>;
@@ -51,11 +46,9 @@ export interface IStorage {
   updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined>;
   deleteService(id: string): Promise<boolean>;
   
-  // SERVICE HISTORY
   addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory>;
   getServiceHistory(serviceId: string): Promise<ServiceHistory[]>;
   
-  // DASHBOARD STATS
   getDashboardStats(): Promise<{
     activeMachines: number;
     maintenanceMachines: number;
@@ -66,7 +59,6 @@ export interface IStorage {
     avgServiceCost: number;
   }>;
   
-  // REPORTS
   getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>>;
   getTechnicianPerformance(startDate?: Date, endDate?: Date): Promise<Array<{
     technicianId: string;
@@ -103,40 +95,27 @@ export interface IStorage {
   }>>;
 }
 
-// ========== FUNÇÃO mapDbToCamelCase - VERSÃO CORRIGIDA ==========
 function mapDbToCamelCase(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
-  // Criar uma cópia PROFUNDA
   const result = JSON.parse(JSON.stringify(data));
-  
-  console.log(`🔍 [mapDbToCamelCase] Tabela: ${tableName}, Campos originais:`, Object.keys(result));
-  
   if (tableName === 'users') {
-    console.log('👤 [mapDbToCamelCase] Mapeando USUÁRIO');
-    
-    // MAPEAMENTO CRÍTICO PARA USERS
     if ('password_hash' in result) {
       result.password = result.password_hash;
-      console.log('✅ Mapeado: password_hash → password');
     }
     
     if ('created_at' in result) {
       result.createdAt = result.created_at;
-      console.log('✅ Mapeado: created_at → createdAt');
     }
     
     if ('updated_at' in result) {
       result.updatedAt = result.updated_at;
-      console.log('✅ Mapeado: updated_at → updatedAt');
     }
     
     if ('is_active' in result) {
       result.isActive = result.is_active;
-      console.log('✅ Mapeado: is_active → isActive');
     }
     
-    // DELETAR campos snake_case
     const keysToDelete = [
       'password_hash', 'created_at', 'updated_at', 'is_active'
     ];
@@ -146,21 +125,9 @@ function mapDbToCamelCase(data: any, tableName: string): any {
         delete result[key];
       }
     });
-    
-    console.log('✅ [mapDbToCamelCase] USUÁRIO mapeado. Campos finais:', Object.keys(result));
-    
   } else if (tableName === 'services') {
-    console.log('🔧 [mapDbToCamelCase] Mapeando SERVICES - VERIFICANDO STATUS');
-    
-    // DEBUG: Verificar quais campos existem
-    console.log('🔍 Campos presentes:', Object.keys(result));
-    console.log('🔍 Campo "status" presente?', 'status' in result, 'Valor:', result.status);
-    console.log('🔍 Campo "prioridade" presente?', 'prioridade' in result, 'Valor:', result.prioridade);
-    
-    // MAPEAMENTO para services - GARANTIR que todos os campos sejam mapeados
     if ('tipo_servico' in result) {
       result.tipoServico = result.tipo_servico;
-      console.log('✅ Mapeado: tipo_servico → tipoServico =', result.tipoServico);
     }
     if ('maquina_id' in result) result.maquinaId = result.maquina_id;
     if ('tecnico_id' in result) result.tecnicoId = result.tecnico_id;
@@ -170,20 +137,14 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if ('data_agendamento' in result) result.dataAgendamento = result.data_agendamento;
     if ('data_conclusao' in result) result.dataConclusao = result.data_conclusao;
     
-    // CRÍTICO: Garantir mapeamento de prioridade
     if ('prioridade' in result) {
       result.prioridade = result.prioridade;
-      console.log('✅ Mapeado: prioridade → prioridade =', result.prioridade);
     } else {
-      console.log('⚠️ Campo "prioridade" NÃO ENCONTRADO no resultado');
     }
     
-    // CRÍTICO: Garantir mapeamento de status
     if ('status' in result) {
       result.status = result.status;
-      console.log('✅ Mapeado: status → status =', result.status);
     } else {
-      console.log('❌ ERRO: Campo "status" NÃO ENCONTRADO no resultado!');
     }
     
     if ('custo' in result) result.custo = result.custo;
@@ -191,7 +152,6 @@ function mapDbToCamelCase(data: any, tableName: string): any {
     if ('created_at' in result) result.createdAt = result.created_at;
     if ('updated_at' in result) result.updatedAt = result.updated_at;
     
-    // DELETAR campos snake_case - NÃO DELETAR 'prioridade' e 'status'!
     const keysToDelete = [
       'tipo_servico', 'maquina_id', 'tecnico_id', 'tecnico_nome',
       'descricao_servico', 'descricao_problema', 'data_agendamento',
@@ -204,11 +164,6 @@ function mapDbToCamelCase(data: any, tableName: string): any {
         delete result[key];
       }
     });
-    
-    console.log('✅ [mapDbToCamelCase] Serviço mapeado. Campos finais:', Object.keys(result));
-    console.log('📊 Status final:', result.status);
-    console.log('📊 Prioridade final:', result.prioridade);
-    
   } else if (tableName === 'machines') {
     if ('location_type' in result) result.locationType = result.location_type;
     if ('location_floor' in result) result.locationFloor = result.location_floor;
@@ -242,18 +197,14 @@ function mapDbToCamelCase(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para converter camelCase para snake_case
 function mapCamelToDb(data: any, tableName: string): any {
   if (!data || typeof data !== 'object') return data;
   
   const result = JSON.parse(JSON.stringify(data));
   
   if (tableName === 'users') {
-    console.log('👤 [mapCamelToDb] Convertendo USUÁRIO para banco');
-    
     if ('password' in result) {
       result.password_hash = result.password;
-      console.log('✅ Convertido: password → password_hash');
     }
     
     if ('createdAt' in result) result.created_at = result.createdAt;
@@ -329,7 +280,6 @@ function mapCamelToDb(data: any, tableName: string): any {
   return result;
 }
 
-// Função auxiliar para converter qualquer valor para Date
 function anyToDate(dateValue: any): Date | null {
   if (dateValue === null || dateValue === undefined || dateValue === '') {
     return null;
@@ -378,12 +328,11 @@ function anyToDate(dateValue: any): Date | null {
     return null;
     
   } catch (error) {
-    console.error('❌ [anyToDate] Erro ao converter para Date:', error, 'Valor:', dateValue);
+    console.error('âŒ [anyToDate] Erro ao converter para Date:', error, 'Valor:', dateValue);
     return null;
   }
 }
 
-// Função auxiliar para validar e formatar datas
 function safeDateToISO(dateValue: any): string {
   if (dateValue === null || dateValue === undefined) {
     return '';
@@ -416,90 +365,70 @@ function safeDateToISO(dateValue: any): string {
     return !isNaN(date.getTime()) ? date.toISOString() : '';
     
   } catch (error) {
-    console.error('❌ [safeDateToISO] Erro:', error);
+    console.error('âŒ [safeDateToISO] Erro:', error);
     return '';
   }
 }
 
 export class DatabaseStorage implements IStorage {
-  // ========== USERS ==========
   async getUser(id: string): Promise<User | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando usuário por ID:', id);
       const [user] = await db.select().from(users).where(eq(users.id, id));
       
       if (user) {
-        console.log('✅ [STORAGE] Usuário encontrado por ID:', user.username);
         const mappedUser = mapDbToCamelCase(user, 'users');
         return mappedUser;
       }
       
       return undefined;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar usuário por ID:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar usuÃ¡rio por ID:', error);
       return undefined;
     }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando usuário por username:', username);
-      
       if (!username || username.trim() === '') {
-        console.log('⚠️  [STORAGE] Username vazio');
         return undefined;
       }
       
       const [user] = await db.select().from(users).where(eq(users.username, String(username).trim()));
       
       if (user) {
-        console.log('✅ [STORAGE] Usuário encontrado:', {
-          id: user.id,
-          username: user.username,
-          email: user.email
-        });
-        
         const mappedUser = mapDbToCamelCase(user, 'users');
         return mappedUser;
       }
-      
-      console.log('⚠️  [STORAGE] Usuário não encontrado');
       return undefined;
       
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao buscar por username:', error.message);
+      console.error('âŒ [STORAGE] Erro ao buscar por username:', error.message);
       return undefined;
     }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando usuário por email:', email || '(vazio)');
-      
       if (!email || email.trim() === '') {
-        console.log('⚠️  [STORAGE] Email vazio');
         return undefined;
       }
       
       const [user] = await db.select().from(users).where(eq(users.email, String(email).trim()));
       
       if (user) {
-        console.log('✅ [STORAGE] Usuário encontrado por email:', user.email);
         return mapDbToCamelCase(user, 'users');
       }
       
       return undefined;
       
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao buscar por email:', error.message);
+      console.error('âŒ [STORAGE] Erro ao buscar por email:', error.message);
       return undefined;
     }
   }
 
   async createUser(userData: InsertUser): Promise<User> {
     try {
-      console.log('👤 [STORAGE] Criando usuário:', userData.username);
-      
       const dbData = mapCamelToDb(userData, 'users');
       
       const [user] = await db.insert(users)
@@ -510,22 +439,19 @@ export class DatabaseStorage implements IStorage {
           updated_at: new Date()
         })
         .returning();
-      
-      console.log('✅ [STORAGE] Usuário criado com ID:', user.id);
       return mapDbToCamelCase(user, 'users');
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao criar usuário:', error.message);
+      console.error('âŒ [STORAGE] Erro ao criar usuÃ¡rio:', error.message);
       throw error;
     }
   }
 
-  // ========== TECHNICIANS ==========
   async getTechnician(id: string): Promise<Technician | undefined> {
     try {
       const [tech] = await db.select().from(technicians).where(eq(technicians.id, id));
       return tech ? mapDbToCamelCase(tech, 'technicians') : undefined;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar técnico:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar tÃ©cnico:', error);
       return undefined;
     }
   }
@@ -535,7 +461,7 @@ export class DatabaseStorage implements IStorage {
       const techs = await db.select().from(technicians).orderBy(technicians.nome);
       return techs.map(tech => mapDbToCamelCase(tech, 'technicians'));
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar técnicos:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar tÃ©cnicos:', error);
       return [];
     }
   }
@@ -550,7 +476,7 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       return mapDbToCamelCase(tech, 'technicians');
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao criar técnico:', error);
+      console.error('âŒ [STORAGE] Erro ao criar tÃ©cnico:', error);
       throw error;
     }
   }
@@ -568,7 +494,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return tech ? mapDbToCamelCase(tech, 'technicians') : undefined;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao atualizar técnico:', error);
+      console.error('âŒ [STORAGE] Erro ao atualizar tÃ©cnico:', error);
       return undefined;
     }
   }
@@ -578,12 +504,11 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(technicians).where(eq(technicians.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao deletar técnico:', error);
+      console.error('âŒ [STORAGE] Erro ao deletar tÃ©cnico:', error);
       return false;
     }
   }
 
-  // ========== MACHINES ==========
   async getMachine(id: string): Promise<Machine | undefined> {
     try {
       const [machine] = await db.select().from(machines).where(eq(machines.id, id));
@@ -619,14 +544,13 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar máquina:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quina:', error);
       return undefined;
     }
   }
 
   async getMachineByCodigo(codigo: string): Promise<Machine | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando máquina por código:', codigo);
       const [machine] = await db.select().from(machines).where(eq(machines.codigo, codigo));
       if (!machine) return undefined;
       
@@ -660,7 +584,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao buscar máquina por código:', error.message);
+      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quina por cÃ³digo:', error.message);
       return undefined;
     }
   }
@@ -681,7 +605,7 @@ export class DatabaseStorage implements IStorage {
             }
           }
         } catch (error) {
-          console.error(`❌ [STORAGE] Erro ao processar dataInstalacao da máquina ${machine.id}:`, error);
+          console.error(`âŒ [STORAGE] Erro ao processar dataInstalacao da mÃ¡quina ${machine.id}:`, error);
         }
         
         return {
@@ -705,7 +629,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar máquinas:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas:', error);
       return [];
     }
   }
@@ -749,7 +673,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar máquinas por status:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas por status:', error);
       return [];
     }
   }
@@ -793,15 +717,13 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar máquinas por filial:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas por filial:', error);
       return [];
     }
   }
 
   async createMachine(machineData: InsertMachine): Promise<Machine> {
     try {
-      console.log('📝 [STORAGE] Criando máquina com dados:', JSON.stringify(machineData, null, 2));
-      
       const processedData = {
         codigo: machineData.codigo,
         model: machineData.modelo || '',
@@ -819,16 +741,10 @@ export class DatabaseStorage implements IStorage {
       };
       
       const dbData = mapCamelToDb(processedData, 'machines');
-      
-      console.log('📝 [STORAGE] Dados convertidos para banco:', JSON.stringify(dbData, null, 2));
-      
       const [machine] = await db.insert(machines).values({
         ...dbData,
         updated_at: new Date()
       }).returning();
-      
-      console.log('✅ [STORAGE] Máquina criada com ID:', machine.id);
-      
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
       let dataInstalacao = '';
@@ -858,7 +774,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao criar máquina:', error.message);
+      console.error('âŒ [STORAGE] Erro ao criar mÃ¡quina:', error.message);
       throw error;
     }
   }
@@ -884,19 +800,12 @@ export class DatabaseStorage implements IStorage {
       if (machineData.observacoes !== undefined) updateData.observacoes = machineData.observacoes;
       
       updateData.updated_at = new Date();
-      
-      console.log('📝 [STORAGE] Atualizando máquina:', id);
-      console.log('📝 [STORAGE] Dados de atualização:', JSON.stringify(updateData, null, 2));
-      
       const [machine] = await db.update(machines)
         .set(updateData)
         .where(eq(machines.id, id))
         .returning();
       
       if (!machine) return undefined;
-      
-      console.log('✅ [STORAGE] Máquina atualizada com ID:', machine.id);
-      
       const mappedMachine = mapDbToCamelCase(machine, 'machines');
       
       let dataInstalacao = '';
@@ -926,7 +835,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao atualizar máquina:', error);
+      console.error('âŒ [STORAGE] Erro ao atualizar mÃ¡quina:', error);
       return undefined;
     }
   }
@@ -936,29 +845,19 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(machines).where(eq(machines.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao deletar máquina:', error);
+      console.error('âŒ [STORAGE] Erro ao deletar mÃ¡quina:', error);
       return false;
     }
   }
 
-  // ========== SERVICES ==========
   async getService(id: string): Promise<Service | undefined> {
     try {
-      console.log('🔍 [STORAGE] Buscando serviço por ID:', id);
       const [service] = await db.select().from(services).where(eq(services.id, id));
       if (!service) {
-        console.log('⚠️  [STORAGE] Serviço não encontrado');
         return undefined;
       }
       
       const mappedService = mapDbToCamelCase(service, 'services');
-      
-      console.log('📅 [STORAGE] Serviço mapeado:', {
-        dataAgendamentoRaw: mappedService.dataAgendamento,
-        status: mappedService.status,
-        prioridade: mappedService.prioridade
-      });
-      
       let dataAgendamentoFormatted = '';
       let dataConclusaoFormatted = '';
       
@@ -975,9 +874,6 @@ export class DatabaseStorage implements IStorage {
           dataConclusaoFormatted = date.toISOString();
         }
       }
-      
-      console.log('📅 [STORAGE] Data agendamento final:', dataAgendamentoFormatted);
-      
       return {
         ...mappedService,
         id: service.id,
@@ -997,41 +893,27 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviço:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§o:', error);
       return undefined;
     }
   }
 
   async getAllServices(): Promise<Service[]> {
     try {
-      console.log('🔍 [STORAGE] Buscando todos os serviços...');
       const servicesList = await db.select().from(services).orderBy(desc(services.data_agendamento));
-      
-      console.log(`✅ [STORAGE] Encontrados ${servicesList.length} serviços no banco`);
-      
       const mappedServices = servicesList.map(service => {
         const mappedService = mapDbToCamelCase(service, 'services');
-        
-        console.log('📊 [STORAGE] Serviço após mapeamento:', {
-          id: service.id,
-          status_mapped: mappedService.status,
-          prioridade_mapped: mappedService.prioridade,
-          tipo_mapped: mappedService.tipoServico
-        });
-        
         let dataAgendamentoFormatted = '';
         let dataConclusaoFormatted = '';
         
         if (mappedService.dataAgendamento) {
           if (typeof mappedService.dataAgendamento === 'string' && 
               mappedService.dataAgendamento.includes('Invalid Date')) {
-            console.log('⚠️  [STORAGE] Data inválida detectada');
             dataAgendamentoFormatted = '';
           } else {
             const date = anyToDate(mappedService.dataAgendamento);
             if (date) {
               dataAgendamentoFormatted = date.toISOString();
-              console.log('✅ [STORAGE] Data parseada com sucesso:', dataAgendamentoFormatted);
             }
           }
         }
@@ -1046,7 +928,6 @@ export class DatabaseStorage implements IStorage {
         return {
           ...mappedService,
           id: service.id,
-          // USAR VALORES MAPEADOS, NÃO VALORES DEFAULT
           tipoServico: mappedService.tipoServico,
           maquinaId: mappedService.maquinaId,
           tecnicoId: mappedService.tecnicoId,
@@ -1064,14 +945,12 @@ export class DatabaseStorage implements IStorage {
         };
       });
       
-      // DEBUG: Verificar o primeiro serviço
       if (mappedServices.length > 0) {
-        console.log('🔍🔍🔍 [STORAGE DEBUG] PRIMEIRO SERVIÇO COMPLETO:', mappedServices[0]);
       }
       
       return mappedServices;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os:', error);
       return [];
     }
   }
@@ -1128,7 +1007,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços por máquina:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por mÃ¡quina:', error);
       return [];
     }
   }
@@ -1185,7 +1064,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços por técnico:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por tÃ©cnico:', error);
       return [];
     }
   }
@@ -1247,7 +1126,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços por data:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por data:', error);
       return [];
     }
   }
@@ -1304,7 +1183,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços por status:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por status:', error);
       return [];
     }
   }
@@ -1361,7 +1240,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços por tipo:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por tipo:', error);
       return [];
     }
   }
@@ -1428,7 +1307,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços concluídos:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os concluÃ­dos:', error);
       return [];
     }
   }
@@ -1495,15 +1374,13 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar serviços com custos:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os com custos:', error);
       return [];
     }
   }
 
   async createService(serviceData: InsertService): Promise<Service> {
     try {
-      console.log('📝 [STORAGE] Criando serviço com dados:', JSON.stringify(serviceData, null, 2));
-      
       const technician = await this.getTechnician(serviceData.tecnico_id);
       const tecnicoNome = technician?.nome || "Desconhecido";
       
@@ -1514,12 +1391,8 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (!dataAgendamento) {
-        console.log('⚠️  [STORAGE] Data_agendamento não fornecida, usando data atual');
         dataAgendamento = new Date();
       }
-      
-      console.log('📅 [STORAGE] Data_agendamento final para banco:', dataAgendamento.toISOString());
-      
       let dataConclusao: Date | null = null;
       if (serviceData.data_conclusao) {
         dataConclusao = anyToDate(serviceData.data_conclusao);
@@ -1551,20 +1424,14 @@ export class DatabaseStorage implements IStorage {
         custo: custoValue,
         observacoes: serviceData.observacoes || ''
       };
-      
-      console.log('📝 [STORAGE] Dados processados para banco:', JSON.stringify(processedData, null, 2));
-      
       const [service] = await db.insert(services).values({
         ...processedData,
         updated_at: new Date()
       }).returning();
-      
-      console.log('✅ [STORAGE] Serviço criado com ID:', service.id);
-      
       await this.addServiceHistory({
         serviceId: service.id,
         status: service.status || 'AGENDADO',
-        observacao: "Serviço criado"
+        observacao: "ServiÃ§o criado"
       });
       
       const mappedService = mapDbToCamelCase(service, 'services');
@@ -1593,24 +1460,15 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('❌ [STORAGE] Erro ao criar serviço:', error.message);
+      console.error('âŒ [STORAGE] Erro ao criar serviÃ§o:', error.message);
       throw error;
     }
   }
 
   async updateService(id: string, serviceData: Partial<InsertService>): Promise<Service | undefined> {
     try {
-      console.log('🔍🔍🔍 [STORAGE UPDATE] INICIANDO ATUALIZAÇÃO DO SERVIÇO:', id);
-      console.log('📥 [STORAGE UPDATE] Dados RECEBIDOS para atualização:', JSON.stringify(serviceData, null, 2));
-      
-      // DEBUG DETALHADO - verificar todos os campos
-      console.log('🔍 [STORAGE UPDATE] Status recebido:', serviceData.status, '(tipo:', typeof serviceData.status, ')');
-      console.log('🔍 [STORAGE UPDATE] Prioridade recebida:', serviceData.prioridade, '(tipo:', typeof serviceData.prioridade, ')');
-      console.log('🔍 [STORAGE UPDATE] Tipo serviço recebido:', serviceData.tipo_servico);
-      
       const updateData: any = {};
       
-      // MAPEAMENTO CORRETO - usar os nomes EXATOS das colunas do banco
       if (serviceData.tipo_servico !== undefined) updateData.tipo_servico = serviceData.tipo_servico;
       if (serviceData.maquina_id !== undefined) updateData.maquina_id = serviceData.maquina_id;
       if (serviceData.tecnico_id !== undefined) {
@@ -1621,46 +1479,32 @@ export class DatabaseStorage implements IStorage {
       if (serviceData.descricao_servico !== undefined) updateData.descricao_servico = serviceData.descricao_servico;
       if (serviceData.descricao_problema !== undefined) updateData.descricao_problema = serviceData.descricao_problema;
       
-      // CRÍTICO: Garantir que status seja sempre passado
       if (serviceData.status !== undefined) {
         updateData.status = serviceData.status;
-        console.log('✅ [STORAGE UPDATE] Status definido para atualização:', serviceData.status);
       } else {
-        console.log('⚠️ [STORAGE UPDATE] Status NÃO fornecido na atualização');
       }
       
-      // CRÍTICO: Garantir que prioridade seja sempre passada
       if (serviceData.prioridade !== undefined) {
         updateData.prioridade = serviceData.prioridade;
-        console.log('✅ [STORAGE UPDATE] Prioridade definida para atualização:', serviceData.prioridade);
       } else {
-        console.log('⚠️ [STORAGE UPDATE] Prioridade NÃO fornecida na atualização');
       }
       
-      // Processar data_agendamento se fornecida
       if (serviceData.data_agendamento !== undefined) {
-        console.log('📅 [STORAGE UPDATE] Processando data_agendamento para atualização:', serviceData.data_agendamento);
-        
         const parsedDate = anyToDate(serviceData.data_agendamento);
         if (parsedDate) {
           updateData.data_agendamento = parsedDate;
-          console.log('✅ [STORAGE UPDATE] Data_agendamento parseada:', parsedDate.toISOString());
         } else {
-          console.log('❌ [STORAGE UPDATE] Falha ao parsear data_agendamento');
         }
       }
       
-      // Processar data_conclusao se fornecida
       if (serviceData.data_conclusao !== undefined) {
         if (serviceData.data_conclusao) {
           const parsedDate = anyToDate(serviceData.data_conclusao);
           if (parsedDate) {
             updateData.data_conclusao = parsedDate;
-            console.log('✅ [STORAGE UPDATE] Data_conclusao parseada:', parsedDate.toISOString());
           }
         } else {
           updateData.data_conclusao = null;
-          console.log('📅 [STORAGE UPDATE] Data_conclusao definida como null');
         }
       }
       
@@ -1668,12 +1512,7 @@ export class DatabaseStorage implements IStorage {
       if (serviceData.observacoes !== undefined) updateData.observacoes = serviceData.observacoes;
       
       updateData.updated_at = new Date();
-      
-      console.log('📝 [STORAGE UPDATE] Dados FINAIS para atualização no banco:', JSON.stringify(updateData, null, 2));
-      
-      // VERIFICAR se há dados para atualizar
       if (Object.keys(updateData).length === 0) {
-        console.log('❌ [STORAGE UPDATE] Nenhum dado para atualizar!');
         return undefined;
       }
       
@@ -1683,11 +1522,9 @@ export class DatabaseStorage implements IStorage {
         .returning();
       
       if (!service) {
-        console.log('❌ [STORAGE UPDATE] Serviço não encontrado para atualização:', id);
         return undefined;
       }
       
-      // Adicionar ao histórico se o status mudou
       if (serviceData.status) {
         await this.addServiceHistory({
           serviceId: id,
@@ -1695,9 +1532,6 @@ export class DatabaseStorage implements IStorage {
           observacao: "Status atualizado"
         });
       }
-      
-      console.log('✅ [STORAGE UPDATE] Serviço atualizado com ID:', service.id);
-      
       const mappedService = mapDbToCamelCase(service, 'services');
       
       const updatedDataAgendamento = mappedService.dataAgendamento ? 
@@ -1724,7 +1558,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('❌ [STORAGE UPDATE] Erro ao atualizar serviço:', error.message);
+      console.error('âŒ [STORAGE UPDATE] Erro ao atualizar serviÃ§o:', error.message);
       return undefined;
     }
   }
@@ -1734,12 +1568,11 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(services).where(eq(services.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao deletar serviço:', error);
+      console.error('âŒ [STORAGE] Erro ao deletar serviÃ§o:', error);
       return false;
     }
   }
 
-  // ========== SERVICE HISTORY ==========
   async addServiceHistory(historyData: InsertServiceHistory): Promise<ServiceHistory> {
     try {
       const dbData = mapCamelToDb(historyData, 'service_history');
@@ -1747,7 +1580,7 @@ export class DatabaseStorage implements IStorage {
       const [history] = await db.insert(serviceHistory).values(dbData).returning();
       return mapDbToCamelCase(history, 'service_history');
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao adicionar histórico:', error);
+      console.error('âŒ [STORAGE] Erro ao adicionar histÃ³rico:', error);
       throw error;
     }
   }
@@ -1760,12 +1593,11 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(serviceHistory.created_at));
       return historyList.map(history => mapDbToCamelCase(history, 'service_history'));
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar histórico:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar histÃ³rico:', error);
       return [];
     }
   }
 
-  // ========== DASHBOARD STATS ==========
   async getDashboardStats(): Promise<{
     activeMachines: number;
     maintenanceMachines: number;
@@ -1813,7 +1645,7 @@ export class DatabaseStorage implements IStorage {
         avgServiceCost: costResult?.avg ? parseFloat(costResult.avg) : 0
       };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar estatísticas:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas:', error);
       return {
         activeMachines: 0,
         maintenanceMachines: 0,
@@ -1826,7 +1658,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // ========== REPORTS ==========
   async getServiceTypesStats(startDate?: Date, endDate?: Date): Promise<Record<string, number>> {
     try {
       let query = db.select({
@@ -1854,7 +1685,7 @@ export class DatabaseStorage implements IStorage {
       
       return stats;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar estatísticas de tipos de serviço:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas de tipos de serviÃ§o:', error);
       return {};
     }
   }
@@ -1901,7 +1732,7 @@ export class DatabaseStorage implements IStorage {
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar desempenho de técnicos:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar desempenho de tÃ©cnicos:', error);
       return [];
     }
   }
@@ -1936,7 +1767,7 @@ export class DatabaseStorage implements IStorage {
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar estatísticas mensais:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas mensais:', error);
       return [];
     }
   }
@@ -1962,14 +1793,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(machines.branch);
       
       return result.map(row => ({
-        branch: row.branch || 'Não especificada',
+        branch: row.branch || 'NÃ£o especificada',
         machineCount: row.machineCount || 0,
         activeMachines: row.activeMachines || 0,
         totalServices: row.totalServices || 0,
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar estatísticas por filial:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas por filial:', error);
       return [];
     }
   }
@@ -2044,7 +1875,7 @@ export class DatabaseStorage implements IStorage {
           avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
         })),
         byBranch: byBranchResult.map(row => ({
-          branch: row.branch || 'Não especificada',
+          branch: row.branch || 'NÃ£o especificada',
           count: row.count || 0,
           totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
           avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
@@ -2057,7 +1888,7 @@ export class DatabaseStorage implements IStorage {
         }))
       };
     } catch (error) {
-      console.error('❌ [STORAGE] Erro na análise de custos:', error);
+      console.error('âŒ [STORAGE] Erro na anÃ¡lise de custos:', error);
       return {
         byType: [],
         byTechnician: [],
@@ -2109,10 +1940,11 @@ export class DatabaseStorage implements IStorage {
       
       return result;
     } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar histórico de manutenção da máquina:', error);
+      console.error('âŒ [STORAGE] Erro ao buscar histÃ³rico de manutenÃ§Ã£o da mÃ¡quina:', error);
       return [];
     }
   }
 }
 
 export const storage = new DatabaseStorage();
+

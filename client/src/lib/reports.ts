@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 
 export interface ReportFilters {
@@ -87,8 +87,6 @@ export const useReports = () => {
     setError(null);
     
     try {
-      console.log('📊 [REPORTS] Buscando relatórios com filtros:', filters);
-      
       const queryParams = new URLSearchParams();
       if (filters.startDate) queryParams.append('startDate', filters.startDate);
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
@@ -101,24 +99,18 @@ export const useReports = () => {
       if (filters.serviceType) queryParams.append('serviceType', filters.serviceType);
       
       const response = await api.get(`/reports/summary?${queryParams}`);
-      
-      console.log('📊 [REPORTS] Resposta completa:', response.data);
-      
       if (response.data.success && response.data.data) {
-        console.log('✅ [REPORTS] Relatório recebido com sucesso');
-        console.log('📊 [REPORTS] Serviços recebidos:', response.data.data.services?.length);
-        
         // ATUALIZA O ESTADO
         setReportData(response.data.data);
         
         return response.data.data;
       } else {
-        throw new Error('Formato de resposta inválido');
+        throw new Error('Formato de resposta invÃ¡lido');
       }
     } catch (err: any) {
-      console.error('❌ [REPORTS] Erro ao buscar relatórios:', err);
+      console.error('âŒ [REPORTS] Erro ao buscar relatÃ³rios:', err);
       
-      let errorMessage = 'Erro ao buscar relatórios';
+      let errorMessage = 'Erro ao buscar relatÃ³rios';
       if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.message) {
@@ -137,19 +129,16 @@ export const useReports = () => {
     setError(null);
     
     try {
-      console.log('📊 [REPORTS] Buscando estatísticas em tempo real...');
-      
       const response = await api.get('/reports/real-time-stats');
       
       if (response.data.success && response.data.data) {
-        console.log('✅ [REPORTS] Estatísticas em tempo real recebidas');
         return response.data.data;
       } else {
-        throw new Error('Formato de resposta inválido');
+        throw new Error('Formato de resposta invÃ¡lido');
       }
     } catch (err: any) {
-      console.error('❌ [REPORTS] Erro ao buscar estatísticas:', err);
-      setError(err.message || 'Erro ao buscar estatísticas');
+      console.error('âŒ [REPORTS] Erro ao buscar estatÃ­sticas:', err);
+      setError(err.message || 'Erro ao buscar estatÃ­sticas');
       return null;
     } finally {
       setIsLoading(false);
@@ -158,8 +147,6 @@ export const useReports = () => {
 
   const exportToCSV = useCallback(async (filters: ReportFilters): Promise<void> => {
     try {
-      console.log('📤 [REPORTS] Exportando para CSV...');
-      
       const queryParams = new URLSearchParams();
       if (filters.startDate) queryParams.append('startDate', filters.startDate);
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
@@ -181,10 +168,8 @@ export const useReports = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      console.log('✅ [REPORTS] CSV exportado com sucesso');
     } catch (err: any) {
-      console.error('❌ [REPORTS] Erro ao exportar CSV:', err);
+      console.error('âŒ [REPORTS] Erro ao exportar CSV:', err);
       throw err;
     }
   }, []);

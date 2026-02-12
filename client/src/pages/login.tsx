@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Redireciona se já estiver autenticado
+  // Redireciona se jÃ¡ estiver autenticado
   React.useEffect(() => {
     if (isAuthenticated) {
-      console.log('✅ [LOGIN] Já autenticado, redirecionando...');
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
@@ -30,19 +29,13 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      console.log('🔑 [LOGIN] Tentando login...');
       await login(email, password);
-      
-      console.log('✅ [LOGIN] Login bem-sucedido, aguardando 500ms...');
-      
-      // CRÍTICO: Espera 500ms para garantir que o token foi salvo
+      // CRÃTICO: Espera 500ms para garantir que o token foi salvo
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('🔄 [LOGIN] Redirecionando para dashboard...');
       navigate('/');
       
     } catch (error: any) {
-      console.error('❌ [LOGIN] Erro:', error.message);
+      console.error('âŒ [LOGIN] Erro:', error.message);
       setError(error.message || 'Erro ao fazer login');
     } finally {
       setIsLoading(false);
@@ -59,7 +52,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Neuropsicocentro</CardTitle>
-          <CardDescription>Sistema de Gestão de Ar Condicionado</CardDescription>
+          <CardDescription>Sistema de GestÃ£o de Ar Condicionado</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -114,7 +107,7 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="text-muted-foreground">
-              Não tem uma conta?{' '}
+              NÃ£o tem uma conta?{' '}
               <Link href="/register" className="text-primary font-medium hover:underline">
                 Cadastre-se
               </Link>
@@ -125,3 +118,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

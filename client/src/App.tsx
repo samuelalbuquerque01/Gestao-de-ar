@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -25,19 +25,15 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Verificando autenticação...</p>
+          <p className="mt-4 text-muted-foreground">Verificando autenticaÃ§Ã£o...</p>
         </div>
       </div>
     );
   }
   
   if (!isAuthenticated) {
-    console.log('🔒 [APP] Usuário não autenticado, redirecionando para login');
     return <Redirect to="/login" />;
   }
-  
-  console.log('✅ [APP] Usuário autenticado, renderizando componente');
-  
   return (
     <Layout>
       <DataProvider>
@@ -56,7 +52,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       
-      {/* Protected Routes - SÓ se autenticado */}
+      {/* Protected Routes - SÃ“ se autenticado */}
       {isAuthenticated ? (
         <>
           <Route path="/">
@@ -80,15 +76,15 @@ function Router() {
           </Route>
           
           <Route path="/configuracoes">
-            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Configurações em Desenvolvimento</div>} />
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">MÃ³dulo de ConfiguraÃ§Ãµes em Desenvolvimento</div>} />
           </Route>
           
           <Route path="/perfil">
-            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Módulo de Perfil em Desenvolvimento</div>} />
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">MÃ³dulo de Perfil em Desenvolvimento</div>} />
           </Route>
         </>
       ) : (
-        // Se não autenticado, redireciona todas as rotas para login
+        // Se nÃ£o autenticado, redireciona todas as rotas para login
         <Route><Redirect to="/login" /></Route>
       )}
       

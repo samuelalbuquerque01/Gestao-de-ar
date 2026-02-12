@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+﻿import { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 
 interface User {
@@ -32,9 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
-        console.log('✅ Sessão restaurada');
       } catch (error) {
-        console.error('Erro ao restaurar sessão:', error);
+        console.error('Erro ao restaurar sessÃ£o:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -43,12 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      console.log('🔑 Tentando login...');
-      
       const response = await api.post('/auth/login', { email, password });
-      
-      console.log('📥 Resposta:', response.data);
-      
       if (response.data.success && response.data.data) {
         const { token, user: userData } = response.data.data;
         
@@ -57,14 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setUser(userData);
         setIsAuthenticated(true);
-        
-        console.log('✅ Login bem-sucedido');
       } else {
         throw new Error(response.data.error || 'Login falhou');
       }
       
     } catch (error: any) {
-      console.error('❌ Erro no login:', error);
+      console.error('âŒ Erro no login:', error);
       
       let errorMessage = 'Falha no login';
       if (error.response?.data?.error) {
@@ -79,7 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (userData: any): Promise<void> => {
     try {
-      console.log('👤 Tentando registro...');
       const response = await api.post('/auth/register', userData);
       
       if (response.data.success && response.data.data) {
@@ -90,14 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setUser(newUser);
         setIsAuthenticated(true);
-        
-        console.log('✅ Registro bem-sucedido');
       } else {
         throw new Error(response.data.error || 'Registro falhou');
       }
       
     } catch (error: any) {
-      console.error('❌ Erro no registro:', error);
+      console.error('âŒ Erro no registro:', error);
       
       let errorMessage = 'Falha no registro';
       if (error.response?.data?.error) {
@@ -109,7 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    console.log('🚪 Fazendo logout...');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

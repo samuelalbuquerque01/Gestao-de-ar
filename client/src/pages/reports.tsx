@@ -57,19 +57,16 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
-// Função para formatar datas com segurança - VERSÃO CORRIGIDA
 const safeDateFormat = (dateString: any): string => {
   if (!dateString) return 'Data não informada';
   
   try {
-    // Se for string, verificar se está vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
       return 'Data não informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se é válido
     if (isNaN(date.getTime())) {
       return 'Data não informada';
     }
@@ -81,19 +78,16 @@ const safeDateFormat = (dateString: any): string => {
   }
 };
 
-// Função para formatar data/hora com segurança - VERSÃO CORRIGIDA
 const safeDateTimeFormat = (dateString: any): string => {
   if (!dateString) return 'Data/hora não informada';
   
   try {
-    // Se for string, verificar se está vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
       return 'Data/hora não informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se é válido
     if (isNaN(date.getTime())) {
       return 'Data/hora não informada';
     }
@@ -318,7 +312,6 @@ export default function ReportsPage() {
 
   const branches = Array.from(new Set(machines.map(m => m.filial).filter(Boolean)));
 
-  // Efeito para definir datas iniciais
   useEffect(() => {
     const today = new Date();
     let start, end;
@@ -358,7 +351,6 @@ export default function ReportsPage() {
     setEndDate(end);
   }, [dateRange]);
 
-  // Efeito para buscar relatórios quando os filtros mudam
   useEffect(() => {
     const loadReports = async () => {
       if (!startDate || !endDate) {        return;
@@ -380,7 +372,6 @@ export default function ReportsPage() {
     loadReports();
   }, [startDate, endDate, branchFilter, statusFilter, fetchReports]);
 
-  // ========== DADOS DA API ==========
   const filteredServices = reportData?.services || [];
   const summary = reportData?.summary || {
     totalServices: 0,
@@ -409,7 +400,6 @@ export default function ReportsPage() {
   const completionRate = summary.completionRate;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Dados para gráficos
   const typeChartData = breakdown.byType;
   const statusChartData = breakdown.byStatus;
   const branchChartData = breakdown.byBranch;
@@ -477,7 +467,6 @@ export default function ReportsPage() {
     return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
-  // Serviços filtrados para a tabela
   const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
@@ -1029,5 +1018,6 @@ export default function ReportsPage() {
     </div>
   );
 }
+
 
 

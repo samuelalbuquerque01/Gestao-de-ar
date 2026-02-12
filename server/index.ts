@@ -1,36 +1,28 @@
-// ========== CONFIGURAÇÃO .env ==========
+﻿//  CONFIGURAÃ‡ÃƒO .env 
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Configuração de ambiente simplificada para produção
+// ConfiguraÃ§Ã£o de ambiente simplificada para produÃ§Ã£o
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 
-// Carrega variáveis de ambiente
+// Carrega variÃ¡veis de ambiente
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
-
-console.log('🔧 [ENV] PORT:', process.env.PORT);
-console.log('🔧 [ENV] NODE_ENV:', process.env.NODE_ENV);
-console.log('🔧 [ENV] Node Version:', process.version);
-
-// ========== INICIALIZAÇÃO DO BANCO ==========
+//  INICIALIZAÃ‡ÃƒO DO BANCO 
 import { initDatabase } from './init-db.js';
-import { updateDatabase } from './update-db.js'; // IMPORTE A ATUALIZAÇÃO
+import { updateDatabase } from './update-db.js'; // IMPORTE A ATUALIZAÃ‡ÃƒO
 
 async function initializeDatabase() {
   try {
-    console.log('🔍 Verificando/Inicializando banco de dados...');
-    await initDatabase(); // Cria tabelas se não existirem
-    console.log('🔄 Verificando atualizações necessárias...');
+    await initDatabase(); // Cria tabelas se nÃ£o existirem
     await updateDatabase(); // Adiciona colunas faltantes
-    console.log('✅ Banco de dados inicializado e atualizado com sucesso');
   } catch (error) {
-    console.error('❌ Falha ao inicializar banco de dados:', error);
-    // Não saia do processo, apenas log o erro
+    console.error('âŒ Falha ao inicializar banco de dados:', error);
+    // NÃ£o saia do processo, apenas log o erro
   }
 }
 
-// ========== IMPORTAÇÕES ==========
+//  IMPORTAÃ‡Ã•ES 
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -39,7 +31,7 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
-// ========== CONFIGURAÇÃO CORS ==========
+//  CONFIGURAÃ‡ÃƒO CORS 
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
       'https://gestao-de-ar.onrender.com',
@@ -49,7 +41,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Permite requisições sem origem
+    // Permite requisiÃ§Ãµes sem origem
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.some(allowed => {
@@ -62,7 +54,6 @@ app.use(cors({
     })) {
       callback(null, true);
     } else {
-      console.log(`❌ [CORS] Origem bloqueada: ${origin}`);
       callback(null, false);
     }
   },
@@ -71,13 +62,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// ========== MIDDLEWARE DE LOG ==========
+//  MIDDLEWARE DE LOG 
 app.use((req, res, next) => {
-  console.log(`🌐 [${process.env.NODE_ENV?.toUpperCase()}] ${req.method} ${req.path}`);
   next();
 });
 
-// ========== MIDDLEWARES ==========
+//  MIDDLEWARES 
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -95,7 +85,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// ========== LOGGING ==========
+//  LOGGING 
 function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -103,8 +93,6 @@ function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
 }
 
 app.use((req, res, next) => {
@@ -132,11 +120,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// ========== INICIALIZAÇÃO ==========
+//  INICIALIZAÃ‡ÃƒO 
 (async () => {
   try {
-    log('🔧 [INIT] Iniciando servidor...');
-    log(`📁 Ambiente: ${process.env.NODE_ENV}`);
+    log('ðŸ”§ [INIT] Iniciando servidor...');
+    log(`ðŸ“ Ambiente: ${process.env.NODE_ENV}`);
     
     // INICIALIZAR BANCO DE DADOS PRIMEIRO (cria tabelas e adiciona colunas)
     await initializeDatabase();
@@ -144,8 +132,8 @@ app.use((req, res, next) => {
     // Registra rotas de API
     await registerRoutes(httpServer, app);
     
-    // Rota de debug da API
-    app.get('/api/debug', (req, res) => {
+    // Rota de observacao da API
+    app.get('/api/observacao', (req, res) => {
       res.json({
         success: true,
         message: 'API funcionando',
@@ -164,24 +152,22 @@ app.use((req, res, next) => {
       });
     });
     
-    // Rota de health check (OBRIGATÓRIA para Render)
+    // Rota de health check (OBRIGATÃ“RIA para Render)
     app.get('/health', (req, res) => {
       res.json({ 
         status: 'healthy', 
         timestamp: new Date().toISOString(),
-        service: 'Gestão de Ar Condicionado',
+        service: 'GestÃ£o de Ar Condicionado',
         environment: process.env.NODE_ENV
       });
     });
 
-    // ========== CONFIGURAÇÃO DO FRONTEND ==========
+    //  CONFIGURAÃ‡ÃƒO DO FRONTEND 
     let frontendEnabled = false;
     let staticPath = '';
     
     if (process.env.NODE_ENV === "production") {
-      console.log('🔍 Procurando frontend build...');
-      
-      // Possíveis locais onde o frontend pode estar
+      // PossÃ­veis locais onde o frontend pode estar
       const possiblePaths = [
         path.resolve(process.cwd(), 'client/dist'),
         path.resolve(process.cwd(), 'dist'),
@@ -190,14 +176,10 @@ app.use((req, res, next) => {
       ];
       
       for (const possiblePath of possiblePaths) {
-        console.log(`   Verificando: ${possiblePath}`);
         if (fs.existsSync(possiblePath)) {
           const files = fs.readdirSync(possiblePath);
-          console.log(`     Conteúdo: ${files.join(', ')}`);
-          
           if (files.includes('index.html')) {
             staticPath = possiblePath;
-            console.log(`✅ Frontend encontrado em: ${staticPath}`);
             frontendEnabled = true;
             break;
           }
@@ -205,30 +187,26 @@ app.use((req, res, next) => {
       }
       
       if (frontendEnabled) {
-        console.log(`📂 Servindo arquivos estáticos de: ${staticPath}`);
         app.use(express.static(staticPath));
-        log('✅ Frontend habilitado para produção');
+        log('âœ… Frontend habilitado para produÃ§Ã£o');
       } else {
-        console.log('❌ Frontend NÃO encontrado!');
-        console.log('⚠️  O frontend não será servido, apenas a API funcionará');
-        
         // Rota raiz informativa
         app.get('/', (req, res) => {
           res.json({
-            message: 'API Gestão de Ar Condicionado',
-            warning: 'Frontend não encontrado - verifique se o build foi feito corretamente',
-            api_endpoints: '/api/debug',
+            message: 'API GestÃ£o de Ar Condicionado',
+            warning: 'Frontend nÃ£o encontrado - verifique se o build foi feito corretamente',
+            api_endpoints: '/api/observacao',
             health_check: '/health'
           });
         });
       }
     }
 
-    // ========== ROTAS FALLBACK ==========
+    //  ROTAS FALLBACK 
     if (process.env.NODE_ENV === "production" && frontendEnabled) {
-      // Em produção com frontend: Serve o frontend para todas as rotas não-API
+      // Em produÃ§Ã£o com frontend: Serve o frontend para todas as rotas nÃ£o-API
       app.get('*', (req, res, next) => {
-        // Se é uma rota de API, passa para o próximo middleware (error handler)
+        // Se Ã© uma rota de API, passa para o prÃ³ximo middleware (error handler)
         if (req.path.startsWith('/api')) {
           return next();
         }
@@ -238,49 +216,48 @@ app.use((req, res, next) => {
         if (fs.existsSync(indexPath)) {
           res.sendFile(indexPath);
         } else {
-          console.log(`❌ index.html não encontrado em: ${indexPath}`);
           res.status(404).json({
-            error: 'Frontend não encontrado',
-            message: 'O arquivo index.html não foi encontrado'
+            error: 'Frontend nÃ£o encontrado',
+            message: 'O arquivo index.html nÃ£o foi encontrado'
           });
         }
       });
     } else if (process.env.NODE_ENV === "production") {
-      // Em produção sem frontend: Apenas API
+      // Em produÃ§Ã£o sem frontend: Apenas API
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
           return res.status(404).json({ 
-            error: 'Rota API não encontrada',
+            error: 'Rota API nÃ£o encontrada',
             path: req.path 
           });
         }
         
         res.json({
-          message: 'Frontend não disponível',
-          reason: 'O build do frontend não foi encontrado',
-          api_documentation: '/api/debug'
+          message: 'Frontend nÃ£o disponÃ­vel',
+          reason: 'O build do frontend nÃ£o foi encontrado',
+          api_documentation: '/api/observacao'
         });
       });
     } else {
       // Em desenvolvimento: Informa que o frontend roda separadamente
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
-          // Rota API não encontrada
+          // Rota API nÃ£o encontrada
           return res.status(404).json({ 
-            error: 'Rota API não encontrada',
+            error: 'Rota API nÃ£o encontrada',
             path: req.path 
           });
         }
         
         res.json({
-          message: 'Frontend não servido por este servidor em desenvolvimento',
+          message: 'Frontend nÃ£o servido por este servidor em desenvolvimento',
           instruction: 'Execute o frontend separadamente: cd client && npm run dev',
           frontend_url: 'http://localhost:5000'
         });
       });
     }
 
-    // Error handler - Só é alcançado para rotas /api não tratadas
+    // Error handler - SÃ³ Ã© alcanÃ§ado para rotas /api nÃ£o tratadas
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
@@ -290,27 +267,28 @@ app.use((req, res, next) => {
         error: message,
         environment: process.env.NODE_ENV
       });
-      console.error("❌ Erro do servidor:", err);
+      console.error("âŒ Erro do servidor:", err);
     });
 
     const port = parseInt(process.env.PORT || "10000", 10);
     
-    // Render não precisa de host específico
+    // Render nÃ£o precisa de host especÃ­fico
     httpServer.listen(port, () => {
-      log(`✅ Servidor rodando na porta ${port}`);
-      log(`📁 Modo: ${process.env.NODE_ENV}`);
-      log(`🚀 Aplicação pronta!`);
+      log(`âœ… Servidor rodando na porta ${port}`);
+      log(`ðŸ“ Modo: ${process.env.NODE_ENV}`);
+      log(`ðŸš€ AplicaÃ§Ã£o pronta!`);
       
       if (process.env.NODE_ENV === 'production' && frontendEnabled) {
-        log(`🌐 Frontend disponível em: https://gestao-de-ar.onrender.com`);
+        log(`ðŸŒ Frontend disponÃ­vel em: https://gestao-de-ar.onrender.com`);
       }
-      log(`🌐 API disponível em: https://gestao-de-ar.onrender.com/api/debug`);
+      log(`ðŸŒ API disponÃ­vel em: https://gestao-de-ar.onrender.com/api/observacao`);
     });
 
   } catch (error: any) {
-    console.error("❌ Erro fatal ao iniciar servidor:");
+    console.error("âŒ Erro fatal ao iniciar servidor:");
     console.error("Mensagem:", error.message);
     console.error("Stack:", error.stack);
     process.exit(1);
   }
 })();
+
