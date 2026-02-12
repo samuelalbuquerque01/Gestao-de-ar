@@ -528,8 +528,8 @@ export default function ServicesPage() {
                         <FormControl>
                           <Input 
                             type="date" 
-                            {...field} 
-                            min={format(new Date(), 'yyyy-MM-dd')}
+                            {...field}
+                            min={form.watch('status') === 'CONCLUIDO' ? undefined : format(new Date(), 'yyyy-MM-dd')}
                           />
                         </FormControl>
                         <FormMessage />
