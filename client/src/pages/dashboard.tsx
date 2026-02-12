@@ -18,32 +18,32 @@ import {
 import { format, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// FunÃ§Ã£o auxiliar para validar e formatar datas com seguranÃ§a - VERSÃƒO CORRIGIDA
+// Funcao auxiliar para validar e formatar datas com seguranca
 const safeDateFormat = (dateValue: any): string => {
-  if (!dateValue) return 'Data nÃ£o informada';
+  if (!dateValue) return 'Data nao informada';
   
   try {
-    // Se for string, verificar se estÃ¡ vazia
+    // Se for string, verificar se esta vazia
     if (typeof dateValue === 'string' && dateValue.trim() === '') {
-      return 'Data nÃ£o informada';
+      return 'Data nao informada';
     }
     
     // Criar objeto Date
     const date = new Date(dateValue);
     
-    // Verificar se Ã© vÃ¡lido
+    // Verificar se e valido
     if (!isValid(date) || isNaN(date.getTime())) {
-      return 'Data nÃ£o informada';
+      return 'Data nao informada';
     }
     
     return format(date, "dd 'de' MMMM", { locale: ptBR });
   } catch (error) {
-    console.error('âŒ Erro ao formatar data:', error);
-    return 'Data nÃ£o informada';
+    console.error('[DASHBOARD] Erro ao formatar data:', error);
+    return 'Data nao informada';
   }
 };
 
-// FunÃ§Ã£o segura para comparar datas
+// Funcao segura para comparar datas
 const safeDateCompare = (dateValue: any): number => {
   if (!dateValue) return 0;
   
@@ -125,7 +125,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{activeMachines}</div>
             <p className="text-xs text-muted-foreground">
-              de {machines.length} {'m\u00e1quinas totais'}
+              {'de '} {machines.length} {' m\u00e1quinas totais'}
             </p>
           </CardContent>
         </Card>
@@ -139,7 +139,7 @@ export default function Dashboard() {
             <div className="text-2xl font-bold">{machinesNeedingAttention}</div>
             <p className="text-xs text-muted-foreground">
               {machinesNeedingAttention > 0
-                ? `${maintenanceMachines} em manuten\u00e7\u00e3o • ${defectMachines} com defeito cr\u00edtico`
+                ? `${maintenanceMachines} em manuten\u00e7\u00e3o - ${defectMachines} com defeito cr\u00edtico`
                 : 'Opera\u00e7\u00e3o normal'}
             </p>
           </CardContent>
@@ -176,8 +176,8 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 shadow-sm">
           <CardHeader>
-            <CardTitle>Tipos de ServiÃ§o</CardTitle>
-            <CardDescription>DistribuiÃ§Ã£o de manutenÃ§Ãµes realizadas e agendadas.</CardDescription>
+            <CardTitle>{'Tipos de Servi\u00e7o'}</CardTitle>
+            <CardDescription>{'Distribui\u00e7\u00e3o de manuten\u00e7\u00f5es realizadas e agendadas.'}</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <ResponsiveContainer width="100%" height={300}>
@@ -209,8 +209,8 @@ export default function Dashboard() {
         
         <Card className="col-span-3 shadow-sm">
           <CardHeader>
-            <CardTitle>Tipos de MÃ¡quina</CardTitle>
-            <CardDescription>InventÃ¡rio por categoria.</CardDescription>
+            <CardTitle>{'Tipos de M\u00e1quina'}</CardTitle>
+            <CardDescription>{'Invent\u00e1rio por categoria.'}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -241,8 +241,8 @@ export default function Dashboard() {
       {/* Recent Services List */}
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle>PrÃ³ximos ServiÃ§os</CardTitle>
-          <CardDescription>ManutenÃ§Ãµes agendadas para os prÃ³ximos dias.</CardDescription>
+          <CardTitle>{'Pr\u00f3ximos Servi\u00e7os'}</CardTitle>
+          <CardDescription>{'Manuten\u00e7\u00f5es agendadas para os pr\u00f3ximos dias.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -269,8 +269,8 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{service.descricaoServico}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>{machine?.codigo || 'Sem mÃ¡quina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
-                          <span>â€¢</span>
+                          <span>{machine?.codigo || 'Sem m\u00e1quina'} - {machine?.localizacaoDescricao || 'Local desconhecido'}</span>
+                          <span>-</span>
                           <span>{safeDateFormat(service.dataAgendamento)}</span>
                         </div>
                       </div>
@@ -289,7 +289,7 @@ export default function Dashboard() {
             })}
             {services.filter(s => s.status === 'AGENDADO').length === 0 && (
                <div className="text-center py-8 text-muted-foreground">
-                 Nenhum serviÃ§o agendado.
+                 {'Nenhum servi\u00e7o agendado.'}
                </div>
             )}
           </div>
