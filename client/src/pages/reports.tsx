@@ -107,51 +107,7 @@ const safeDateTimeFormat = (dateString: any): string => {
 
 const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   try {
-    const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
-
-    const canvas = await html2canvas(reportContent, {
-      scale: 1.5,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      allowTaint: true,
-      foreignObjectRendering: false,
-      imageTimeout: 15000,
-      onclone: (clonedDoc) => {
-        // Remove estilos globais do app (Tailwind) para evitar erro com oklch.
-        clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-          node.parentNode?.removeChild(node);
-        });
-
-        // Reaplica estilo minimo para manter leitura no PDF.
-        const baseStyle = clonedDoc.createElement('style');
-        baseStyle.textContent = `
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #d1d5db; padding: 6px; font-size: 12px; }
-          h1, h2, h3, h4, h5, h6 { margin: 0 0 8px 0; color: #000; }
-          p, span, div, small { color: #000; background: transparent; }
-        `;
-        clonedDoc.head.appendChild(baseStyle);
-
-        const elements = clonedDoc.querySelectorAll('*');
-        elements.forEach((el) => {
-          if (el instanceof HTMLElement) {
-            el.className = '';
-            el.style.cssText = '';
-            el.style.fontFamily = 'Arial, sans-serif';
-            el.style.color = '#000000';
-            el.style.backgroundColor = el.tagName === 'TABLE' ? '#ffffff' : 'transparent';
-            el.style.boxShadow = 'none';
-            el.style.textShadow = 'none';
-          }
-        });
-      }
-    });
-
-    const imgData = canvas.toDataURL('image/png', 0.9);
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -160,42 +116,39 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let currentHeight = 30;
-    let remainingHeight = imgHeight;
+    const margin = 15;
+    const maxTextWidth = pageWidth - margin * 2;
+    let y = 15;
 
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(reportTitle, 15, 15);
+    pdf.text(reportTitle, margin, y);
+    y += 7;
 
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 15, 22);
+    pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, margin, y);
+    y += 3;
     pdf.setLineWidth(0.5);
-    pdf.line(15, 25, pageWidth - 15, 25);
+    pdf.line(margin, y, pageWidth - margin, y);
+    y += 6;
 
-    while (remainingHeight > 0) {
-      const pageImgHeight = Math.min(remainingHeight, pageHeight - currentHeight - 10);
+    const rawText = (reportContent.innerText || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
 
-      pdf.addImage(
-        imgData,
-        'PNG',
-        10,
-        currentHeight,
-        imgWidth,
-        imgHeight,
-        undefined,
-        'FAST'
-      );
+    const content = rawText || 'Sem dados para o período selecionado.';
+    const lines = pdf.splitTextToSize(content, maxTextWidth);
 
-      remainingHeight -= pageImgHeight;
-      currentHeight = 10;
-
-      if (remainingHeight > 0) {
+    pdf.setFontSize(10);
+    for (const line of lines) {
+      if (y > pageHeight - 12) {
         pdf.addPage();
+        y = 15;
       }
+      pdf.text(line, margin, y);
+      y += 5;
     }
 
     const pageCount = pdf.internal.getNumberOfPages();
@@ -210,13 +163,7 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   } catch (error: any) {
     console.error('[PDF] Erro ao gerar PDF:', error);
     console.error('[PDF] Mensagem:', error?.message);
-
-    const message = String(error?.message || '');
-    if (message.includes('oklab') || message.includes('oklch') || message.includes('color function')) {
-      throw new Error('Nao foi possivel gerar o PDF por causa de estilos de cor do tema. Tente novamente.');
-    }
-
-    throw error;
+    throw new Error('Nao foi possivel gerar o PDF. Tente novamente.');
   }
 };
 
