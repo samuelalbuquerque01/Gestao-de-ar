@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(parsedUser);
         setIsAuthenticated(true);
       } catch (error) {
-        console.error('Erro ao restaurar sessÃ£o:', error);
+        console.error('Erro ao restaurar sess?o:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
     } catch (error: any) {
-      console.error('âŒ Erro no login:', error);
+      console.error('[ERRO] Erro no login:', error);
       
       let errorMessage = 'Falha no login';
       if (error.response?.data?.error) {
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
     } catch (error: any) {
-      console.error('âŒ Erro no registro:', error);
+      console.error('[ERRO] Erro no registro:', error);
       
       let errorMessage = 'Falha no registro';
       if (error.response?.data?.error) {

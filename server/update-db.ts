@@ -55,7 +55,7 @@ async function updateDatabase() {
       }
     }
   } catch (error) {
-    console.error('âŒ Erro ao atualizar banco de dados:', error);
+    console.error('[ERRO] Erro ao atualizar banco de dados:', error);
   } finally {
     await client.end();
   }

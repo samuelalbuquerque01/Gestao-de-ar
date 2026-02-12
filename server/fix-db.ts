@@ -32,7 +32,7 @@ async function fixDatabase() {
       `);
     }
     
-    // 2. Adicionar coluna password se nÃ£o existir
+    // 2. Adicionar coluna password se nao existir
     const checkPassword = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -60,7 +60,7 @@ async function fixDatabase() {
       }
     }
     
-    //  CRIAR USUÃRIO ADMIN PADRÃƒO 
+    //  CRIAR USUARIO ADMIN PADRAO 
     const adminEmail = 'admin@neuropsicocentro.com.br';
     const checkAdmin = await client.query(
       `SELECT id FROM users WHERE email = $1`,
@@ -83,7 +83,7 @@ async function fixDatabase() {
     } else {
     }
   } catch (error) {
-    console.error('âŒ Erro ao corrigir banco de dados:', error);
+    console.error('[ERRO] Erro ao corrigir banco de dados:', error);
   } finally {
     await client.end();
   }
@@ -95,4 +95,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { fixDatabase };
-

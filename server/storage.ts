@@ -328,7 +328,7 @@ function anyToDate(dateValue: any): Date | null {
     return null;
     
   } catch (error) {
-    console.error('âŒ [anyToDate] Erro ao converter para Date:', error, 'Valor:', dateValue);
+    console.error('[ERRO] [anyToDate] Erro ao converter para Date:', error, 'Valor:', dateValue);
     return null;
   }
 }
@@ -365,7 +365,7 @@ function safeDateToISO(dateValue: any): string {
     return !isNaN(date.getTime()) ? date.toISOString() : '';
     
   } catch (error) {
-    console.error('âŒ [safeDateToISO] Erro:', error);
+    console.error('[ERRO] [safeDateToISO] Erro:', error);
     return '';
   }
 }
@@ -382,7 +382,7 @@ export class DatabaseStorage implements IStorage {
       
       return undefined;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar usuÃ¡rio por ID:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar usuario por ID:', error);
       return undefined;
     }
   }
@@ -402,7 +402,7 @@ export class DatabaseStorage implements IStorage {
       return undefined;
       
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao buscar por username:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao buscar por username:', error.message);
       return undefined;
     }
   }
@@ -422,7 +422,7 @@ export class DatabaseStorage implements IStorage {
       return undefined;
       
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao buscar por email:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao buscar por email:', error.message);
       return undefined;
     }
   }
@@ -441,7 +441,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return mapDbToCamelCase(user, 'users');
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao criar usuÃ¡rio:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao criar usuario:', error.message);
       throw error;
     }
   }
@@ -451,7 +451,7 @@ export class DatabaseStorage implements IStorage {
       const [tech] = await db.select().from(technicians).where(eq(technicians.id, id));
       return tech ? mapDbToCamelCase(tech, 'technicians') : undefined;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar tÃ©cnico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar tecnico:', error);
       return undefined;
     }
   }
@@ -461,7 +461,7 @@ export class DatabaseStorage implements IStorage {
       const techs = await db.select().from(technicians).orderBy(technicians.nome);
       return techs.map(tech => mapDbToCamelCase(tech, 'technicians'));
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar tÃ©cnicos:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar tecnicos:', error);
       return [];
     }
   }
@@ -476,7 +476,7 @@ export class DatabaseStorage implements IStorage {
       }).returning();
       return mapDbToCamelCase(tech, 'technicians');
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao criar tÃ©cnico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao criar tecnico:', error);
       throw error;
     }
   }
@@ -494,7 +494,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return tech ? mapDbToCamelCase(tech, 'technicians') : undefined;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao atualizar tÃ©cnico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao atualizar tecnico:', error);
       return undefined;
     }
   }
@@ -504,7 +504,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(technicians).where(eq(technicians.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao deletar tÃ©cnico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao deletar tecnico:', error);
       return false;
     }
   }
@@ -544,7 +544,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quina:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar maquina:', error);
       return undefined;
     }
   }
@@ -584,7 +584,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quina por cÃ³digo:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao buscar maquina por c?digo:', error.message);
       return undefined;
     }
   }
@@ -605,7 +605,7 @@ export class DatabaseStorage implements IStorage {
             }
           }
         } catch (error) {
-          console.error(`âŒ [STORAGE] Erro ao processar dataInstalacao da mÃ¡quina ${machine.id}:`, error);
+          console.error(`[ERRO] [STORAGE] Erro ao processar dataInstalacao da maquina ${machine.id}:`, error);
         }
         
         return {
@@ -629,7 +629,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar maquinas:', error);
       return [];
     }
   }
@@ -673,7 +673,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas por status:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar maquinas por status:', error);
       return [];
     }
   }
@@ -717,7 +717,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar mÃ¡quinas por filial:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar maquinas por filial:', error);
       return [];
     }
   }
@@ -774,7 +774,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao criar mÃ¡quina:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao criar maquina:', error.message);
       throw error;
     }
   }
@@ -835,7 +835,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedMachine.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao atualizar mÃ¡quina:', error);
+      console.error('[ERRO] [STORAGE] Erro ao atualizar maquina:', error);
       return undefined;
     }
   }
@@ -845,7 +845,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(machines).where(eq(machines.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao deletar mÃ¡quina:', error);
+      console.error('[ERRO] [STORAGE] Erro ao deletar maquina:', error);
       return false;
     }
   }
@@ -893,7 +893,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§o:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servico:', error);
       return undefined;
     }
   }
@@ -950,7 +950,7 @@ export class DatabaseStorage implements IStorage {
       
       return mappedServices;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos:', error);
       return [];
     }
   }
@@ -1007,7 +1007,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por mÃ¡quina:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos por maquina:', error);
       return [];
     }
   }
@@ -1064,7 +1064,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por tÃ©cnico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos por tecnico:', error);
       return [];
     }
   }
@@ -1126,7 +1126,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por data:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos por data:', error);
       return [];
     }
   }
@@ -1183,7 +1183,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por status:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos por status:', error);
       return [];
     }
   }
@@ -1240,7 +1240,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os por tipo:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos por tipo:', error);
       return [];
     }
   }
@@ -1307,7 +1307,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os concluÃ­dos:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos conclu?dos:', error);
       return [];
     }
   }
@@ -1374,7 +1374,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar serviÃ§os com custos:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar servicos com custos:', error);
       return [];
     }
   }
@@ -1431,7 +1431,7 @@ export class DatabaseStorage implements IStorage {
       await this.addServiceHistory({
         serviceId: service.id,
         status: service.status || 'AGENDADO',
-        observacao: "ServiÃ§o criado"
+        observacao: "Servico criado"
       });
       
       const mappedService = mapDbToCamelCase(service, 'services');
@@ -1460,7 +1460,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('âŒ [STORAGE] Erro ao criar serviÃ§o:', error.message);
+      console.error('[ERRO] [STORAGE] Erro ao criar servico:', error.message);
       throw error;
     }
   }
@@ -1558,7 +1558,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: mappedService.updatedAt || new Date()
       };
     } catch (error: any) {
-      console.error('âŒ [STORAGE UPDATE] Erro ao atualizar serviÃ§o:', error.message);
+      console.error('[ERRO] [STORAGE UPDATE] Erro ao atualizar servico:', error.message);
       return undefined;
     }
   }
@@ -1568,7 +1568,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(services).where(eq(services.id, id));
       return result.rowCount > 0;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao deletar serviÃ§o:', error);
+      console.error('[ERRO] [STORAGE] Erro ao deletar servico:', error);
       return false;
     }
   }
@@ -1580,7 +1580,7 @@ export class DatabaseStorage implements IStorage {
       const [history] = await db.insert(serviceHistory).values(dbData).returning();
       return mapDbToCamelCase(history, 'service_history');
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao adicionar histÃ³rico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao adicionar historico:', error);
       throw error;
     }
   }
@@ -1593,7 +1593,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(serviceHistory.created_at));
       return historyList.map(history => mapDbToCamelCase(history, 'service_history'));
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar histÃ³rico:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar historico:', error);
       return [];
     }
   }
@@ -1645,7 +1645,7 @@ export class DatabaseStorage implements IStorage {
         avgServiceCost: costResult?.avg ? parseFloat(costResult.avg) : 0
       };
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar estatisticas:', error);
       return {
         activeMachines: 0,
         maintenanceMachines: 0,
@@ -1685,7 +1685,7 @@ export class DatabaseStorage implements IStorage {
       
       return stats;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas de tipos de serviÃ§o:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar estatisticas de tipos de servico:', error);
       return {};
     }
   }
@@ -1732,7 +1732,7 @@ export class DatabaseStorage implements IStorage {
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar desempenho de tÃ©cnicos:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar desempenho de tecnicos:', error);
       return [];
     }
   }
@@ -1767,7 +1767,7 @@ export class DatabaseStorage implements IStorage {
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas mensais:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar estatisticas mensais:', error);
       return [];
     }
   }
@@ -1793,14 +1793,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(machines.branch);
       
       return result.map(row => ({
-        branch: row.branch || 'NÃ£o especificada',
+        branch: row.branch || 'Nao especificada',
         machineCount: row.machineCount || 0,
         activeMachines: row.activeMachines || 0,
         totalServices: row.totalServices || 0,
         totalCost: row.totalCost ? parseFloat(row.totalCost) : 0
       }));
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar estatÃ­sticas por filial:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar estatisticas por filial:', error);
       return [];
     }
   }
@@ -1875,7 +1875,7 @@ export class DatabaseStorage implements IStorage {
           avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
         })),
         byBranch: byBranchResult.map(row => ({
-          branch: row.branch || 'NÃ£o especificada',
+          branch: row.branch || 'Nao especificada',
           count: row.count || 0,
           totalCost: row.totalCost ? parseFloat(row.totalCost) : 0,
           avgCost: row.avgCost ? parseFloat(row.avgCost) : 0
@@ -1888,7 +1888,7 @@ export class DatabaseStorage implements IStorage {
         }))
       };
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro na anÃ¡lise de custos:', error);
+      console.error('[ERRO] [STORAGE] Erro na analise de custos:', error);
       return {
         byType: [],
         byTechnician: [],
@@ -1940,7 +1940,7 @@ export class DatabaseStorage implements IStorage {
       
       return result;
     } catch (error) {
-      console.error('âŒ [STORAGE] Erro ao buscar histÃ³rico de manutenÃ§Ã£o da mÃ¡quina:', error);
+      console.error('[ERRO] [STORAGE] Erro ao buscar historico de manutencao da maquina:', error);
       return [];
     }
   }

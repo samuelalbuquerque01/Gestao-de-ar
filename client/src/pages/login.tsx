@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Redireciona se jÃ¡ estiver autenticado
+  // Redireciona se ja estiver autenticado
   React.useEffect(() => {
     if (isAuthenticated) {
       navigate('/');
@@ -30,12 +30,12 @@ export default function LoginPage() {
     
     try {
       await login(email, password);
-      // CRÃTICO: Espera 500ms para garantir que o token foi salvo
+      // CRITICO: Espera 500ms para garantir que o token foi salvo
       await new Promise(resolve => setTimeout(resolve, 500));
       navigate('/');
       
     } catch (error: any) {
-      console.error('âŒ [LOGIN] Erro:', error.message);
+      console.error('[LOGIN] Erro:', error.message);
       setError(error.message || 'Erro ao fazer login');
     } finally {
       setIsLoading(false);
@@ -52,7 +52,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Neuropsicocentro</CardTitle>
-          <CardDescription>Sistema de GestÃ£o de Ar Condicionado</CardDescription>
+          <CardDescription>Sistema de Gestao de Ar Condicionado</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -67,7 +67,7 @@ export default function LoginPage() {
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="admin@neuro.com" 
+                placeholder="email@example.com" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required 
@@ -107,7 +107,7 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="text-muted-foreground">
-              NÃ£o tem uma conta?{' '}
+              Nao tem uma conta?{' '}
               <Link href="/register" className="text-primary font-medium hover:underline">
                 Cadastre-se
               </Link>

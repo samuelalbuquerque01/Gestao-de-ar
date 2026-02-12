@@ -55,7 +55,7 @@ async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
       );
     `);
-    //  CRIAR TABELA SERVICES (COM NOMES EM PORTUGUÃŠS) 
+    //  CRIAR TABELA SERVICES (COM NOMES EM PORTUGUES) 
     await client.query(`
       CREATE TABLE IF NOT EXISTS services (
         id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -63,7 +63,7 @@ async function initDatabase() {
         maquina_id VARCHAR(255) NOT NULL,
         data_agendamento TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         tecnico_id VARCHAR(255) NOT NULL,
-        tecnico_nome VARCHAR(255) NOT NULL DEFAULT 'TÃ©cnico',
+        tecnico_nome VARCHAR(255) NOT NULL DEFAULT 'Tecnico',
         descricao_servico TEXT NOT NULL,
         descricao_problema TEXT,
         prioridade VARCHAR(50) DEFAULT 'MEDIA' NOT NULL,
@@ -88,7 +88,7 @@ async function initDatabase() {
         FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
       );
     `);
-    //  CRIAR ÃNDICES 
+    //  CRIAR INDICES 
     try {
       await client.query(`CREATE INDEX IF NOT EXISTS idx_services_maquina_id ON services(maquina_id);`);
     } catch (error: any) {
@@ -120,7 +120,7 @@ async function initDatabase() {
     } catch (error: any) {
     }
     //  VERIFICAR E CORRIGIR ESTRUTURA EXISTENTE 
-    // 1. Verificar e adicionar coluna prioridade se nÃ£o existir
+    // 1. Verificar e adicionar coluna prioridade se nao existir
     const checkPrioridade = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
@@ -298,9 +298,9 @@ async function initDatabase() {
     } catch (error: any) {
     }
     
-    // 5. Verificar e corrigir datas invÃ¡lidas
+    // 5. Verificar e corrigir datas invalidas
     try {
-      // Corrigir datas invÃ¡lidas em machines
+      // Corrigir datas invalidas em machines
       const invalidMachineDates = await client.query(`
         SELECT id, installation_date 
         FROM machines 
@@ -320,7 +320,7 @@ async function initDatabase() {
         }
       }
       
-      // Corrigir datas invÃ¡lidas em services
+      // Corrigir datas invalidas em services
       const invalidServiceDates = await client.query(`
         SELECT id, data_agendamento 
         FROM services 
@@ -342,7 +342,7 @@ async function initDatabase() {
     } catch (error: any) {
     }
     
-    // 6. Criar dados de teste se necessÃ¡rio
+    // 6. Criar dados de teste se necessario
     const checkTechCount = await client.query(`SELECT COUNT(*) as count FROM technicians;`);
     const techCount = parseInt(checkTechCount.rows[0]?.count || '0');
     
@@ -363,7 +363,7 @@ async function initDatabase() {
     if (machineCount === 0) {
       await client.query(`
         INSERT INTO machines (codigo, model, brand, type, capacity, voltage, location_type, location, branch, installation_date, status) 
-        VALUES ('AR-001', 'Dual Inverter', 'LG', 'SPLIT', 9000, 'V220', 'SALA', 'Sala de ReuniÃµes 1', 'Matriz', CURRENT_TIMESTAMP, 'ATIVO')
+        VALUES ('AR-001', 'Dual Inverter', 'LG', 'SPLIT', 9000, 'V220', 'SALA', 'Sala de Reunioes 1', 'Matriz', CURRENT_TIMESTAMP, 'ATIVO')
         ON CONFLICT DO NOTHING;
       `);
     }
@@ -379,7 +379,7 @@ async function initDatabase() {
           (SELECT id FROM machines LIMIT 1),
           (SELECT id FROM technicians LIMIT 1),
           (SELECT nome FROM technicians LIMIT 1),
-          'ManutenÃ§Ã£o preventiva trimestral',
+          'Manutencao preventiva trimestral',
           CURRENT_TIMESTAMP + INTERVAL '7 days',
           'AGENDADO',
           'MEDIA'
@@ -387,7 +387,7 @@ async function initDatabase() {
       `);
     }
   } catch (error) {
-    console.error('âŒ Erro ao inicializar banco de dados:', error);
+    console.error('[ERRO] Erro ao inicializar banco de dados:', error);
   } finally {
     await client.end();
   }
@@ -398,4 +398,3 @@ export { initDatabase };
 if (import.meta.url === `file://${process.argv[1]}`) {
   initDatabase().catch(console.error);
 }
-

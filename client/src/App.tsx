@@ -25,7 +25,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Verificando autenticaÃ§Ã£o...</p>
+          <p className="mt-4 text-muted-foreground">Verificando autenticacao...</p>
         </div>
       </div>
     );
@@ -52,7 +52,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       
-      {/* Protected Routes - SÃ“ se autenticado */}
+      {/* Protected Routes - SO se autenticado */}
       {isAuthenticated ? (
         <>
           <Route path="/">
@@ -76,15 +76,15 @@ function Router() {
           </Route>
           
           <Route path="/configuracoes">
-            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">MÃ³dulo de ConfiguraÃ§Ãµes em Desenvolvimento</div>} />
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Modulo de Configuracoes em Desenvolvimento</div>} />
           </Route>
           
           <Route path="/perfil">
-            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">MÃ³dulo de Perfil em Desenvolvimento</div>} />
+            <ProtectedRoute component={() => <div className="p-10 text-center text-muted-foreground">Modulo de Perfil em Desenvolvimento</div>} />
           </Route>
         </>
       ) : (
-        // Se nÃ£o autenticado, redireciona todas as rotas para login
+        // Se nao autenticado, redireciona todas as rotas para login
         <Route><Redirect to="/login" /></Route>
       )}
       

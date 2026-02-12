@@ -24,7 +24,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('âŒ [API] Erro na requisiÃ§Ã£o:', error.message);
+    console.error('[ERRO] [API] Erro na requisicao:', error.message);
     return Promise.reject(error);
   }
 );
@@ -36,10 +36,10 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response) {
-      console.error(`âŒ [API] Erro ${error.response.status} em ${error.config?.url || 'URL desconhecida'}:`);
+      console.error(`[ERRO] [API] Erro ${error.response.status} em ${error.config?.url || 'URL desconhecida'}:`);
       
       if (error.response.status === 401 || error.response.status === 403) {
-        // SÃ³ remove e redireciona se NÃƒO estiver na pÃ¡gina de login/register
+        // So remove e redireciona se NAO estiver na pagina de login/register
         if (!window.location.pathname.includes('/login') && 
             !window.location.pathname.includes('/register')) {
           localStorage.removeItem('token');
@@ -53,13 +53,13 @@ api.interceptors.response.use(
         }
       }
     } else if (error.request) {
-      console.error('âŒ [API] Sem resposta do servidor - URL:', error.config?.url);
-      console.error('ðŸ” [API] PossÃ­veis causas:');
-      console.error('   1. Backend nÃ£o estÃ¡ rodando');
+      console.error('[ERRO] [API] Sem resposta do servidor - URL:', error.config?.url);
+      console.error('[DEBUG] [API] Possiveis causas:');
+      console.error('   1. Backend nao esta rodando');
       console.error('   2. Problema de CORS');
       console.error('   3. Erro de rede');
     } else {
-      console.error('âŒ [API] Erro:', error.message);
+      console.error('[ERRO] [API] Erro:', error.message);
     }
     
     return Promise.reject(error);

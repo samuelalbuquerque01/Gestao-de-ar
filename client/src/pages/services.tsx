@@ -30,11 +30,11 @@ import { cn } from '@/lib/utils';
 
 const serviceSchema = z.object({
   tipoServico: z.string(),
-  maquinaId: z.string().min(1, "Máquina é obrigatÃ³ria"),
-  dataAgendamento: z.string().min(1, "Data é obrigatÃ³ria"),
+  maquinaId: z.string().min(1, "Máquina é obrigat?ria"),
+  dataAgendamento: z.string().min(1, "Data é obrigat?ria"),
   horaAgendamento: z.string(),
-  tecnicoId: z.string().min(1, "Técnico é obrigatÃ³rio"),
-  descricaoServico: z.string().min(1, "Descrição é obrigatÃ³ria"),
+  tecnicoId: z.string().min(1, "Técnico é obrigat?rio"),
+  descricaoServico: z.string().min(1, "Descrição é obrigat?ria"),
   descricaoProblema: z.string().optional(),
   prioridade: z.string(),
   status: z.string(),
@@ -48,7 +48,7 @@ const formatServiceDate = (dateString: string): string => {
   try {
     if (dateString instanceof Date) {
       if (isValid(dateString)) {
-        return format(dateString, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
+        return format(dateString, "dd/MM/yyyy '?s' HH:mm", { locale: ptBR });
       }
       return 'Data inválida';
     }
@@ -66,7 +66,7 @@ const formatServiceDate = (dateString: string): string => {
         if (!isNaN(timestamp)) {
           const timestampDate = new Date(timestamp);
           if (isValid(timestampDate)) {
-            return format(timestampDate, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
+            return format(timestampDate, "dd/MM/yyyy '?s' HH:mm", { locale: ptBR });
           }
         }
         
@@ -75,15 +75,15 @@ const formatServiceDate = (dateString: string): string => {
           const [, day, month, year] = brMatch;
           const brDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
           if (isValid(brDate)) {
-            return format(brDate, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
+            return format(brDate, "dd/MM/yyyy '?s' HH:mm", { locale: ptBR });
           }
         }        return 'Data não informada';
       }
       
-      return format(date, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
+      return format(date, "dd/MM/yyyy '?s' HH:mm", { locale: ptBR });
     }    return 'Data inválida';
   } catch (error) {
-    console.error('[ERRO] Erro crÃ­tico ao formatar data:', error, 'String original:', dateString);
+    console.error('[ERRO] Erro cr?tico ao formatar data:', error, 'String original:', dateString);
     return 'Data não informada';
   }
 };
@@ -281,7 +281,7 @@ export default function ServicesPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo de seleção de mÃ¡quina */}
+                  {/* Campo de seleção de maquina */}
                   <FormField
                     control={form.control}
                     name="maquinaId"
@@ -292,7 +292,7 @@ export default function ServicesPage() {
                           <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
-                              placeholder="Buscar mÃ¡quina por cÃ³digo, modelo ou filial..."
+                              placeholder="Buscar maquina por c?digo, modelo ou filial..."
                               value={machineSearch}
                               onChange={(e) => setMachineSearch(e.target.value)}
                               className="pl-9"
@@ -313,7 +313,7 @@ export default function ServicesPage() {
                           <div className="border rounded-md max-h-48 overflow-y-auto">
                             {filteredMachines.length === 0 ? (
                               <div className="p-4 text-center text-muted-foreground">
-                                Nenhuma mÃ¡quina encontrada
+                                Nenhuma maquina encontrada
                               </div>
                             ) : (
                               <div className="p-2 space-y-1">
@@ -426,7 +426,7 @@ export default function ServicesPage() {
                     name="horaAgendamento"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>HorÃ¡rio</FormLabel>
+                        <FormLabel>Hor?rio</FormLabel>
                         <FormControl>
                           <Input type="time" {...field} />
                         </FormControl>
@@ -440,7 +440,7 @@ export default function ServicesPage() {
                     name="tecnicoId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Técnico ResponsÃ¡vel</FormLabel>
+                        <FormLabel>Técnico Respons?vel</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -467,7 +467,7 @@ export default function ServicesPage() {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Descrição do Serviço</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="O que serÃ¡ feito..." {...field} />
+                          <Textarea placeholder="O que ser? feito..." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -482,7 +482,7 @@ export default function ServicesPage() {
                         <FormItem className="md:col-span-2">
                           <FormLabel>Descrição do Problema (Defeito)</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="O que estÃ¡ acontecendo..." className="bg-red-50 dark:bg-red-900/10" {...field} />
+                            <Textarea placeholder="O que esta acontecendo..." className="bg-red-50 dark:bg-red-900/10" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -505,7 +505,7 @@ export default function ServicesPage() {
                           <SelectContent>
                             <SelectItem value="AGENDADO">Agendado</SelectItem>
                             <SelectItem value="EM_ANDAMENTO">Em Andamento</SelectItem>
-                            <SelectItem value="CONCLUIDO">ConcluÃ­do</SelectItem>
+                            <SelectItem value="CONCLUIDO">Conclu?do</SelectItem>
                             <SelectItem value="CANCELADO">Cancelado</SelectItem>
                             <SelectItem value="PENDENTE">Pendente</SelectItem>
                           </SelectContent>
@@ -530,7 +530,7 @@ export default function ServicesPage() {
       <div className="flex items-center gap-2 bg-card p-2 rounded-md border shadow-sm">
         <Search className="w-4 h-4 text-muted-foreground ml-2" />
         <Input 
-          placeholder="Buscar por técnico, serviço ou mÃ¡quina..." 
+          placeholder="Buscar por técnico, serviço ou maquina..." 
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="border-0 focus-visible:ring-0 shadow-none"

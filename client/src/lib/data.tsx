@@ -93,12 +93,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await api.get('/technicians');
         return response.data.data || [];
       } catch (error: any) {
-        console.error('âŒ [DATA] Erro ao buscar tÃ©cnicos:', error.message);
+        console.error('[ERRO] [DATA] Erro ao buscar tecnicos:', error.message);
         return [];
       }
     },
-    retry: false, // IMPORTANTE: nÃ£o retentar automaticamente
-    enabled: hasValidToken, // SÃ“ EXECUTA SE TIVER TOKEN VÃLIDO
+    retry: false, // IMPORTANTE: nao retentar automaticamente
+    enabled: hasValidToken, // SO EXECUTA SE TIVER TOKEN VALIDO
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: true,
@@ -162,13 +162,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         
         return response.data.data || [];
       } catch (error: any) {
-        console.error('âŒ [DATA] Erro ao buscar mÃ¡quinas:', error.message);
-        console.error('âŒ [DATA] Status:', error.response?.status);
+        console.error('[ERRO] [DATA] Erro ao buscar maquinas:', error.message);
+        console.error('[ERRO] [DATA] Status:', error.response?.status);
         return [];
       }
     },
-    retry: false, // IMPORTANTE: nÃ£o retentar automaticamente
-    enabled: hasValidToken, // SÃ“ EXECUTA SE TIVER TOKEN VÃLIDO
+    retry: false, // IMPORTANTE: nao retentar automaticamente
+    enabled: hasValidToken, // SO EXECUTA SE TIVER TOKEN VALIDO
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 15,
     refetchOnWindowFocus: true,
@@ -202,7 +202,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }, 300);
     },
     onError: (error: any) => {
-      console.error('âŒ [DATA] Erro ao criar mÃ¡quina:', error.message);
+      console.error('[ERRO] [DATA] Erro ao criar maquina:', error.message);
     }
   });
 
@@ -254,7 +254,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await api.get('/services');
         return response.data.data || [];
       } catch (error: any) {
-        console.error('âŒ [DATA] Erro ao buscar serviÃ§os:', error.message);
+        console.error('[ERRO] [DATA] Erro ao buscar servicos:', error.message);
         return [];
       }
     },
@@ -316,7 +316,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await api.get('/dashboard/stats');
         return response.data.data || {};
       } catch (error: any) {
-        console.error('âŒ [DATA] Erro ao buscar estatÃ­sticas:', error.message);
+        console.error('[ERRO] [DATA] Erro ao buscar estatisticas:', error.message);
         return {};
       }
     },
@@ -340,7 +340,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         refetchStats()
       ]);
     } catch (error) {
-      console.error('âŒ [DATA] Erro ao fazer refetch:', error);
+      console.error('[ERRO] [DATA] Erro ao fazer refetch:', error);
     }
   };
 
@@ -390,6 +390,5 @@ export function useData() {
   }
   return context;
 }
-
 
 

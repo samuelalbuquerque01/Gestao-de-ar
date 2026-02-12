@@ -1,28 +1,28 @@
-﻿//  CONFIGURAÃ‡ÃƒO .env 
+//  CONFIGURACAO .env 
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// ConfiguraÃ§Ã£o de ambiente simplificada para produÃ§Ã£o
+// Configuracao de ambiente simplificada para producao
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 
-// Carrega variÃ¡veis de ambiente
+// Carrega variaveis de ambiente
 dotenv.config({ path: path.resolve(process.cwd(), envFile) });
-//  INICIALIZAÃ‡ÃƒO DO BANCO 
+//  INICIALIZACAO DO BANCO 
 import { initDatabase } from './init-db.js';
-import { updateDatabase } from './update-db.js'; // IMPORTE A ATUALIZAÃ‡ÃƒO
+import { updateDatabase } from './update-db.js'; // IMPORTE A ATUALIZACAO
 
 async function initializeDatabase() {
   try {
-    await initDatabase(); // Cria tabelas se nÃ£o existirem
+    await initDatabase(); // Cria tabelas se nao existirem
     await updateDatabase(); // Adiciona colunas faltantes
   } catch (error) {
-    console.error('âŒ Falha ao inicializar banco de dados:', error);
-    // NÃ£o saia do processo, apenas log o erro
+    console.error('[ERRO] Falha ao inicializar banco de dados:', error);
+    // Nao saia do processo, apenas log o erro
   }
 }
 
-//  IMPORTAÃ‡Ã•ES 
+//  IMPORTACOES 
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -31,7 +31,7 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
-//  CONFIGURAÃ‡ÃƒO CORS 
+//  CONFIGURACAO CORS 
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
       'https://gestao-de-ar.onrender.com',
@@ -41,7 +41,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Permite requisiÃ§Ãµes sem origem
+    // Permite requisicoes sem origem
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.some(allowed => {
@@ -120,13 +120,13 @@ app.use((req, res, next) => {
   next();
 });
 
-//  INICIALIZAÃ‡ÃƒO 
+//  INICIALIZACAO 
 (async () => {
   try {
-    log('ðŸ”§ [INIT] Iniciando servidor...');
-    log(`ðŸ“ Ambiente: ${process.env.NODE_ENV}`);
+    log('[INIT] [INIT] Iniciando servidor...');
+    log(`[INFO] Ambiente: ${process.env.NODE_ENV}`);
     
-    // INICIALIZAR BANCO DE DADOS PRIMEIRO (cria tabelas e adiciona colunas)
+//  INICIALIZACAO 
     await initializeDatabase();
     
     // Registra rotas de API
@@ -152,22 +152,22 @@ app.use((req, res, next) => {
       });
     });
     
-    // Rota de health check (OBRIGATÃ“RIA para Render)
+    // Rota de health check (OBRIGATORIA para Render)
     app.get('/health', (req, res) => {
       res.json({ 
         status: 'healthy', 
         timestamp: new Date().toISOString(),
-        service: 'GestÃ£o de Ar Condicionado',
+        service: 'Gestao de Ar Condicionado',
         environment: process.env.NODE_ENV
       });
     });
 
-    //  CONFIGURAÃ‡ÃƒO DO FRONTEND 
+//  CONFIGURACAO DO FRONTEND 
     let frontendEnabled = false;
     let staticPath = '';
     
     if (process.env.NODE_ENV === "production") {
-      // PossÃ­veis locais onde o frontend pode estar
+      // Possiveis locais onde o frontend pode estar
       const possiblePaths = [
         path.resolve(process.cwd(), 'client/dist'),
         path.resolve(process.cwd(), 'dist'),
@@ -188,13 +188,13 @@ app.use((req, res, next) => {
       
       if (frontendEnabled) {
         app.use(express.static(staticPath));
-        log('âœ… Frontend habilitado para produÃ§Ã£o');
+        log('[OK] Frontend habilitado para producao');
       } else {
         // Rota raiz informativa
         app.get('/', (req, res) => {
           res.json({
-            message: 'API GestÃ£o de Ar Condicionado',
-            warning: 'Frontend nÃ£o encontrado - verifique se o build foi feito corretamente',
+            message: 'API Gestao de Ar Condicionado',
+            warning: 'Frontend nao encontrado - verifique se o build foi feito corretamente',
             api_endpoints: '/api/observacao',
             health_check: '/health'
           });
@@ -204,9 +204,9 @@ app.use((req, res, next) => {
 
     //  ROTAS FALLBACK 
     if (process.env.NODE_ENV === "production" && frontendEnabled) {
-      // Em produÃ§Ã£o com frontend: Serve o frontend para todas as rotas nÃ£o-API
+      // Em producao com frontend: Serve o frontend para todas as rotas nao-API
       app.get('*', (req, res, next) => {
-        // Se Ã© uma rota de API, passa para o prÃ³ximo middleware (error handler)
+        // Se e uma rota de API, passa para o proximo middleware (error handler)
         if (req.path.startsWith('/api')) {
           return next();
         }
@@ -217,24 +217,24 @@ app.use((req, res, next) => {
           res.sendFile(indexPath);
         } else {
           res.status(404).json({
-            error: 'Frontend nÃ£o encontrado',
-            message: 'O arquivo index.html nÃ£o foi encontrado'
+            error: 'Frontend nao encontrado',
+            message: 'O arquivo index.html nao foi encontrado'
           });
         }
       });
     } else if (process.env.NODE_ENV === "production") {
-      // Em produÃ§Ã£o sem frontend: Apenas API
+      // Em producao sem frontend: Apenas API
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
           return res.status(404).json({ 
-            error: 'Rota API nÃ£o encontrada',
+            error: 'Rota API nao encontrada',
             path: req.path 
           });
         }
         
         res.json({
-          message: 'Frontend nÃ£o disponÃ­vel',
-          reason: 'O build do frontend nÃ£o foi encontrado',
+          message: 'Frontend nao disponivel',
+          reason: 'O build do frontend nao foi encontrado',
           api_documentation: '/api/observacao'
         });
       });
@@ -242,22 +242,22 @@ app.use((req, res, next) => {
       // Em desenvolvimento: Informa que o frontend roda separadamente
       app.get('*', (req, res) => {
         if (req.path.startsWith('/api')) {
-          // Rota API nÃ£o encontrada
+          // Rota API nao encontrada
           return res.status(404).json({ 
-            error: 'Rota API nÃ£o encontrada',
+            error: 'Rota API nao encontrada',
             path: req.path 
           });
         }
         
         res.json({
-          message: 'Frontend nÃ£o servido por este servidor em desenvolvimento',
+          message: 'Frontend nao servido por este servidor em desenvolvimento',
           instruction: 'Execute o frontend separadamente: cd client && npm run dev',
           frontend_url: 'http://localhost:5000'
         });
       });
     }
 
-    // Error handler - SÃ³ Ã© alcanÃ§ado para rotas /api nÃ£o tratadas
+    // Error handler - So ? alcancado para rotas /api nao tratadas
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
@@ -267,25 +267,25 @@ app.use((req, res, next) => {
         error: message,
         environment: process.env.NODE_ENV
       });
-      console.error("âŒ Erro do servidor:", err);
+      console.error("[ERRO] Erro do servidor:", err);
     });
 
     const port = parseInt(process.env.PORT || "10000", 10);
     
-    // Render nÃ£o precisa de host especÃ­fico
+    // Render nao precisa de host especifico
     httpServer.listen(port, () => {
-      log(`âœ… Servidor rodando na porta ${port}`);
-      log(`ðŸ“ Modo: ${process.env.NODE_ENV}`);
-      log(`ðŸš€ AplicaÃ§Ã£o pronta!`);
+      log(`[OK] Servidor rodando na porta ${port}`);
+      log(`[INFO] Modo: ${process.env.NODE_ENV}`);
+      log(`[START] Aplicacao pronta!`);
       
       if (process.env.NODE_ENV === 'production' && frontendEnabled) {
-        log(`ðŸŒ Frontend disponÃ­vel em: https://gestao-de-ar.onrender.com`);
+        log(`[WEB] Frontend disponivel em: https://gestao-de-ar.onrender.com`);
       }
-      log(`ðŸŒ API disponÃ­vel em: https://gestao-de-ar.onrender.com/api/observacao`);
+      log(`[WEB] API disponivel em: https://gestao-de-ar.onrender.com/api/observacao`);
     });
 
   } catch (error: any) {
-    console.error("âŒ Erro fatal ao iniciar servidor:");
+    console.error("[ERRO] Erro fatal ao iniciar servidor:");
     console.error("Mensagem:", error.message);
     console.error("Stack:", error.stack);
     process.exit(1);

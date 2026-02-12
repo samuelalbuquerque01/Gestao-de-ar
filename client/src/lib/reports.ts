@@ -105,12 +105,12 @@ export const useReports = () => {
         
         return response.data.data;
       } else {
-        throw new Error('Formato de resposta invÃ¡lido');
+        throw new Error('Formato de resposta invalido');
       }
     } catch (err: any) {
-      console.error('âŒ [REPORTS] Erro ao buscar relatÃ³rios:', err);
+      console.error('[ERRO] [REPORTS] Erro ao buscar relat?rios:', err);
       
-      let errorMessage = 'Erro ao buscar relatÃ³rios';
+      let errorMessage = 'Erro ao buscar relat?rios';
       if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.message) {
@@ -134,11 +134,11 @@ export const useReports = () => {
       if (response.data.success && response.data.data) {
         return response.data.data;
       } else {
-        throw new Error('Formato de resposta invÃ¡lido');
+        throw new Error('Formato de resposta invalido');
       }
     } catch (err: any) {
-      console.error('âŒ [REPORTS] Erro ao buscar estatÃ­sticas:', err);
-      setError(err.message || 'Erro ao buscar estatÃ­sticas');
+      console.error('[ERRO] [REPORTS] Erro ao buscar estatisticas:', err);
+      setError(err.message || 'Erro ao buscar estatisticas');
       return null;
     } finally {
       setIsLoading(false);
@@ -169,7 +169,7 @@ export const useReports = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      console.error('âŒ [REPORTS] Erro ao exportar CSV:', err);
+      console.error('[ERRO] [REPORTS] Erro ao exportar CSV:', err);
       throw err;
     }
   }, []);

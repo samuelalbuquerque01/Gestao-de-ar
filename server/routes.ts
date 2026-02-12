@@ -12,36 +12,36 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   const machineRequestSchema = z.object({
-    codigo: z.string().min(1, "CÃ³digo Ã© obrigatÃ³rio"),
-    modelo: z.string().min(1, "Modelo Ã© obrigatÃ³rio"),
-    marca: z.string().min(1, "Marca Ã© obrigatÃ³ria"),
+    codigo: z.string().min(1, "C?digo ? obrigat?rio"),
+    modelo: z.string().min(1, "Modelo ? obrigat?rio"),
+    marca: z.string().min(1, "Marca ? obrigat?ria"),
     tipo: z.enum(['SPLIT', 'WINDOW', 'CASSETE', 'PISO_TETO', 'PORTATIL', 'INVERTER']).optional().default('SPLIT'),
     capacidadeBTU: z.coerce.number().min(1000).optional().default(9000),
     voltagem: z.enum(['V110', 'V220', 'BIVOLT']).optional().default('V220'),
     localizacaoTipo: z.enum(['SALA', 'QUARTO', 'ESCRITORIO', 'SALA_REUNIAO', 'OUTRO']).optional().default('SALA'),
-    localizacaoDescricao: z.string().min(1, "LocalizaÃ§Ã£o Ã© obrigatÃ³ria"),
+    localizacaoDescricao: z.string().min(1, "Localizacao e obrigatoria"),
     localizacaoAndar: z.coerce.number().optional().default(0),
-    filial: z.string().min(1, "Filial Ã© obrigatÃ³ria"),
-    dataInstalacao: z.string().min(1, "Data de instalaÃ§Ã£o Ã© obrigatÃ³ria"),
+    filial: z.string().min(1, "Filial ? obrigat?ria"),
+    dataInstalacao: z.string().min(1, "Data de instalacao e obrigatoria"),
     status: z.enum(['ATIVO', 'INATIVO', 'MANUTENCAO', 'DEFEITO']).optional().default('ATIVO'),
     observacoes: z.string().optional()
   });
 
   const technicianRequestSchema = z.object({
-    nome: z.string().min(1, "Nome Ã© obrigatÃ³rio"),
-    especialidade: z.string().min(1, "Especialidade Ã© obrigatÃ³ria"),
-    telefone: z.string().min(1, "Telefone Ã© obrigatÃ³rio"),
-    email: z.string().email("Email invÃ¡lido").optional().or(z.literal('')),
+    nome: z.string().min(1, "Nome ? obrigat?rio"),
+    especialidade: z.string().min(1, "Especialidade ? obrigat?ria"),
+    telefone: z.string().min(1, "Telefone ? obrigat?rio"),
+    email: z.string().email("Email invalido").optional().or(z.literal('')),
     status: z.enum(['ATIVO', 'INATIVO']).optional().default('ATIVO')
   });
 
   const serviceRequestSchema = z.object({
     tipoServico: z.enum(['PREVENTIVA', 'CORRETIVA', 'INSTALACAO', 'LIMPEZA', 'VISTORIA']),
-    maquinaId: z.string().min(1, "MÃ¡quina Ã© obrigatÃ³ria"),
-    tecnicoId: z.string().min(1, "TÃ©cnico Ã© obrigatÃ³rio"),
-    descricaoServico: z.string().min(1, "DescriÃ§Ã£o do serviÃ§o Ã© obrigatÃ³ria"),
+    maquinaId: z.string().min(1, "Maquina ? obrigat?ria"),
+    tecnicoId: z.string().min(1, "Tecnico ? obrigat?rio"),
+    descricaoServico: z.string().min(1, "Descricao do servico e obrigatoria"),
     descricaoProblema: z.string().optional(),
-    dataAgendamento: z.string().min(1, "Data de agendamento Ã© obrigatÃ³ria"),
+    dataAgendamento: z.string().min(1, "Data de agendamento ? obrigat?ria"),
     horaAgendamento: z.string().optional(),
     prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).optional().default('MEDIA'),
     status: z.enum(['AGENDADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO', 'PENDENTE']).optional().default('AGENDADO'),
@@ -53,12 +53,12 @@ export async function registerRoutes(
     const token = authHeader && authHeader.split(' ')[1];
     
     if (!token) {
-      return res.status(401).json({ error: 'Token nÃ£o fornecido' });
+      return res.status(401).json({ error: 'Token nao fornecido' });
     }
     
     jwt.verify(token, process.env.JWT_SECRET || 'neuropsicocentro-dev-secret', (err: any, user: any) => {
       if (err) {
-        return res.status(403).json({ error: 'Token invÃ¡lido' });
+        return res.status(403).json({ error: 'Token invalido' });
       }
       req.user = user;
       next();
@@ -87,11 +87,11 @@ export async function registerRoutes(
       const existingByUsername = await storage.getUserByUsername(validatedData.username);
       
       if (existingUser) {
-        return res.status(400).json({ error: 'Email jÃ¡ cadastrado' });
+        return res.status(400).json({ error: 'Email ja cadastrado' });
       }
       
       if (existingByUsername) {
-        return res.status(400).json({ error: 'Nome de usuÃ¡rio jÃ¡ existe' });
+        return res.status(400).json({ error: 'Nome de usuario ja existe' });
       }
       const hashedPassword = await bcrypt.hash(validatedData.password, 10);
       
@@ -127,13 +127,13 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [REGISTER] Erro detalhado:', error);
-      console.error('âŒ [REGISTER] Mensagem:', error.message);
-      console.error('âŒ [REGISTER] Stack:', error.stack);
+      console.error('[ERRO] [REGISTER] Erro detalhado:', error);
+      console.error('[ERRO] [REGISTER] Mensagem:', error.message);
+      console.error('[ERRO] [REGISTER] Stack:', error.stack);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -153,17 +153,17 @@ export async function registerRoutes(
       const { email, password } = req.body;
       
       if (!email || !password) {
-        return res.status(400).json({ error: 'Email e senha sÃ£o obrigatÃ³rios' });
+        return res.status(400).json({ error: 'Email e senha s?o obrigat?rios' });
       }
       const user = await storage.getUserByEmail(email);
       
       if (!user) {
-        return res.status(401).json({ error: 'Credenciais invÃ¡lidas' });
+        return res.status(401).json({ error: 'Credenciais invalidas' });
       }
       const validPassword = await bcrypt.compare(password, user.password);
       
       if (!validPassword) {
-        return res.status(401).json({ error: 'Credenciais invÃ¡lidas' });
+        return res.status(401).json({ error: 'Credenciais invalidas' });
       }
       const token = jwt.sign(
         { 
@@ -189,7 +189,7 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [LOGIN] Erro:', error);
+      console.error('[ERRO] [LOGIN] Erro:', error);
       res.status(500).json({ error: 'Erro interno no servidor' });
     }
   });
@@ -200,8 +200,8 @@ export async function registerRoutes(
       const machines = await storage.getAllMachines();
       res.json({ success: true, data: machines });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar mÃ¡quinas:', error);
-      res.status(500).json({ error: 'Erro ao buscar mÃ¡quinas' });
+      console.error('[ERRO] [API] Erro ao buscar maquinas:', error);
+      res.status(500).json({ error: 'Erro ao buscar maquinas' });
     }
   });
   
@@ -209,12 +209,12 @@ export async function registerRoutes(
     try {
       const machine = await storage.getMachine(req.params.id);
       if (!machine) {
-        return res.status(404).json({ error: 'MÃ¡quina nÃ£o encontrada' });
+        return res.status(404).json({ error: 'Maquina nao encontrada' });
       }
       res.json({ success: true, data: machine });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar mÃ¡quina:', error);
-      res.status(500).json({ error: 'Erro ao buscar mÃ¡quina' });
+      console.error('[ERRO] [API] Erro ao buscar maquina:', error);
+      res.status(500).json({ error: 'Erro ao buscar maquina' });
     }
   });
   
@@ -223,7 +223,7 @@ export async function registerRoutes(
       const validatedData = machineRequestSchema.parse(req.body);
       const existingMachine = await storage.getMachineByCodigo(validatedData.codigo);
       if (existingMachine) {
-        return res.status(400).json({ error: 'JÃ¡ existe uma mÃ¡quina com este cÃ³digo' });
+        return res.status(400).json({ error: 'Ja existe uma maquina com este c?digo' });
       }
       
       const machineData = {
@@ -245,16 +245,16 @@ export async function registerRoutes(
       res.status(201).json({
         success: true,
         data: machine,
-        message: 'MÃ¡quina cadastrada com sucesso'
+        message: 'Maquina cadastrada com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [MACHINES] Erro ao criar mÃ¡quina:', error);
-      console.error('âŒ [MACHINES] Mensagem:', error.message);
+      console.error('[ERRO] [MACHINES] Erro ao criar maquina:', error);
+      console.error('[ERRO] [MACHINES] Mensagem:', error.message);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -263,7 +263,7 @@ export async function registerRoutes(
       }
       
       res.status(500).json({ 
-        error: 'Erro ao criar mÃ¡quina',
+        error: 'Erro ao criar maquina',
         message: error.message
       });
     }
@@ -296,20 +296,20 @@ export async function registerRoutes(
       const machine = await storage.updateMachine(req.params.id, machineData);
       
       if (!machine) {
-        return res.status(404).json({ error: 'MÃ¡quina nÃ£o encontrada' });
+        return res.status(404).json({ error: 'Maquina nao encontrada' });
       }
       res.json({
         success: true,
         data: machine,
-        message: 'MÃ¡quina atualizada com sucesso'
+        message: 'Maquina atualizada com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [MACHINES] Erro ao atualizar mÃ¡quina:', error);
+      console.error('[ERRO] [MACHINES] Erro ao atualizar maquina:', error);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -317,7 +317,7 @@ export async function registerRoutes(
         });
       }
       
-      res.status(500).json({ error: 'Erro ao atualizar mÃ¡quina' });
+      res.status(500).json({ error: 'Erro ao atualizar maquina' });
     }
   });
   
@@ -326,16 +326,16 @@ export async function registerRoutes(
       const deleted = await storage.deleteMachine(req.params.id);
       
       if (!deleted) {
-        return res.status(404).json({ error: 'MÃ¡quina nÃ£o encontrada' });
+        return res.status(404).json({ error: 'Maquina nao encontrada' });
       }
       res.json({
         success: true,
-        message: 'MÃ¡quina deletada com sucesso'
+        message: 'Maquina deletada com sucesso'
       });
       
     } catch (error) {
-      console.error('âŒ [MACHINES] Erro ao deletar mÃ¡quina:', error);
-      res.status(500).json({ error: 'Erro ao deletar mÃ¡quina' });
+      console.error('[ERRO] [MACHINES] Erro ao deletar maquina:', error);
+      res.status(500).json({ error: 'Erro ao deletar maquina' });
     }
   });
   
@@ -345,8 +345,8 @@ export async function registerRoutes(
       const technicians = await storage.getAllTechnicians();
       res.json({ success: true, data: technicians });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar tÃ©cnicos:', error);
-      res.status(500).json({ error: 'Erro ao buscar tÃ©cnicos' });
+      console.error('[ERRO] [API] Erro ao buscar tecnicos:', error);
+      res.status(500).json({ error: 'Erro ao buscar tecnicos' });
     }
   });
   
@@ -354,12 +354,12 @@ export async function registerRoutes(
     try {
       const technician = await storage.getTechnician(req.params.id);
       if (!technician) {
-        return res.status(404).json({ error: 'TÃ©cnico nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Tecnico nao encontrado' });
       }
       res.json({ success: true, data: technician });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar tÃ©cnico:', error);
-      res.status(500).json({ error: 'Erro ao buscar tÃ©cnico' });
+      console.error('[ERRO] [API] Erro ao buscar tecnico:', error);
+      res.status(500).json({ error: 'Erro ao buscar tecnico' });
     }
   });
   
@@ -378,15 +378,15 @@ export async function registerRoutes(
       res.status(201).json({
         success: true,
         data: technician,
-        message: 'TÃ©cnico cadastrado com sucesso'
+        message: 'Tecnico cadastrado com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [TECHNICIANS] Erro ao criar tÃ©cnico:', error);
+      console.error('[ERRO] [TECHNICIANS] Erro ao criar tecnico:', error);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -395,7 +395,7 @@ export async function registerRoutes(
       }
       
       res.status(500).json({ 
-        error: 'Erro ao criar tÃ©cnico',
+        error: 'Erro ao criar tecnico',
         message: error.message 
       });
     }
@@ -421,20 +421,20 @@ export async function registerRoutes(
       const technician = await storage.updateTechnician(req.params.id, technicianData);
       
       if (!technician) {
-        return res.status(404).json({ error: 'TÃ©cnico nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Tecnico nao encontrado' });
       }
       res.json({
         success: true,
         data: technician,
-        message: 'TÃ©cnico atualizado com sucesso'
+        message: 'Tecnico atualizado com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [TECHNICIANS] Erro ao atualizar tÃ©cnico:', error);
+      console.error('[ERRO] [TECHNICIANS] Erro ao atualizar tecnico:', error);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -442,7 +442,7 @@ export async function registerRoutes(
         });
       }
       
-      res.status(500).json({ error: 'Erro ao atualizar tÃ©cnico' });
+      res.status(500).json({ error: 'Erro ao atualizar tecnico' });
     }
   });
   
@@ -451,16 +451,16 @@ export async function registerRoutes(
       const deleted = await storage.deleteTechnician(req.params.id);
       
       if (!deleted) {
-        return res.status(404).json({ error: 'TÃ©cnico nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Tecnico nao encontrado' });
       }
       res.json({
         success: true,
-        message: 'TÃ©cnico deletado com sucesso'
+        message: 'Tecnico deletado com sucesso'
       });
       
     } catch (error) {
-      console.error('âŒ [TECHNICIANS] Erro ao deletar tÃ©cnico:', error);
-      res.status(500).json({ error: 'Erro ao deletar tÃ©cnico' });
+      console.error('[ERRO] [TECHNICIANS] Erro ao deletar tecnico:', error);
+      res.status(500).json({ error: 'Erro ao deletar tecnico' });
     }
   });
   
@@ -470,8 +470,8 @@ export async function registerRoutes(
       const services = await storage.getAllServices();
       res.json({ success: true, data: services });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar serviÃ§os:', error);
-      res.status(500).json({ error: 'Erro ao buscar serviÃ§os' });
+      console.error('[ERRO] [API] Erro ao buscar servicos:', error);
+      res.status(500).json({ error: 'Erro ao buscar servicos' });
     }
   });
   
@@ -479,12 +479,12 @@ export async function registerRoutes(
     try {
       const service = await storage.getService(req.params.id);
       if (!service) {
-        return res.status(404).json({ error: 'ServiÃ§o nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Servico nao encontrado' });
       }
       res.json({ success: true, data: service });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar serviÃ§o:', error);
-      res.status(500).json({ error: 'Erro ao buscar serviÃ§o' });
+      console.error('[ERRO] [API] Erro ao buscar servico:', error);
+      res.status(500).json({ error: 'Erro ao buscar servico' });
     }
   });
   
@@ -493,8 +493,8 @@ export async function registerRoutes(
       const services = await storage.getServicesByMachine(req.params.machineId);
       res.json({ success: true, data: services });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar serviÃ§os da mÃ¡quina:', error);
-      res.status(500).json({ error: 'Erro ao buscar serviÃ§os da mÃ¡quina' });
+      console.error('[ERRO] [API] Erro ao buscar servicos da maquina:', error);
+      res.status(500).json({ error: 'Erro ao buscar servicos da maquina' });
     }
   });
   
@@ -503,8 +503,8 @@ export async function registerRoutes(
       const services = await storage.getServicesByTechnician(req.params.technicianId);
       res.json({ success: true, data: services });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar serviÃ§os do tÃ©cnico:', error);
-      res.status(500).json({ error: 'Erro ao buscar serviÃ§os do tÃ©cnico' });
+      console.error('[ERRO] [API] Erro ao buscar servicos do tecnico:', error);
+      res.status(500).json({ error: 'Erro ao buscar servicos do tecnico' });
     }
   });
 
@@ -526,14 +526,14 @@ export async function registerRoutes(
           if (!isNaN(combinedDate.getTime())) {
             dataAgendamentoISO = combinedDate.toISOString();
           } else {
-            throw new Error('Data combinada invÃ¡lida');
+            throw new Error('Data combinada invalida');
           }
         } else {
           dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
         }
         
       } catch (error) {
-        console.error('âŒ [SERVICES] Erro ao processar data:', error);
+        console.error('[ERRO] [SERVICES] Erro ao processar data:', error);
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
         dataAgendamentoISO = `${todayStr}T${horaAgendamento}:00.000Z`;
@@ -553,16 +553,16 @@ export async function registerRoutes(
       res.status(201).json({
         success: true,
         data: service,
-        message: 'ServiÃ§o agendado com sucesso'
+        message: 'Servico agendado com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [SERVICES] Erro ao criar serviÃ§o:', error);
-      console.error('âŒ [SERVICES] Stack:', error.stack);
+      console.error('[ERRO] [SERVICES] Erro ao criar servico:', error);
+      console.error('[ERRO] [SERVICES] Stack:', error.stack);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -571,7 +571,7 @@ export async function registerRoutes(
       }
       
       res.status(500).json({ 
-        error: 'Erro ao criar serviÃ§o',
+        error: 'Erro ao criar servico',
         message: error.message 
       });
     }
@@ -617,10 +617,10 @@ export async function registerRoutes(
           if (!isNaN(finalDate.getTime())) {
             serviceData.data_agendamento = dataAgendamentoISO;
           } else {
-            console.warn('âš ï¸ [SERVICES] Data invÃ¡lida apÃ³s processamento');
+            console.warn('[AVISO] [SERVICES] Data invalida apos processamento');
           }
         } catch (error) {
-          console.warn('âš ï¸ [SERVICES] Erro ao processar data para atualizaÃ§Ã£o:', error);
+          console.warn('[AVISO] [SERVICES] Erro ao processar data para atualizacao:', error);
         }
       }
       
@@ -632,20 +632,20 @@ export async function registerRoutes(
       const service = await storage.updateService(req.params.id, serviceData);
       
       if (!service) {
-        return res.status(404).json({ error: 'ServiÃ§o nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Servico nao encontrado' });
       }
       res.json({
         success: true,
         data: service,
-        message: 'ServiÃ§o atualizado com sucesso'
+        message: 'Servico atualizado com sucesso'
       });
       
     } catch (error: any) {
-      console.error('âŒ [SERVICES] Erro ao atualizar serviÃ§o:', error);
+      console.error('[ERRO] [SERVICES] Erro ao atualizar servico:', error);
       
       if (error.name === 'ZodError') {
         return res.status(400).json({ 
-          error: 'Erro de validaÃ§Ã£o',
+          error: 'Erro de validacao',
           details: error.errors.map((e: any) => ({
             field: e.path.join('.'),
             message: e.message
@@ -654,7 +654,7 @@ export async function registerRoutes(
       }
       
       res.status(500).json({ 
-        error: 'Erro ao atualizar serviÃ§o',
+        error: 'Erro ao atualizar servico',
         message: error.message 
       });
     }
@@ -665,16 +665,16 @@ export async function registerRoutes(
       const deleted = await storage.deleteService(req.params.id);
       
       if (!deleted) {
-        return res.status(404).json({ error: 'ServiÃ§o nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Servico nao encontrado' });
       }
       res.json({
         success: true,
-        message: 'ServiÃ§o deletado com sucesso'
+        message: 'Servico deletado com sucesso'
       });
       
     } catch (error) {
-      console.error('âŒ [SERVICES] Erro ao deletar serviÃ§o:', error);
-      res.status(500).json({ error: 'Erro ao deletar serviÃ§o' });
+      console.error('[ERRO] [SERVICES] Erro ao deletar servico:', error);
+      res.status(500).json({ error: 'Erro ao deletar servico' });
     }
   });
   
@@ -684,8 +684,8 @@ export async function registerRoutes(
       const stats = await storage.getDashboardStats();
       res.json({ success: true, data: stats });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar estatÃ­sticas:', error);
-      res.status(500).json({ error: 'Erro ao buscar estatÃ­sticas' });
+      console.error('[ERRO] [API] Erro ao buscar estatisticas:', error);
+      res.status(500).json({ error: 'Erro ao buscar estatisticas' });
     }
   });
   
@@ -695,8 +695,8 @@ export async function registerRoutes(
       const history = await storage.getServiceHistory(req.params.serviceId);
       res.json({ success: true, data: history });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar histÃ³rico do serviÃ§o:', error);
-      res.status(500).json({ error: 'Erro ao buscar histÃ³rico do serviÃ§o' });
+      console.error('[ERRO] [API] Erro ao buscar historico do servico:', error);
+      res.status(500).json({ error: 'Erro ao buscar historico do servico' });
     }
   });
   
@@ -705,14 +705,14 @@ export async function registerRoutes(
     try {
       const user = await storage.getUser(req.user.id);
       if (!user) {
-        return res.status(404).json({ error: 'UsuÃ¡rio nÃ£o encontrado' });
+        return res.status(404).json({ error: 'Usuario nao encontrado' });
       }
       
       const { password, ...userWithoutPassword } = user;
       res.json({ success: true, data: userWithoutPassword });
       
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar perfil:', error);
+      console.error('[ERRO] [API] Erro ao buscar perfil:', error);
       res.status(500).json({ error: 'Erro ao buscar perfil' });
     }
   });
@@ -722,12 +722,12 @@ export async function registerRoutes(
     try {
       const machine = await storage.getMachineByCodigo(req.params.codigo);
       if (!machine) {
-        return res.status(404).json({ error: 'MÃ¡quina nÃ£o encontrada' });
+        return res.status(404).json({ error: 'Maquina nao encontrada' });
       }
       res.json({ success: true, data: machine });
     } catch (error) {
-      console.error('âŒ [API] Erro ao buscar mÃ¡quina por cÃ³digo:', error);
-      res.status(500).json({ error: 'Erro ao buscar mÃ¡quina por cÃ³digo' });
+      console.error('[ERRO] [API] Erro ao buscar maquina por c?digo:', error);
+      res.status(500).json({ error: 'Erro ao buscar maquina por c?digo' });
     }
   });
   
@@ -735,7 +735,7 @@ export async function registerRoutes(
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'GestÃ£o de Ar Condicionado API',
+      service: 'Gestao de Ar Condicionado API',
       version: '1.0.0'
     });
   });
@@ -819,7 +819,7 @@ export async function registerRoutes(
       
       const servicesByBranch = filteredServices.reduce((acc, service) => {
         const machine = allMachines.find(m => m.id === service.maquinaId);
-        const branch = machine?.filial || 'NÃ£o especificada';
+        const branch = machine?.filial || 'Nao especificada';
         acc[branch] = (acc[branch] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -942,9 +942,9 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [REPORTS] Erro ao gerar relatÃ³rio:', error);
+      console.error('[ERRO] [REPORTS] Erro ao gerar relat?rio:', error);
       res.status(500).json({ 
-        error: 'Erro ao gerar relatÃ³rio',
+        error: 'Erro ao gerar relat?rio',
         message: error.message 
       });
     }
@@ -992,19 +992,19 @@ export async function registerRoutes(
       
       csvRows.push([
         'ID',
-        'Tipo de ServiÃ§o',
-        'DescriÃ§Ã£o',
+        'Tipo de Servico',
+        'Descricao',
         'Data Agendamento',
-        'Data ConclusÃ£o',
-        'TÃ©cnico',
+        'Data Conclus?o',
+        'Tecnico',
         'Status',
         'Prioridade',
         'Custo (R$)',
-        'CÃ³digo da MÃ¡quina',
+        'C?digo da Maquina',
         'Modelo',
         'Filial',
-        'LocalizaÃ§Ã£o',
-        'ObservaÃ§Ãµes'
+        'Localizacao',
+        'Observacoes'
       ].join(','));
       
       filteredServices.forEach(service => {
@@ -1038,9 +1038,9 @@ export async function registerRoutes(
       res.send(csvContent);
       
     } catch (error: any) {
-      console.error('âŒ [REPORTS] Erro ao exportar CSV:', error);
+      console.error('[ERRO] [REPORTS] Erro ao exportar CSV:', error);
       res.status(500).json({ 
-        error: 'Erro ao exportar relatÃ³rio',
+        error: 'Erro ao exportar relat?rio',
         message: error.message 
       });
     }
@@ -1121,9 +1121,9 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [REPORTS] Erro ao buscar estatÃ­sticas em tempo real:', error);
+      console.error('[ERRO] [REPORTS] Erro ao buscar estatisticas em tempo real:', error);
       res.status(500).json({ 
-        error: 'Erro ao buscar estatÃ­sticas',
+        error: 'Erro ao buscar estatisticas',
         message: error.message 
       });
     }
@@ -1137,7 +1137,7 @@ export async function registerRoutes(
       const machine = await storage.getMachine(machineId);
       
       if (!machine) {
-        return res.status(404).json({ error: 'MÃ¡quina nÃ£o encontrada' });
+        return res.status(404).json({ error: 'Maquina nao encontrada' });
       }
       
       const totalServices = services.length;
@@ -1210,9 +1210,9 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [REPORTS] Erro ao buscar histÃ³rico da mÃ¡quina:', error);
+      console.error('[ERRO] [REPORTS] Erro ao buscar historico da maquina:', error);
       res.status(500).json({ 
-        error: 'Erro ao buscar histÃ³rico',
+        error: 'Erro ao buscar historico',
         message: error.message 
       });
     }
@@ -1364,9 +1364,9 @@ export async function registerRoutes(
       });
       
     } catch (error: any) {
-      console.error('âŒ [REPORTS] Erro na anÃ¡lise de custos:', error);
+      console.error('[ERRO] [REPORTS] Erro na analise de custos:', error);
       res.status(500).json({ 
-        error: 'Erro na anÃ¡lise de custos',
+        error: 'Erro na analise de custos',
         message: error.message 
       });
     }
@@ -1412,8 +1412,8 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   if (highCostMachines.length > 0) {
     recommendations.push({
       type: 'HIGH_COST_MACHINE',
-      title: 'MÃ¡quinas com Alto Custo de ManutenÃ§Ã£o',
-      description: `Identificadas ${highCostMachines.length} mÃ¡quinas com custo de manutenÃ§Ã£o elevado. Considere avaliar substituiÃ§Ã£o ou contrato de manutenÃ§Ã£o preventiva.`,
+      title: 'Maquinas com Alto Custo de Manutencao',
+      description: `Identificadas ${highCostMachines.length} maquinas com custo de manutencao elevado. Considere avaliar substituicao ou contrato de manutencao preventiva.`,
       details: highCostMachines.map((item: any) => ({
         machine: item.machine.codigo,
         totalCost: item.totalCost.toFixed(2),
@@ -1438,8 +1438,8 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   if (machinesNeedingPreventive.length > 0) {
     recommendations.push({
       type: 'PREVENTIVE_MAINTENANCE',
-      title: 'ManutenÃ§Ã£o Preventiva Pendente',
-      description: `${machinesNeedingPreventive.length} mÃ¡quinas estÃ£o hÃ¡ mais de 6 meses sem manutenÃ§Ã£o preventiva.`,
+      title: 'Manutencao Preventiva Pendente',
+      description: `${machinesNeedingPreventive.length} maquinas estao ha mais de 6 meses sem manutencao preventiva.`,
       details: machinesNeedingPreventive.map(machine => ({
         machine: machine.codigo,
         modelo: machine.modelo,
