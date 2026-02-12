@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,51 +57,51 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
-// Função para formatar datas com segurança - VERSÃO CORRIGIDA
+// FunÃ§Ã£o para formatar datas com seguranÃ§a - VERSÃƒO CORRIGIDA
 const safeDateFormat = (dateString: any): string => {
-  if (!dateString) return 'Data não informada';
+  if (!dateString) return 'Data nÃ£o informada';
   
   try {
-    // Se for string, verificar se está vazia
+    // Se for string, verificar se estÃ¡ vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
-      return 'Data não informada';
+      return 'Data nÃ£o informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se é válido
+    // Verificar se Ã© vÃ¡lido
     if (isNaN(date.getTime())) {
-      return 'Data não informada';
+      return 'Data nÃ£o informada';
     }
     
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   } catch (error) {
-    console.error('❌ Erro ao formatar data:', error);
-    return 'Data não informada';
+    console.error('âŒ Erro ao formatar data:', error);
+    return 'Data nÃ£o informada';
   }
 };
 
-// Função para formatar data/hora com segurança - VERSÃO CORRIGIDA
+// FunÃ§Ã£o para formatar data/hora com seguranÃ§a - VERSÃƒO CORRIGIDA
 const safeDateTimeFormat = (dateString: any): string => {
-  if (!dateString) return 'Data/hora não informada';
+  if (!dateString) return 'Data/hora nÃ£o informada';
   
   try {
-    // Se for string, verificar se está vazia
+    // Se for string, verificar se estÃ¡ vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
-      return 'Data/hora não informada';
+      return 'Data/hora nÃ£o informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se é válido
+    // Verificar se Ã© vÃ¡lido
     if (isNaN(date.getTime())) {
-      return 'Data/hora não informada';
+      return 'Data/hora nÃ£o informada';
     }
     
-    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    return format(date, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
   } catch (error) {
-    console.error('❌ Erro ao formatar data/hora:', error);
-    return 'Data/hora não informada';
+    console.error('âŒ Erro ao formatar data/hora:', error);
+    return 'Data/hora nÃ£o informada';
   }
 };
 
@@ -109,12 +109,9 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
   try {
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
-    
-    console.log('🖨️ [PDF] Iniciando geração do PDF...');
-    
-    // Configuração para evitar problemas com cores modernas
+
     const canvas = await html2canvas(reportContent, {
-      scale: 1.5, // Reduzido de 2 para 1.5 para melhor performance
+      scale: 1.5,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
@@ -122,26 +119,39 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
       foreignObjectRendering: false,
       imageTimeout: 15000,
       onclone: (clonedDoc) => {
-        // Simplificar estilos para evitar problemas
+        // Remove estilos globais do app (Tailwind) para evitar erro com oklch.
+        clonedDoc.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
+          node.parentNode?.removeChild(node);
+        });
+
+        // Reaplica estilo minimo para manter leitura no PDF.
+        const baseStyle = clonedDoc.createElement('style');
+        baseStyle.textContent = `
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border: 1px solid #d1d5db; padding: 6px; font-size: 12px; }
+          h1, h2, h3, h4, h5, h6 { margin: 0 0 8px 0; color: #000; }
+          p, span, div, small { color: #000; background: transparent; }
+        `;
+        clonedDoc.head.appendChild(baseStyle);
+
         const elements = clonedDoc.querySelectorAll('*');
-        elements.forEach(el => {
+        elements.forEach((el) => {
           if (el instanceof HTMLElement) {
-            // Remove todas as classes
             el.className = '';
-            // Remove estilos inline complexos
             el.style.cssText = '';
-            // Aplica estilos básicos
             el.style.fontFamily = 'Arial, sans-serif';
             el.style.color = '#000000';
             el.style.backgroundColor = el.tagName === 'TABLE' ? '#ffffff' : 'transparent';
+            el.style.boxShadow = 'none';
+            el.style.textShadow = 'none';
           }
         });
       }
     });
 
-    console.log('✅ [PDF] Canvas criado');
-
-    const imgData = canvas.toDataURL('image/png', 0.9); // Compressão de 90%
+    const imgData = canvas.toDataURL('image/png', 0.9);
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -150,50 +160,44 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    
-    // Calcular dimensões mantendo proporção
-    const imgWidth = pageWidth - 20; // Margens de 10mm cada lado
+    const imgWidth = pageWidth - 20;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
+
     let currentHeight = 30;
     let remainingHeight = imgHeight;
 
-    // Adicionar título e cabeçalho
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.text(reportTitle, 15, 15);
-    
+
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
     pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, 15, 22);
-    
     pdf.setLineWidth(0.5);
     pdf.line(15, 25, pageWidth - 15, 25);
 
-    // Adicionar imagem em páginas se necessário
     while (remainingHeight > 0) {
       const pageImgHeight = Math.min(remainingHeight, pageHeight - currentHeight - 10);
-      
+
       pdf.addImage(
-        imgData, 
-        'PNG', 
-        10, 
-        currentHeight, 
-        imgWidth, 
+        imgData,
+        'PNG',
+        10,
+        currentHeight,
+        imgWidth,
         imgHeight,
         undefined,
         'FAST'
       );
-      
+
       remainingHeight -= pageImgHeight;
-      currentHeight = 10; // Reset para próxima página
-      
+      currentHeight = 10;
+
       if (remainingHeight > 0) {
         pdf.addPage();
       }
     }
 
-    // Adicionar número de páginas
     const pageCount = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       pdf.setPage(i);
@@ -201,19 +205,17 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
       pdf.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
     }
 
-    console.log('✅ [PDF] PDF gerado com sucesso');
     pdf.save(`${reportTitle.replace(/\s+/g, '_')}_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
-    
     return true;
   } catch (error: any) {
-    console.error('❌ [PDF] Erro ao gerar PDF:', error);
-    console.error('❌ [PDF] Mensagem:', error.message);
-    
-    // Tentar método alternativo mais simples
-    if (error.message.includes('oklab') || error.message.includes('color')) {
-      throw new Error('Não foi possível gerar o PDF devido a problemas com estilos. Tente uma versão mais simples do relatório.');
+    console.error('[PDF] Erro ao gerar PDF:', error);
+    console.error('[PDF] Mensagem:', error?.message);
+
+    const message = String(error?.message || '');
+    if (message.includes('oklab') || message.includes('oklch') || message.includes('color function')) {
+      throw new Error('Nao foi possivel gerar o PDF por causa de estilos de cor do tema. Tente novamente.');
     }
-    
+
     throw error;
   }
 };
@@ -280,21 +282,11 @@ export default function ReportsPage() {
     setEndDate(end);
   }, [dateRange]);
 
-  // Efeito para buscar relatórios quando os filtros mudam
+  // Efeito para buscar relatÃ³rios quando os filtros mudam
   useEffect(() => {
     const loadReports = async () => {
-      if (!startDate || !endDate) {
-        console.log('⏳ [REPORTS] Aguardando datas...');
-        return;
+      if (!startDate || !endDate) {        return;
       }
-
-      console.log('🔄 [REPORTS] Buscando relatórios com filtros:', {
-        startDate,
-        endDate,
-        branchFilter,
-        statusFilter
-      });
-
       try {
         setLocalError(null);
         await fetchReports({
@@ -304,8 +296,8 @@ export default function ReportsPage() {
           statusFilter
         });
       } catch (error: any) {
-        console.error('❌ [REPORTS] Erro ao carregar relatórios:', error);
-        setLocalError(error.message || 'Erro ao carregar relatórios');
+        console.error('âŒ [REPORTS] Erro ao carregar relatÃ³rios:', error);
+        setLocalError(error.message || 'Erro ao carregar relatÃ³rios');
       }
     };
 
@@ -341,7 +333,7 @@ export default function ReportsPage() {
   const completionRate = summary.completionRate;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Dados para gráficos
+  // Dados para grÃ¡ficos
   const typeChartData = breakdown.byType;
   const statusChartData = breakdown.byStatus;
   const branchChartData = breakdown.byBranch;
@@ -357,20 +349,20 @@ export default function ReportsPage() {
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(endDate);
       
-      const reportTitle = `Relatório de Serviços - ${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`;
+      const reportTitle = `RelatÃ³rio de ServiÃ§os - ${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`;
       
       await generatePDF(reportRef.current, reportTitle);
       
       toast({
-        title: "Relatório gerado!",
+        title: "RelatÃ³rio gerado!",
         description: "O PDF foi baixado com sucesso.",
         variant: "default",
       });
     } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
       toast({
-        title: "Erro ao gerar relatório",
-        description: error.message || "Não foi possível gerar o PDF. Tente novamente.",
+        title: "Erro ao gerar relatÃ³rio",
+        description: error.message || "NÃ£o foi possÃ­vel gerar o PDF. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -388,25 +380,25 @@ export default function ReportsPage() {
         statusFilter
       });
       toast({
-        title: "Relatório atualizado!",
+        title: "RelatÃ³rio atualizado!",
         description: "Os dados foram atualizados com sucesso.",
         variant: "default",
       });
     } catch (error: any) {
-      console.error('Erro ao atualizar relatório:', error);
+      console.error('Erro ao atualizar relatÃ³rio:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o relatório.",
+        description: "NÃ£o foi possÃ­vel atualizar o relatÃ³rio.",
         variant: "destructive",
       });
     }
   };
 
   const formatCurrentDate = (date: Date) => {
-    return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
+    return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data invÃ¡lida';
   };
 
-  // Serviços filtrados para a tabela
+  // ServiÃ§os filtrados para a tabela
   const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
@@ -429,8 +421,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Relatórios</h1>
-          <p className="text-muted-foreground">Gere relatórios detalhados de serviços e manutenções</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">RelatÃ³rios</h1>
+          <p className="text-muted-foreground">Gere relatÃ³rios detalhados de serviÃ§os e manutenÃ§Ãµes</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
@@ -471,7 +463,7 @@ export default function ReportsPage() {
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <div>
-                <p className="font-medium text-destructive">Erro ao carregar relatórios</p>
+                <p className="font-medium text-destructive">Erro ao carregar relatÃ³rios</p>
                 <p className="text-sm text-destructive/80">{error}</p>
                 <Button 
                   variant="outline" 
@@ -492,7 +484,7 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="pt-6 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary mr-3" />
-            <p>Carregando relatórios...</p>
+            <p>Carregando relatÃ³rios...</p>
           </CardContent>
         </Card>
       )}
@@ -501,24 +493,24 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtros do Relatório
+            Filtros do RelatÃ³rio
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="dateRange">Período</Label>
+              <Label htmlFor="dateRange">PerÃ­odo</Label>
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o período" />
+                  <SelectValue placeholder="Selecione o perÃ­odo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="last7days">Últimos 7 dias</SelectItem>
-                  <SelectItem value="last30days">Últimos 30 dias</SelectItem>
-                  <SelectItem value="last90days">Últimos 90 dias</SelectItem>
-                  <SelectItem value="thismonth">Este mês</SelectItem>
-                  <SelectItem value="lastmonth">Mês anterior</SelectItem>
+                  <SelectItem value="last7days">Ãšltimos 7 dias</SelectItem>
+                  <SelectItem value="last30days">Ãšltimos 30 dias</SelectItem>
+                  <SelectItem value="last90days">Ãšltimos 90 dias</SelectItem>
+                  <SelectItem value="thismonth">Este mÃªs</SelectItem>
+                  <SelectItem value="lastmonth">MÃªs anterior</SelectItem>
                   <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
@@ -570,7 +562,7 @@ export default function ReportsPage() {
                   <SelectItem value="all">Todos os status</SelectItem>
                   <SelectItem value="AGENDADO">Agendado</SelectItem>
                   <SelectItem value="EM_ANDAMENTO">Em Andamento</SelectItem>
-                  <SelectItem value="CONCLUIDO">Concluído</SelectItem>
+                  <SelectItem value="CONCLUIDO">ConcluÃ­do</SelectItem>
                   <SelectItem value="CANCELADO">Cancelado</SelectItem>
                   <SelectItem value="PENDENTE">Pendente</SelectItem>
                 </SelectContent>
@@ -584,7 +576,7 @@ export default function ReportsPage() {
               Buscar
             </Label>
             <Input
-              placeholder="Buscar por técnico, máquina ou descrição..."
+              placeholder="Buscar por tÃ©cnico, mÃ¡quina ou descriÃ§Ã£o..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -604,7 +596,7 @@ export default function ReportsPage() {
               )}
             </div>
             <Badge variant="outline">
-              {filteredServices.length} {filteredServices.length === 1 ? 'serviço' : 'serviços'} encontrados
+              {filteredServices.length} {filteredServices.length === 1 ? 'serviÃ§o' : 'serviÃ§os'} encontrados
             </Badge>
           </div>
         </CardContent>
@@ -613,14 +605,14 @@ export default function ReportsPage() {
       <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-lg border simple-pdf">
         <div className="pdf-header hidden print:block">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-black">Neuropsicocentro - Relatório de Serviços</h1>
-            <p className="text-gray-600">Sistema de Gestão de Ar Condicionado</p>
+            <h1 className="text-2xl font-bold text-black">Neuropsicocentro - RelatÃ³rio de ServiÃ§os</h1>
+            <p className="text-gray-600">Sistema de GestÃ£o de Ar Condicionado</p>
             <div className="mt-2 text-sm text-gray-700">
-              Período: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
-              {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
+              PerÃ­odo: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
+              {branchFilter !== 'all' && ` â€¢ Filial: ${branchFilter}`}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              Gerado em: {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              Gerado em: {format(new Date(), "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR })}
             </div>
           </div>
           <Separator className="mb-4" />
@@ -631,52 +623,52 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Total de Serviços</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Total de ServiÃ§os</CardTitle>
                   <Activity className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{totalServices}</div>
                   <p className="text-xs text-gray-600">
-                    no período selecionado
+                    no perÃ­odo selecionado
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Taxa de Conclusão</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Taxa de ConclusÃ£o</CardTitle>
                   <CheckCircle className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{completionRate.toFixed(1)}%</div>
                   <p className="text-xs text-gray-600">
-                    {completedServices} de {totalServices} serviços concluídos
+                    {completedServices} de {totalServices} serviÃ§os concluÃ­dos
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Serviços Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">ServiÃ§os Pendentes</CardTitle>
                   <Clock className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{pendingServices}</div>
                   <p className="text-xs text-gray-600">
-                    aguardando execução
+                    aguardando execuÃ§Ã£o
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Média Diária</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">MÃ©dia DiÃ¡ria</CardTitle>
                   <TrendingUp className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{averageServicesPerDay.toFixed(1)}</div>
                   <p className="text-xs text-gray-600">
-                    serviços por dia
+                    serviÃ§os por dia
                   </p>
                 </CardContent>
               </Card>
@@ -688,7 +680,7 @@ export default function ReportsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-black">
                       <BarChart3 className="h-5 w-5" />
-                      Serviços por Tipo
+                      ServiÃ§os por Tipo
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -727,7 +719,7 @@ export default function ReportsPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-black">
                         <PieChartIcon className="h-5 w-5" />
-                        Distribuição por Status
+                        DistribuiÃ§Ã£o por Status
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -770,10 +762,10 @@ export default function ReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-black">
                   <FileText className="h-5 w-5" />
-                  Detalhamento dos Serviços
+                  Detalhamento dos ServiÃ§os
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  Lista completa de serviços no período selecionado
+                  Lista completa de serviÃ§os no perÃ­odo selecionado
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -782,10 +774,10 @@ export default function ReportsPage() {
                     <TableHeader>
                       <TableRow className="bg-gray-100">
                         <TableHead className="text-black font-medium">Data</TableHead>
-                        <TableHead className="text-black font-medium">Máquina</TableHead>
-                        <TableHead className="text-black font-medium">Técnico</TableHead>
+                        <TableHead className="text-black font-medium">MÃ¡quina</TableHead>
+                        <TableHead className="text-black font-medium">TÃ©cnico</TableHead>
                         <TableHead className="text-black font-medium">Tipo</TableHead>
-                        <TableHead className="text-black font-medium">Descrição</TableHead>
+                        <TableHead className="text-black font-medium">DescriÃ§Ã£o</TableHead>
                         <TableHead className="text-black font-medium">Status</TableHead>
                         <TableHead className="text-black font-medium">Filial</TableHead>
                       </TableRow>
@@ -794,7 +786,7 @@ export default function ReportsPage() {
                       {displayedServices.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center py-8 text-gray-600">
-                            Nenhum serviço encontrado com os filtros aplicados
+                            Nenhum serviÃ§o encontrado com os filtros aplicados
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -818,7 +810,7 @@ export default function ReportsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="max-w-xs truncate text-black">
-                                {service.descricaoServico || 'Sem descrição'}
+                                {service.descricaoServico || 'Sem descriÃ§Ã£o'}
                               </TableCell>
                               <TableCell>
                                 <Badge 
@@ -841,7 +833,7 @@ export default function ReportsPage() {
                 </div>
                 {filteredServices.length > 50 && (
                   <div className="mt-4 text-center text-sm text-gray-600">
-                    Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
+                    Mostrando 50 de {filteredServices.length} serviÃ§os. Exporte o PDF para ver todos.
                   </div>
                 )}
               </CardContent>
@@ -852,7 +844,7 @@ export default function ReportsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-black">
                     <Building className="h-5 w-5" />
-                    Serviços por Filial
+                    ServiÃ§os por Filial
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -865,7 +857,7 @@ export default function ReportsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-black">{name}</p>
-                            <p className="text-sm text-gray-600">{count} serviços</p>
+                            <p className="text-sm text-gray-600">{count} serviÃ§os</p>
                           </div>
                         </div>
                         <Badge variant="outline" className="border-gray-300 text-gray-700">
@@ -883,7 +875,7 @@ export default function ReportsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-black">
                     <Users className="h-5 w-5" />
-                    Top Técnicos
+                    Top TÃ©cnicos
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -900,7 +892,7 @@ export default function ReportsPage() {
                             </div>
                             <div>
                               <p className="font-medium text-black">{name}</p>
-                              <p className="text-sm text-gray-600">{count} serviços realizados</p>
+                              <p className="text-sm text-gray-600">{count} serviÃ§os realizados</p>
                             </div>
                           </div>
                           <div className="w-32">
@@ -925,17 +917,17 @@ export default function ReportsPage() {
           <Card className="border border-gray-300">
             <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
               <FileText className="h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-lg font-medium text-black">Nenhum serviço encontrado</p>
+              <p className="text-lg font-medium text-black">Nenhum serviÃ§o encontrado</p>
               <p className="text-sm text-gray-600 mt-2">
-                Não há serviços no período selecionado com os filtros aplicados.
+                NÃ£o hÃ¡ serviÃ§os no perÃ­odo selecionado com os filtros aplicados.
               </p>
             </CardContent>
           </Card>
         )}
 
         <div className="pdf-footer hidden print:block mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600 text-center">
-          <p>Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro</p>
-          <p className="mt-1">Para mais informações, entre em contato com a administração</p>
+          <p>RelatÃ³rio gerado automaticamente pelo Sistema de GestÃ£o de Ar Condicionado - Neuropsicocentro</p>
+          <p className="mt-1">Para mais informaÃ§Ãµes, entre em contato com a administraÃ§Ã£o</p>
         </div>
       </div>
 
@@ -947,8 +939,8 @@ export default function ReportsPage() {
               <div>
                 <p className="font-medium text-black">Dica: Exporte para PDF</p>
                 <p className="text-sm text-gray-600">
-                  Clique em "Exportar PDF" para baixar um relatório completo com todos os dados e gráficos.
-                  O PDF será gerado com qualidade para impressão e incluirá todas as informações visíveis.
+                  Clique em "Exportar PDF" para baixar um relatÃ³rio completo com todos os dados e grÃ¡ficos.
+                  O PDF serÃ¡ gerado com qualidade para impressÃ£o e incluirÃ¡ todas as informaÃ§Ãµes visÃ­veis.
                 </p>
               </div>
             </div>
@@ -958,3 +950,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
