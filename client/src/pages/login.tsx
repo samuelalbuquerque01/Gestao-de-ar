@@ -121,9 +121,6 @@ export default function LoginPage() {
             </p>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2 text-center text-xs text-muted-foreground bg-muted/20 py-4 rounded-b-lg">
-          <p>Credenciais: admin@neuro.com / admin123</p>
-        </CardFooter>
       </Card>
     </div>
   );
