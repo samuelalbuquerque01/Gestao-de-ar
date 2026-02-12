@@ -112,27 +112,27 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">VisÃ£o geral do sistema de ar condicionado.</p>
+        <p className="text-muted-foreground">{'Vis\u00e3o geral do sistema de ar condicionado.'}</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">MÃ¡quinas Ativas</CardTitle>
+            <CardTitle className="text-sm font-medium">{'M\u00e1quinas Ativas'}</CardTitle>
             <Fan className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeMachines}</div>
             <p className="text-xs text-muted-foreground">
-              de {machines.length} mÃ¡quinas totais
+              de {machines.length} {'m\u00e1quinas totais'}
             </p>
           </CardContent>
         </Card>
         
         <Card className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Manuten\u00e7\u00e3o</CardTitle>
+            <CardTitle className="text-sm font-medium">{'Em Manuten\u00e7\u00e3o'}</CardTitle>
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -147,7 +147,7 @@ export default function Dashboard() {
         
         <Card className="border-l-4 border-l-blue-400 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">ServiÃ§os Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium">{'Servi\u00e7os Pendentes'}</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -160,13 +160,13 @@ export default function Dashboard() {
         
         <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">ServiÃ§os ConcluÃ­dos</CardTitle>
+            <CardTitle className="text-sm font-medium">{'Servi\u00e7os Conclu\u00eddos'}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedServices}</div>
             <p className="text-xs text-muted-foreground">
-              Total histÃ³rico
+              {'Total hist\u00f3rico'}
             </p>
           </CardContent>
         </Card>
