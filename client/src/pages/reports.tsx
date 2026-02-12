@@ -57,55 +57,63 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useReports } from '@/lib/reports';
 
-// FunÃ§Ã£o para formatar datas com seguranÃ§a - VERSÃƒO CORRIGIDA
+// Função para formatar datas com segurança - VERSÃO CORRIGIDA
 const safeDateFormat = (dateString: any): string => {
-  if (!dateString) return 'Data nÃ£o informada';
+  if (!dateString) return 'Data não informada';
   
   try {
-    // Se for string, verificar se estÃ¡ vazia
+    // Se for string, verificar se está vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
-      return 'Data nÃ£o informada';
+      return 'Data não informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se Ã© vÃ¡lido
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      return 'Data nÃ£o informada';
+      return 'Data não informada';
     }
     
     return format(date, "dd/MM/yyyy", { locale: ptBR });
   } catch (error) {
-    console.error('âŒ Erro ao formatar data:', error);
-    return 'Data nÃ£o informada';
+    console.error('[ERRO] Erro ao formatar data:', error);
+    return 'Data não informada';
   }
 };
 
-// FunÃ§Ã£o para formatar data/hora com seguranÃ§a - VERSÃƒO CORRIGIDA
+// Função para formatar data/hora com segurança - VERSÃO CORRIGIDA
 const safeDateTimeFormat = (dateString: any): string => {
-  if (!dateString) return 'Data/hora nÃ£o informada';
+  if (!dateString) return 'Data/hora não informada';
   
   try {
-    // Se for string, verificar se estÃ¡ vazia
+    // Se for string, verificar se está vazia
     if (typeof dateString === 'string' && dateString.trim() === '') {
-      return 'Data/hora nÃ£o informada';
+      return 'Data/hora não informada';
     }
     
     const date = new Date(dateString);
     
-    // Verificar se Ã© vÃ¡lido
+    // Verificar se é válido
     if (isNaN(date.getTime())) {
-      return 'Data/hora nÃ£o informada';
+      return 'Data/hora não informada';
     }
     
-    return format(date, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
+    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   } catch (error) {
-    console.error('âŒ Erro ao formatar data/hora:', error);
-    return 'Data/hora nÃ£o informada';
+    console.error('[ERRO] Erro ao formatar data/hora:', error);
+    return 'Data/hora não informada';
   }
 };
 
-const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
+const generatePDF = async (
+  reportTitle: string,
+  startDate: string,
+  endDate: string,
+  branchFilter: string,
+  statusFilter: string,
+  summary: any,
+  services: any[]
+) => {
   try {
     const jsPDF = (await import('jspdf')).default;
     const pdf = new jsPDF({
@@ -114,51 +122,172 @@ const generatePDF = async (reportContent: HTMLElement, reportTitle: string) => {
       format: 'a4'
     });
 
+    const cleanText = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replace(/Ã¡/g, 'á')
+        .replace(/Ã /g, 'à')
+        .replace(/Ã¢/g, 'â')
+        .replace(/Ã£/g, 'ã')
+        .replace(/Ã¤/g, 'ä')
+        .replace(/é/g, 'é')
+        .replace(/Ã¨/g, 'è')
+        .replace(/Ãª/g, 'ê')
+        .replace(/Ã­/g, 'í')
+        .replace(/Ã³/g, 'ó')
+        .replace(/Ã´/g, 'ô')
+        .replace(/Ãµ/g, 'õ')
+        .replace(/Ãº/g, 'ú')
+        .replace(/Ã§/g, 'ç')
+        .replace(/Â/g, '')
+        .replace(/•/g, '-')
+        .replace(/â€“|â€”/g, '-')
+        .trim();
+    };
+
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 15;
-    const maxTextWidth = pageWidth - margin * 2;
-    let y = 15;
+    const margin = 10;
+    let y = 10;
 
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(reportTitle, margin, y);
-    y += 7;
-
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`, margin, y);
-    y += 3;
-    pdf.setLineWidth(0.5);
-    pdf.line(margin, y, pageWidth - margin, y);
-    y += 6;
-
-    const rawText = (reportContent.innerText || '')
-      .replace(/\r\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-
-    const content = rawText || 'Sem dados para o período selecionado.';
-    const lines = pdf.splitTextToSize(content, maxTextWidth);
-
-    pdf.setFontSize(10);
-    for (const line of lines) {
-      if (y > pageHeight - 12) {
+    const ensureSpace = (space: number) => {
+      if (y + space > pageHeight - 10) {
         pdf.addPage();
-        y = 15;
+        drawHeader();
       }
-      pdf.text(line, margin, y);
+    };
+
+    const drawHeader = () => {
+      pdf.setFillColor(37, 99, 235);
+      pdf.rect(0, 0, pageWidth, 22, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.text(cleanText(reportTitle), margin, 9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy 'as' HH:mm", { locale: ptBR })}`, margin, 15);
+      pdf.setTextColor(0, 0, 0);
+      y = 30;
+    };
+
+    const drawSectionTitle = (title: string) => {
+      ensureSpace(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.text(title, margin, y);
+      y += 2;
+      pdf.setDrawColor(220, 220, 220);
+      pdf.line(margin, y + 1, pageWidth - margin, y + 1);
+      y += 6;
+    };
+
+    const drawInfoLine = (label: string, value: string) => {
+      ensureSpace(5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.text(`${label}:`, margin, y);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(cleanText(value), margin + 22, y);
       y += 5;
-    }
+    };
+
+    const drawMetric = (x: number, title: string, value: string) => {
+      const w = (pageWidth - margin * 2 - 6) / 2;
+      const h = 16;
+      pdf.setDrawColor(220, 220, 220);
+      pdf.setFillColor(248, 250, 252);
+      pdf.roundedRect(x, y, w, h, 1.5, 1.5, 'FD');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.text(title, x + 3, y + 5);
+      pdf.setFontSize(12);
+      pdf.text(value, x + 3, y + 12);
+    };
+
+    drawHeader();
+
+    drawSectionTitle('Resumo Executivo');
+    drawMetric(margin, 'Total de servicos', String(summary.totalServices || 0));
+    drawMetric(margin + ((pageWidth - margin * 2 - 6) / 2) + 6, 'Taxa de conclusao', `${Number(summary.completionRate || 0).toFixed(1)}%`);
+    y += 20;
+    drawMetric(margin, 'Pendentes', String(summary.pendingServices || 0));
+    drawMetric(margin + ((pageWidth - margin * 2 - 6) / 2) + 6, 'Concluidos', String(summary.completedServices || 0));
+    y += 22;
+
+    drawSectionTitle('Filtros Aplicados');
+    drawInfoLine('Periodo', `${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`);
+    drawInfoLine('Filial', branchFilter === 'all' ? 'Todas' : branchFilter);
+    drawInfoLine('Status', statusFilter === 'all' ? 'Todos' : statusFilter);
+    drawInfoLine('Registros', `${services.length} servicos`);
+
+    drawSectionTitle('Detalhamento de Servicos');
+    const colX = [margin, 30, 65, 115, 150, 178];
+    const colW = [20, 35, 50, 35, 28, 20];
+    const headers = ['Data', 'Maquina', 'Tecnico', 'Tipo', 'Status', 'Filial'];
+
+    const drawTableHeader = () => {
+      ensureSpace(8);
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, y - 4.5, pageWidth - margin * 2, 6, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      headers.forEach((header, i) => {
+        pdf.text(header, colX[i] + 1, y);
+      });
+      y += 4;
+      pdf.setDrawColor(235, 235, 235);
+      pdf.line(margin, y, pageWidth - margin, y);
+      y += 2;
+    };
+
+    drawTableHeader();
+
+    services.forEach((service, index) => {
+      const row = [
+        safeDateFormat(service.dataAgendamento),
+        cleanText(`${service.machineCodigo || '-'} ${service.machineModelo ? `- ${service.machineModelo}` : ''}`),
+        cleanText(service.tecnicoNome || '-'),
+        cleanText(service.tipoServico || '-'),
+        cleanText(service.status || '-'),
+        cleanText(service.machineFilial || '-')
+      ];
+
+      const wrapped = row.map((cell, i) => pdf.splitTextToSize(cell, colW[i] - 2));
+      const lineCount = Math.max(...wrapped.map((lines) => lines.length));
+      const rowHeight = Math.max(5, lineCount * 3.5 + 1.5);
+
+      if (y + rowHeight > pageHeight - 10) {
+        pdf.addPage();
+        drawHeader();
+        drawSectionTitle('Detalhamento de Servicos (continuacao)');
+        drawTableHeader();
+      }
+
+      if (index % 2 === 1) {
+        pdf.setFillColor(250, 250, 250);
+        pdf.rect(margin, y - 3.5, pageWidth - margin * 2, rowHeight, 'F');
+      }
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      wrapped.forEach((cellLines, i) => {
+        pdf.text(cellLines, colX[i] + 1, y);
+      });
+
+      y += rowHeight;
+      pdf.setDrawColor(235, 235, 235);
+      pdf.line(margin, y - 1, pageWidth - margin, y - 1);
+    });
 
     const pageCount = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       pdf.setPage(i);
       pdf.setFontSize(8);
-      pdf.text(`Página ${i} de ${pageCount}`, pageWidth - 30, pageHeight - 10);
+      pdf.text(`Pagina ${i} de ${pageCount}`, pageWidth - 35, pageHeight - 6);
     }
 
-    pdf.save(`${reportTitle.replace(/\s+/g, '_')}_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
+    pdf.save(`${cleanText(reportTitle).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMyyyy_HHmm')}.pdf`);
     return true;
   } catch (error: any) {
     console.error('[PDF] Erro ao gerar PDF:', error);
@@ -229,7 +358,7 @@ export default function ReportsPage() {
     setEndDate(end);
   }, [dateRange]);
 
-  // Efeito para buscar relatÃ³rios quando os filtros mudam
+  // Efeito para buscar relatórios quando os filtros mudam
   useEffect(() => {
     const loadReports = async () => {
       if (!startDate || !endDate) {        return;
@@ -243,8 +372,8 @@ export default function ReportsPage() {
           statusFilter
         });
       } catch (error: any) {
-        console.error('âŒ [REPORTS] Erro ao carregar relatÃ³rios:', error);
-        setLocalError(error.message || 'Erro ao carregar relatÃ³rios');
+        console.error('[ERRO] [REPORTS] Erro ao carregar relatórios:', error);
+        setLocalError(error.message || 'Erro ao carregar relatórios');
       }
     };
 
@@ -280,7 +409,7 @@ export default function ReportsPage() {
   const completionRate = summary.completionRate;
   const averageServicesPerDay = totalServices > 0 ? totalServices / 30 : 0;
 
-  // Dados para grÃ¡ficos
+  // Dados para gráficos
   const typeChartData = breakdown.byType;
   const statusChartData = breakdown.byStatus;
   const branchChartData = breakdown.byBranch;
@@ -289,27 +418,30 @@ export default function ReportsPage() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
   const handleGeneratePDF = async () => {
-    if (!reportRef.current) return;
-    
     setIsGeneratingPDF(true);
     try {
-      const startDateObj = new Date(startDate);
-      const endDateObj = new Date(endDate);
-      
-      const reportTitle = `RelatÃ³rio de ServiÃ§os - ${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`;
-      
-      await generatePDF(reportRef.current, reportTitle);
+      const reportTitle = `Relatorio de Servicos - ${safeDateFormat(startDate)} a ${safeDateFormat(endDate)}`;
+
+      await generatePDF(
+        reportTitle,
+        startDate,
+        endDate,
+        branchFilter,
+        statusFilter,
+        summary,
+        filteredServices
+      );
       
       toast({
-        title: "RelatÃ³rio gerado!",
+        title: "Relatório gerado!",
         description: "O PDF foi baixado com sucesso.",
         variant: "default",
       });
     } catch (error: any) {
       console.error('Erro ao gerar PDF:', error);
       toast({
-        title: "Erro ao gerar relatÃ³rio",
-        description: error.message || "NÃ£o foi possÃ­vel gerar o PDF. Tente novamente.",
+        title: "Erro ao gerar relatório",
+        description: error.message || "Não foi possível gerar o PDF. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -327,25 +459,25 @@ export default function ReportsPage() {
         statusFilter
       });
       toast({
-        title: "RelatÃ³rio atualizado!",
+        title: "Relatório atualizado!",
         description: "Os dados foram atualizados com sucesso.",
         variant: "default",
       });
     } catch (error: any) {
-      console.error('Erro ao atualizar relatÃ³rio:', error);
+      console.error('Erro ao atualizar relatório:', error);
       toast({
         title: "Erro ao atualizar",
-        description: "NÃ£o foi possÃ­vel atualizar o relatÃ³rio.",
+        description: "Não foi possível atualizar o relatório.",
         variant: "destructive",
       });
     }
   };
 
   const formatCurrentDate = (date: Date) => {
-    return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data invÃ¡lida';
+    return isValid(date) ? format(date, "dd/MM/yyyy", { locale: ptBR }) : 'Data inválida';
   };
 
-  // ServiÃ§os filtrados para a tabela
+  // Serviços filtrados para a tabela
   const displayedServices = filteredServices
     .filter(service => {
       if (searchTerm) {
@@ -368,8 +500,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">RelatÃ³rios</h1>
-          <p className="text-muted-foreground">Gere relatÃ³rios detalhados de serviÃ§os e manutenÃ§Ãµes</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Relatórios</h1>
+          <p className="text-muted-foreground">Gere relatórios detalhados de serviços e manutenções</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2">
@@ -410,7 +542,7 @@ export default function ReportsPage() {
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <div>
-                <p className="font-medium text-destructive">Erro ao carregar relatÃ³rios</p>
+                <p className="font-medium text-destructive">Erro ao carregar relatórios</p>
                 <p className="text-sm text-destructive/80">{error}</p>
                 <Button 
                   variant="outline" 
@@ -431,7 +563,7 @@ export default function ReportsPage() {
         <Card>
           <CardContent className="pt-6 flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary mr-3" />
-            <p>Carregando relatÃ³rios...</p>
+            <p>Carregando relatórios...</p>
           </CardContent>
         </Card>
       )}
@@ -440,24 +572,24 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtros do RelatÃ³rio
+            Filtros do Relatório
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="dateRange">PerÃ­odo</Label>
+              <Label htmlFor="dateRange">Período</Label>
               <Select value={dateRange} onValueChange={setDateRange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o perÃ­odo" />
+                  <SelectValue placeholder="Selecione o período" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="last7days">Ãšltimos 7 dias</SelectItem>
-                  <SelectItem value="last30days">Ãšltimos 30 dias</SelectItem>
-                  <SelectItem value="last90days">Ãšltimos 90 dias</SelectItem>
-                  <SelectItem value="thismonth">Este mÃªs</SelectItem>
-                  <SelectItem value="lastmonth">MÃªs anterior</SelectItem>
+                  <SelectItem value="last7days">Últimos 7 dias</SelectItem>
+                  <SelectItem value="last30days">Últimos 30 dias</SelectItem>
+                  <SelectItem value="last90days">Últimos 90 dias</SelectItem>
+                  <SelectItem value="thismonth">Este mês</SelectItem>
+                  <SelectItem value="lastmonth">Mês anterior</SelectItem>
                   <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
@@ -509,7 +641,7 @@ export default function ReportsPage() {
                   <SelectItem value="all">Todos os status</SelectItem>
                   <SelectItem value="AGENDADO">Agendado</SelectItem>
                   <SelectItem value="EM_ANDAMENTO">Em Andamento</SelectItem>
-                  <SelectItem value="CONCLUIDO">ConcluÃ­do</SelectItem>
+                  <SelectItem value="CONCLUIDO">Concluído</SelectItem>
                   <SelectItem value="CANCELADO">Cancelado</SelectItem>
                   <SelectItem value="PENDENTE">Pendente</SelectItem>
                 </SelectContent>
@@ -523,7 +655,7 @@ export default function ReportsPage() {
               Buscar
             </Label>
             <Input
-              placeholder="Buscar por tÃ©cnico, mÃ¡quina ou descriÃ§Ã£o..."
+              placeholder="Buscar por técnico, máquina ou descrição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -543,7 +675,7 @@ export default function ReportsPage() {
               )}
             </div>
             <Badge variant="outline">
-              {filteredServices.length} {filteredServices.length === 1 ? 'serviÃ§o' : 'serviÃ§os'} encontrados
+              {filteredServices.length} {filteredServices.length === 1 ? 'serviço' : 'serviços'} encontrados
             </Badge>
           </div>
         </CardContent>
@@ -552,14 +684,14 @@ export default function ReportsPage() {
       <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-lg border simple-pdf">
         <div className="pdf-header hidden print:block">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-black">Neuropsicocentro - RelatÃ³rio de ServiÃ§os</h1>
-            <p className="text-gray-600">Sistema de GestÃ£o de Ar Condicionado</p>
+            <h1 className="text-2xl font-bold text-black">Neuropsicocentro - Relatório de Serviços</h1>
+            <p className="text-gray-600">Sistema de Gestão de Ar Condicionado</p>
             <div className="mt-2 text-sm text-gray-700">
-              PerÃ­odo: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
-              {branchFilter !== 'all' && ` â€¢ Filial: ${branchFilter}`}
+              Período: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
+              {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              Gerado em: {format(new Date(), "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR })}
+              Gerado em: {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </div>
           </div>
           <Separator className="mb-4" />
@@ -570,52 +702,52 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Total de ServiÃ§os</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Total de Serviços</CardTitle>
                   <Activity className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{totalServices}</div>
                   <p className="text-xs text-gray-600">
-                    no perÃ­odo selecionado
+                    no período selecionado
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">Taxa de ConclusÃ£o</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Taxa de Conclusão</CardTitle>
                   <CheckCircle className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{completionRate.toFixed(1)}%</div>
                   <p className="text-xs text-gray-600">
-                    {completedServices} de {totalServices} serviÃ§os concluÃ­dos
+                    {completedServices} de {totalServices} serviços concluídos
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">ServiÃ§os Pendentes</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Serviços Pendentes</CardTitle>
                   <Clock className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{pendingServices}</div>
                   <p className="text-xs text-gray-600">
-                    aguardando execuÃ§Ã£o
+                    aguardando execução
                   </p>
                 </CardContent>
               </Card>
 
               <Card className="border border-gray-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-black">MÃ©dia DiÃ¡ria</CardTitle>
+                  <CardTitle className="text-sm font-medium text-black">Média Diária</CardTitle>
                   <TrendingUp className="h-4 w-4 text-gray-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-black">{averageServicesPerDay.toFixed(1)}</div>
                   <p className="text-xs text-gray-600">
-                    serviÃ§os por dia
+                    serviços por dia
                   </p>
                 </CardContent>
               </Card>
@@ -627,7 +759,7 @@ export default function ReportsPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-black">
                       <BarChart3 className="h-5 w-5" />
-                      ServiÃ§os por Tipo
+                      Serviços por Tipo
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -666,7 +798,7 @@ export default function ReportsPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-black">
                         <PieChartIcon className="h-5 w-5" />
-                        DistribuiÃ§Ã£o por Status
+                        Distribuição por Status
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -709,10 +841,10 @@ export default function ReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-black">
                   <FileText className="h-5 w-5" />
-                  Detalhamento dos ServiÃ§os
+                  Detalhamento dos Serviços
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  Lista completa de serviÃ§os no perÃ­odo selecionado
+                  Lista completa de serviços no período selecionado
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -721,10 +853,10 @@ export default function ReportsPage() {
                     <TableHeader>
                       <TableRow className="bg-gray-100">
                         <TableHead className="text-black font-medium">Data</TableHead>
-                        <TableHead className="text-black font-medium">MÃ¡quina</TableHead>
-                        <TableHead className="text-black font-medium">TÃ©cnico</TableHead>
+                        <TableHead className="text-black font-medium">Máquina</TableHead>
+                        <TableHead className="text-black font-medium">Técnico</TableHead>
                         <TableHead className="text-black font-medium">Tipo</TableHead>
-                        <TableHead className="text-black font-medium">DescriÃ§Ã£o</TableHead>
+                        <TableHead className="text-black font-medium">Descrição</TableHead>
                         <TableHead className="text-black font-medium">Status</TableHead>
                         <TableHead className="text-black font-medium">Filial</TableHead>
                       </TableRow>
@@ -733,7 +865,7 @@ export default function ReportsPage() {
                       {displayedServices.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center py-8 text-gray-600">
-                            Nenhum serviÃ§o encontrado com os filtros aplicados
+                            Nenhum serviço encontrado com os filtros aplicados
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -757,7 +889,7 @@ export default function ReportsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="max-w-xs truncate text-black">
-                                {service.descricaoServico || 'Sem descriÃ§Ã£o'}
+                                {service.descricaoServico || 'Sem descrição'}
                               </TableCell>
                               <TableCell>
                                 <Badge 
@@ -780,7 +912,7 @@ export default function ReportsPage() {
                 </div>
                 {filteredServices.length > 50 && (
                   <div className="mt-4 text-center text-sm text-gray-600">
-                    Mostrando 50 de {filteredServices.length} serviÃ§os. Exporte o PDF para ver todos.
+                    Mostrando 50 de {filteredServices.length} serviços. Exporte o PDF para ver todos.
                   </div>
                 )}
               </CardContent>
@@ -791,7 +923,7 @@ export default function ReportsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-black">
                     <Building className="h-5 w-5" />
-                    ServiÃ§os por Filial
+                    Serviços por Filial
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -804,7 +936,7 @@ export default function ReportsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-black">{name}</p>
-                            <p className="text-sm text-gray-600">{count} serviÃ§os</p>
+                            <p className="text-sm text-gray-600">{count} serviços</p>
                           </div>
                         </div>
                         <Badge variant="outline" className="border-gray-300 text-gray-700">
@@ -822,7 +954,7 @@ export default function ReportsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-black">
                     <Users className="h-5 w-5" />
-                    Top TÃ©cnicos
+                    Top Técnicos
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -839,7 +971,7 @@ export default function ReportsPage() {
                             </div>
                             <div>
                               <p className="font-medium text-black">{name}</p>
-                              <p className="text-sm text-gray-600">{count} serviÃ§os realizados</p>
+                              <p className="text-sm text-gray-600">{count} serviços realizados</p>
                             </div>
                           </div>
                           <div className="w-32">
@@ -864,17 +996,17 @@ export default function ReportsPage() {
           <Card className="border border-gray-300">
             <CardContent className="pt-6 flex flex-col items-center justify-center text-center">
               <FileText className="h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-lg font-medium text-black">Nenhum serviÃ§o encontrado</p>
+              <p className="text-lg font-medium text-black">Nenhum serviço encontrado</p>
               <p className="text-sm text-gray-600 mt-2">
-                NÃ£o hÃ¡ serviÃ§os no perÃ­odo selecionado com os filtros aplicados.
+                Não há serviços no período selecionado com os filtros aplicados.
               </p>
             </CardContent>
           </Card>
         )}
 
         <div className="pdf-footer hidden print:block mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600 text-center">
-          <p>RelatÃ³rio gerado automaticamente pelo Sistema de GestÃ£o de Ar Condicionado - Neuropsicocentro</p>
-          <p className="mt-1">Para mais informaÃ§Ãµes, entre em contato com a administraÃ§Ã£o</p>
+          <p>Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro</p>
+          <p className="mt-1">Para mais informações, entre em contato com a administração</p>
         </div>
       </div>
 
@@ -886,8 +1018,8 @@ export default function ReportsPage() {
               <div>
                 <p className="font-medium text-black">Dica: Exporte para PDF</p>
                 <p className="text-sm text-gray-600">
-                  Clique em "Exportar PDF" para baixar um relatÃ³rio completo com todos os dados e grÃ¡ficos.
-                  O PDF serÃ¡ gerado com qualidade para impressÃ£o e incluirÃ¡ todas as informaÃ§Ãµes visÃ­veis.
+                  Clique em "Exportar PDF" para baixar um relatório completo com todos os dados e gráficos.
+                  O PDF será gerado com qualidade para impressão e incluirá todas as informações visíveis.
                 </p>
               </div>
             </div>
@@ -897,4 +1029,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
 

@@ -30,20 +30,20 @@ import { cn } from '@/lib/utils';
 
 const serviceSchema = z.object({
   tipoServico: z.string(),
-  maquinaId: z.string().min(1, "MÃ¡quina Ã© obrigatÃ³ria"),
-  dataAgendamento: z.string().min(1, "Data Ã© obrigatÃ³ria"),
+  maquinaId: z.string().min(1, "Máquina é obrigatÃ³ria"),
+  dataAgendamento: z.string().min(1, "Data é obrigatÃ³ria"),
   horaAgendamento: z.string(),
-  tecnicoId: z.string().min(1, "TÃ©cnico Ã© obrigatÃ³rio"),
-  descricaoServico: z.string().min(1, "DescriÃ§Ã£o Ã© obrigatÃ³ria"),
+  tecnicoId: z.string().min(1, "Técnico é obrigatÃ³rio"),
+  descricaoServico: z.string().min(1, "Descrição é obrigatÃ³ria"),
   descricaoProblema: z.string().optional(),
   prioridade: z.string(),
   status: z.string(),
   observacoes: z.string().optional(),
 });
 
-// FunÃ§Ã£o auxiliar para formatar data com seguranÃ§a - VERSÃƒO CORRIGIDA E ROBUSTA
+// Função auxiliar para formatar data com segurança - VERSÃO CORRIGIDA E ROBUSTA
 const formatServiceDate = (dateString: string): string => {  
-  if (!dateString || dateString.trim() === '' || dateString === 'Invalid Date' || dateString.includes('Invalid Date')) {    return 'Data nÃ£o informada';
+  if (!dateString || dateString.trim() === '' || dateString === 'Invalid Date' || dateString.includes('Invalid Date')) {    return 'Data não informada';
   }
   
   try {
@@ -52,16 +52,16 @@ const formatServiceDate = (dateString: string): string => {
       if (isValid(dateString)) {
         return format(dateString, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
       }
-      return 'Data invÃ¡lida';
+      return 'Data inválida';
     }
     
     // Se for string
     if (typeof dateString === 'string') {
       const cleanString = dateString.trim().replace(/["']/g, '');
       
-      // Verificar se Ã© string vazia ou "Invalid Date"
+      // Verificar se é string vazia ou "Invalid Date"
       if (cleanString === '' || cleanString.toLowerCase().includes('invalid date')) {
-        return 'Data nÃ£o informada';
+        return 'Data não informada';
       }
       
       // Tentar parsear como ISO
@@ -83,19 +83,19 @@ const formatServiceDate = (dateString: string): string => {
           if (isValid(brDate)) {
             return format(brDate, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
           }
-        }        return 'Data nÃ£o informada';
+        }        return 'Data não informada';
       }
       
-      // Se chegou aqui, a data Ã© vÃ¡lida
+      // Se chegou aqui, a data é válida
       return format(date, "dd/MM/yyyy 'Ã s' HH:mm", { locale: ptBR });
-    }    return 'Data invÃ¡lida';
+    }    return 'Data inválida';
   } catch (error) {
-    console.error('âŒ Erro crÃ­tico ao formatar data:', error, 'String original:', dateString);
-    return 'Data nÃ£o informada';
+    console.error('[ERRO] Erro crÃ­tico ao formatar data:', error, 'String original:', dateString);
+    return 'Data não informada';
   }
 };
 
-// FunÃ§Ã£o auxiliar para extrair data e hora do formato ISO - VERSÃƒO CORRIGIDA
+// Função auxiliar para extrair data e hora do formato ISO - VERSÃO CORRIGIDA
 const extractDateTimeFromISO = (isoString: string) => {  
   if (!isoString || isoString.trim() === '' || isoString.includes('Invalid Date')) {    return { date: '', time: '08:00' };
   }
@@ -116,7 +116,7 @@ const extractDateTimeFromISO = (isoString: string) => {
       time: `${hours}:${minutes}`
     };    return result;
   } catch (error) {
-    console.error('âŒ Erro ao extrair data/hora do ISO:', error);
+    console.error('[ERRO] Erro ao extrair data/hora do ISO:', error);
     return { date: '', time: '08:00' };
   }
 };
@@ -177,7 +177,7 @@ export default function ServicesPage() {
     
     // Criar string ISO no formato correto
     const isoString = `${dateOnly}T${timeOnly}:00.000Z`;    
-    // Verificar se a data Ã© vÃ¡lida
+    // Verificar se a data é válida
     const testDate = new Date(isoString);
     if (isNaN(testDate.getTime())) {
       console.error('Data invalida:', isoString);
@@ -212,7 +212,7 @@ export default function ServicesPage() {
   const handleEdit = (service: Service) => {    
     setEditingService(service);
     
-    // Extrair data e hora usando a funÃ§Ã£o auxiliar
+    // Extrair data e hora usando a função auxiliar
     const { date, time } = extractDateTimeFromISO(service.dataAgendamento);    
     form.reset({
       tipoServico: service.tipoServico || 'PREVENTIVA',
@@ -273,34 +273,34 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">ServiÃ§os</h1>
-          <p className="text-muted-foreground">Gerencie ordens de serviÃ§o, manutenÃ§Ãµes e instalaÃ§Ãµes.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Serviços</h1>
+          <p className="text-muted-foreground">Gerencie ordens de serviço, manutenções e instalações.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleAddNew} className="gap-2 shadow-md">
-              <Plus className="h-4 w-4" /> Novo ServiÃ§o
+              <Plus className="h-4 w-4" /> Novo Serviço
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingService ? 'Editar ServiÃ§o' : 'Agendar Novo ServiÃ§o'}</DialogTitle>
+              <DialogTitle>{editingService ? 'Editar Serviço' : 'Agendar Novo Serviço'}</DialogTitle>
               <DialogDescription>
-                Detalhes da ordem de serviÃ§o.
+                Detalhes da ordem de serviço.
               </DialogDescription>
             </DialogHeader>
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo de seleÃ§Ã£o de mÃ¡quina */}
+                  {/* Campo de seleção de mÃ¡quina */}
                   <FormField
                     control={form.control}
                     name="maquinaId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>MÃ¡quina</FormLabel>
+                        <FormLabel>Máquina</FormLabel>
                         <div className="space-y-2">
                           <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -343,7 +343,7 @@ export default function ServicesPage() {
                                       <div>
                                         <div className="font-medium">{m.codigo}</div>
                                         <div className="text-sm text-muted-foreground">
-                                          {m.modelo} â€¢ {m.marca} â€¢ {m.filial}
+                                          {m.modelo} • {m.marca} • {m.filial}
                                         </div>
                                       </div>
                                       {field.value === m.id && (
@@ -358,7 +358,7 @@ export default function ServicesPage() {
                           
                           {field.value && (
                             <div className="text-sm text-muted-foreground">
-                              MÃ¡quina selecionada: <span className="font-medium">
+                              Máquina selecionada: <span className="font-medium">
                                 {machines.find(m => m.id === field.value)?.codigo}
                               </span>
                             </div>
@@ -374,7 +374,7 @@ export default function ServicesPage() {
                     name="tipoServico"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tipo de ServiÃ§o</FormLabel>
+                        <FormLabel>Tipo de Serviço</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -384,7 +384,7 @@ export default function ServicesPage() {
                           <SelectContent>
                             <SelectItem value="PREVENTIVA">Preventiva</SelectItem>
                             <SelectItem value="CORRETIVA">Corretiva</SelectItem>
-                            <SelectItem value="INSTALACAO">InstalaÃ§Ã£o</SelectItem>
+                            <SelectItem value="INSTALACAO">Instalação</SelectItem>
                             <SelectItem value="LIMPEZA">Limpeza</SelectItem>
                             <SelectItem value="VISTORIA">Vistoria</SelectItem>
                           </SelectContent>
@@ -407,7 +407,7 @@ export default function ServicesPage() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="BAIXA">Baixa</SelectItem>
-                            <SelectItem value="MEDIA">MÃ©dia</SelectItem>
+                            <SelectItem value="MEDIA">Média</SelectItem>
                             <SelectItem value="ALTA">Alta</SelectItem>
                             <SelectItem value="URGENTE">Urgente</SelectItem>
                           </SelectContent>
@@ -453,11 +453,11 @@ export default function ServicesPage() {
                     name="tecnicoId"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>TÃ©cnico ResponsÃ¡vel</FormLabel>
+                        <FormLabel>Técnico ResponsÃ¡vel</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tÃ©cnico" />
+                              <SelectValue placeholder="Selecione o técnico" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="max-h-60 overflow-y-auto">
@@ -478,7 +478,7 @@ export default function ServicesPage() {
                     name="descricaoServico"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>DescriÃ§Ã£o do ServiÃ§o</FormLabel>
+                        <FormLabel>Descrição do Serviço</FormLabel>
                         <FormControl>
                           <Textarea placeholder="O que serÃ¡ feito..." {...field} />
                         </FormControl>
@@ -493,7 +493,7 @@ export default function ServicesPage() {
                       name="descricaoProblema"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel>DescriÃ§Ã£o do Problema (Defeito)</FormLabel>
+                          <FormLabel>Descrição do Problema (Defeito)</FormLabel>
                           <FormControl>
                             <Textarea placeholder="O que estÃ¡ acontecendo..." className="bg-red-50 dark:bg-red-900/10" {...field} />
                           </FormControl>
@@ -530,7 +530,7 @@ export default function ServicesPage() {
                 </div>
                 <DialogFooter>
                   <Button type="submit" className="w-full md:w-auto">
-                    {editingService ? 'Salvar AlteraÃ§Ãµes' : 'Agendar ServiÃ§o'}
+                    {editingService ? 'Salvar Alterações' : 'Agendar Serviço'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -543,7 +543,7 @@ export default function ServicesPage() {
       <div className="flex items-center gap-2 bg-card p-2 rounded-md border shadow-sm">
         <Search className="w-4 h-4 text-muted-foreground ml-2" />
         <Input 
-          placeholder="Buscar por tÃ©cnico, serviÃ§o ou mÃ¡quina..." 
+          placeholder="Buscar por técnico, serviço ou mÃ¡quina..." 
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="border-0 focus-visible:ring-0 shadow-none"
@@ -554,13 +554,13 @@ export default function ServicesPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredServices.length === 0 ? (
           <div className="col-span-full text-center py-12 text-muted-foreground bg-card border rounded-lg border-dashed">
-            Nenhum serviÃ§o encontrado com os filtros atuais.
+            Nenhum serviço encontrado com os filtros atuais.
           </div>
         ) : (
           filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
             
-            // Usar a funÃ§Ã£o formatServiceDate para mostrar a data REAL do serviÃ§o
+            // Usar a função formatServiceDate para mostrar a data real do serviço
             const dataFormatada = formatServiceDate(service.dataAgendamento);
             
             // Log detalhado para debug            
@@ -639,4 +639,5 @@ export default function ServicesPage() {
     </div>
   );
 }
+
 
