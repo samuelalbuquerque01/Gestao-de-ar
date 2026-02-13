@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, PenTool, X } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Clock, User, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -584,9 +584,10 @@ export default function ServicesPage() {
               <div 
                 key={service.id} 
                 className={cn(
-                  "flex flex-col p-5 rounded-xl border bg-card shadow-sm transition-all hover:shadow-md group relative overflow-hidden",
+                  "flex flex-col p-5 rounded-xl border bg-card shadow-sm transition-all hover:shadow-md group relative overflow-hidden cursor-pointer",
                   service.status === 'CONCLUIDO' && "opacity-75 hover:opacity-100"
                 )}
+                onClick={() => handleEdit(service)}
               >
                 {/* Priority Stripe */}
                 <div className={cn(
@@ -608,9 +609,6 @@ export default function ServicesPage() {
                     </div>
                     <h3 className="font-semibold text-lg leading-tight">{service.descricaoServico}</h3>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => handleEdit(service)}>
-                    <PenTool className="h-4 w-4" />
-                  </Button>
                 </div>
 
                 <div className="space-y-2 pl-2 flex-1">
