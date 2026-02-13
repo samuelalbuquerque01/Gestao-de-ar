@@ -116,8 +116,6 @@ const extractDateTimeFromISO = (isoString: string) => {
 export default function ServicesPage() {
   const { services, machines, technicians, createService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [machineSearch, setMachineSearch] = useState('');
@@ -147,35 +145,6 @@ export default function ServicesPage() {
       (machine && machine.codigo.toLowerCase().includes(searchStr))
     );
   });
-
-  const totalItems = filteredServices.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedServices = filteredServices.slice(startIndex, endIndex);
-  const displayStart = totalItems === 0 ? 0 : startIndex + 1;
-  const displayEnd = totalItems === 0 ? 0 : Math.min(endIndex, totalItems);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
-
-  useEffect(() => {
-    if (totalPages === 0) {
-      if (currentPage !== 1) {
-        setCurrentPage(1);
-      }
-      return;
-    }
-
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -575,7 +544,7 @@ export default function ServicesPage() {
             Nenhum serviço encontrado com os filtros atuais.
           </div>
         ) : (
-          paginatedServices.map((service) => {
+          filteredServices.map((service) => {
             const machine = machines.find(m => m.id === service.maquinaId);
             
             const dataFormatada = formatServiceDate(service.dataAgendamento);
@@ -652,65 +621,9 @@ export default function ServicesPage() {
           })
         )}
       </div>
-
-      <div className="flex flex-col gap-3 rounded-md border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          Mostrando {displayStart}-{displayEnd} de {totalItems} serviços
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Itens por página</span>
-            <Select value={String(itemsPerPage)} onValueChange={(value) => setItemsPerPage(Number(value))}>
-              <SelectTrigger className="w-[90px]">
-                <SelectValue placeholder="10" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Anterior
-            </Button>
-
-            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-              <Button
-                key={page}
-                type="button"
-                variant={page === currentPage ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-              disabled={totalPages === 0 || currentPage === totalPages}
-            >
-              Próximo
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
+
 
 

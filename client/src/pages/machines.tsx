@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Filter, Edit2, Trash2, MapPin, Power, Building2, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, MapPin, Building2, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -54,16 +54,41 @@ const machineSchema = z.object({
 export default function MachinesPage() {
   const { machines, isLoadingMachines, isLoadingMachinesInitial, createMachine, updateMachine, deleteMachine } = useData();
   const [filter, setFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const filteredMachines = machines.filter(m => 
-    m.codigo.toLowerCase().includes(filter.toLowerCase()) ||
-    m.localizacaoDescricao.toLowerCase().includes(filter.toLowerCase()) ||
-    m.filial.toLowerCase().includes(filter.toLowerCase()) ||
-    m.marca.toLowerCase().includes(filter.toLowerCase())
-  );
+  const machinesWithBranch = machines.map((machine) => {
+    const branchName = machine.branchName || machine.filial || 'Sem filial';
+    const branchId = machine.branchId || branchName.toLowerCase().trim().replace(/\s+/g, '-');
+    return {
+      ...machine,
+      branchId,
+      branchName,
+    };
+  });
+
+  const branches = Array.from(
+    new Map(
+      machinesWithBranch
+        .filter((machine) => machine.branchId && machine.branchName)
+        .map((machine) => [machine.branchId, machine.branchName])
+    ).entries()
+  ).map(([id, name]) => ({ id, name }));
+
+  const filteredMachines = machinesWithBranch.filter((machine) => {
+    const matchesBranch = branchFilter === 'all' || machine.branchId === branchFilter;
+    const searchTerm = filter.toLowerCase();
+    const matchesSearch =
+      machine.codigo.toLowerCase().includes(searchTerm) ||
+      machine.localizacaoDescricao.toLowerCase().includes(searchTerm) ||
+      machine.branchName.toLowerCase().includes(searchTerm) ||
+      machine.marca.toLowerCase().includes(searchTerm) ||
+      machine.modelo.toLowerCase().includes(searchTerm);
+
+    return matchesBranch && matchesSearch;
+  });
 
   const form = useForm<z.infer<typeof machineSchema>>({
     resolver: zodResolver(machineSchema),
@@ -459,15 +484,31 @@ export default function MachinesPage() {
           onChange={(e) => setFilter(e.target.value)}
           className="border-0 focus-visible:ring-0 shadow-none"
         />
-        <Button variant="ghost" size="icon">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-        </Button>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filial" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas</SelectItem>
+            {branches.map((branch) => (
+              <SelectItem key={branch.id} value={branch.id}>
+                {branch.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      <p className="text-sm text-muted-foreground">Exibindo {filteredMachines.length} máquinas</p>
 
       {filteredMachines.length === 0 ? (
         <div className="text-center py-12 border rounded-lg bg-card">
           <p className="text-muted-foreground">
-            {filter ? 'Nenhuma máquina encontrada com esse filtro.' : 'Nenhuma máquina cadastrada.'}
+            {branchFilter !== 'all'
+              ? 'Nenhuma máquina cadastrada nesta filial'
+              : filter
+                ? 'Nenhuma máquina encontrada com esse filtro.'
+                : 'Nenhuma máquina cadastrada.'}
           </p>
         </div>
       ) : (
@@ -510,7 +551,7 @@ export default function MachinesPage() {
                    <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-1">
                        <Building2 className="w-3 h-3 text-muted-foreground" />
-                       {machine.filial}
+                       {machine.branchName}
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
@@ -559,3 +600,5 @@ export default function MachinesPage() {
     </div>
   );
 }
+
+
