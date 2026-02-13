@@ -86,8 +86,11 @@ export default function Dashboard() {
       .trim()
       .toUpperCase();
 
-  // Padrão adotado: máquina em manutenção quando status = MANUTENCAO.
-  const isMachineInMaintenance = (machine: any) => normalizeMachineStatus(machine.status) === 'MANUTENCAO';
+  // Padrï¿½o adotado: mï¿½quina em manutenï¿½ï¿½o quando status = MANUTENCAO.
+  const isMachineNeedingMaintenance = (machine: any) => {
+    const status = normalizeMachineStatus(machine.status);
+    return status === 'MANUTENCAO' || status === 'DEFEITO';
+  };
 
   const getMaintenanceStartDate = (machine: any) => {
     return (
@@ -99,7 +102,7 @@ export default function Dashboard() {
   };
 
   const activeMachines = machines.filter((m) => normalizeMachineStatus(m.status) === 'ATIVO').length;
-  const machinesInMaintenance = machines.filter(isMachineInMaintenance);
+  const machinesInMaintenance = machines.filter(isMachineNeedingMaintenance);
   const maintenanceMachines = machinesInMaintenance.length;
 
   const pendingServices = services.filter((s) => s.status === 'AGENDADO' || s.status === 'PENDENTE').length;
@@ -161,8 +164,8 @@ export default function Dashboard() {
             <div className="text-2xl font-bold">{maintenanceMachines}</div>
             <p className="text-xs text-muted-foreground">
               {maintenanceMachines > 0
-                ? `${maintenanceMachines} em manuten\u00e7\u00e3o`
-                : 'Nenhuma m\u00e1quina em manuten\u00e7\u00e3o'}
+                ? `${maintenanceMachines} em manuten\u00e7\u00e3o/defeito`
+                : 'Nenhuma m\u00e1quina em manuten\u00e7\u00e3o/defeito'}
             </p>
           </CardContent>
         </Card>
@@ -291,17 +294,17 @@ export default function Dashboard() {
       <Dialog open={isMaintenanceDialogOpen} onOpenChange={setIsMaintenanceDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Maquinas em manutencao</DialogTitle>
+            <DialogTitle>Maquinas em manutencao ou com defeito</DialogTitle>
             <DialogDescription>
               {maintenanceMachines > 0
-                ? `${maintenanceMachines} maquina(s) em manutencao no momento`
-                : 'Nenhuma maquina em manutencao no momento'}
+                ? `${maintenanceMachines} maquina(s) em manutencao/defeito no momento`
+                : 'Nenhuma maquina em manutencao/defeito no momento'}
             </DialogDescription>
           </DialogHeader>
 
           {machinesInMaintenance.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground border rounded-md">
-              Nenhuma maquina em manutencao no momento
+              Nenhuma maquina em manutencao/defeito no momento
             </div>
           ) : (
             <div className="space-y-3">
