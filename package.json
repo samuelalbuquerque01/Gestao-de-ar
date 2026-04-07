@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "build": "cd client && npm install && npm run build",
+    "vercel-build": "cd client && npm install && npm run build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",

@@ -1,17 +1,22 @@
-﻿import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import * as schema from '@shared/schema';
+import * as schema from '../shared/schema';
 import dotenv from 'dotenv';
 
-// Carregue o .env aqui tamb?m para garantir
+// Carregue o .env aqui tambem para garantir
 dotenv.config();
 
-// Use a DATABASE_URL do .env ou um valor padr?o
-const connectionString = process.env.DATABASE_URL || 
+// Use a DATABASE_URL do .env ou um valor padrao
+const connectionString = process.env.DATABASE_URL ||
   'postgresql://postgres:1234@localhost:5432/neuropsicocentro_db';
+
+const isProduction = process.env.NODE_ENV === 'production';
+const forceSsl = process.env.DATABASE_SSL === 'true';
+const disableSsl = process.env.DATABASE_SSL === 'false';
+
 const pool = new Pool({
   connectionString,
-  ssl: false,
+  ssl: disableSsl ? false : (forceSsl || isProduction ? { rejectUnauthorized: false } : false),
   connectionTimeoutMillis: 10000,
 });
 
@@ -39,4 +44,3 @@ pool.on('error', (err) => {
 })();
 
 export const db = drizzle(pool, { schema });
-
