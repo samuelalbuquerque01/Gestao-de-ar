@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export default function LoginPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Neuropsicocentro</CardTitle>
-          <CardDescription>Sistema de Gestao de Ar Condicionado</CardDescription>
+          <CardDescription>Sistema de Gestao de servicos de ar condicionado</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -118,4 +118,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
 

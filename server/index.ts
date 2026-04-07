@@ -183,7 +183,7 @@ function configureFrontendFallback() {
     } else {
       app.get('/', (_req, res) => {
         res.json({
-          message: 'API Gestao de Ar Condicionado',
+          message: 'API Gestao de servicos de ar condicionado',
           warning: 'Frontend nao encontrado - verifique se o build foi feito corretamente',
           api_endpoints: '/api/observacao',
           health_check: '/health',
@@ -321,7 +321,7 @@ export async function bootstrapServer(options?: { startListening?: boolean }) {
         res.json({
           status: 'healthy',
           timestamp: new Date().toISOString(),
-          service: 'Gestao de Ar Condicionado',
+          service: 'Gestao de servicos de ar condicionado',
           environment: process.env.NODE_ENV,
         });
       });
@@ -350,3 +350,4 @@ if (!isServerlessRuntime) {
 
 export { app };
 export default app;
+

@@ -12,10 +12,10 @@ interface LayoutProps {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { label: 'Máquinas', path: '/maquinas', icon: Fan },
-  { label: 'Serviços', path: '/servicos', icon: Wrench },
-  { label: 'Técnicos', path: '/tecnicos', icon: Users },
-  { label: 'Relatórios', path: '/relatorios', icon: FileText },
+  { label: 'Maquinas', path: '/maquinas', icon: Fan },
+  { label: 'Servicos', path: '/servicos', icon: Wrench },
+  { label: 'Tecnicos', path: '/tecnicos', icon: Users },
+  { label: 'Relatorios', path: '/relatorios', icon: FileText },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -32,7 +32,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
           Neuropsicocentro
         </div>
-        <p className="text-xs text-muted-foreground mt-1">Gestão de Ar Condicionado</p>
+        <p className="text-xs text-muted-foreground mt-1">Gestao de servicos de ar condicionado</p>
       </div>
       
       <nav className="flex-1 p-4 space-y-1">
@@ -62,7 +62,7 @@ export function Layout({ children }: LayoutProps) {
             {user?.name?.substring(0, 2) || 'AD'}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">{user?.name || 'Usuário'}</p>
+            <p className="text-sm font-medium truncate">{user?.name || 'Usuario'}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email || 'email@exemplo.com'}</p>
           </div>
         </div>

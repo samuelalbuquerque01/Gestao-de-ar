@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -741,7 +741,7 @@ export default function ReportsPage() {
         <div className="pdf-header hidden print:block">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-black">Neuropsicocentro - Relatório de Serviços</h1>
-            <p className="text-gray-600">Sistema de Gestão de Ar Condicionado</p>
+            <p className="text-gray-600">Sistema de Gestao de servicos de ar condicionado</p>
             <div className="mt-2 text-sm text-gray-700">
               Período: {safeDateFormat(startDate)} a {safeDateFormat(endDate)}
               {branchFilter !== 'all' && ` • Filial: ${branchFilter}`}
@@ -1105,30 +1105,15 @@ export default function ReportsPage() {
         )}
 
         <div className="pdf-footer hidden print:block mt-8 pt-4 border-t border-gray-300 text-xs text-gray-600 text-center">
-          <p>Relatório gerado automaticamente pelo Sistema de Gestão de Ar Condicionado - Neuropsicocentro</p>
+          <p>Relatório gerado automaticamente pelo Sistema de Gestao de servicos de ar condicionado - Neuropsicocentro</p>
           <p className="mt-1">Para mais informações, entre em contato com a administração</p>
         </div>
       </div>
 
-      <div className="print:hidden">
-        <Card className="border-dashed border-gray-300">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <FileDown className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-medium text-black">Dica: Exporte para PDF</p>
-                <p className="text-sm text-gray-600">
-                  Clique em "Exportar PDF" para baixar um relatório completo com todos os dados e gráficos.
-                  O PDF será gerado com qualidade para impressão e incluirá todas as informações visíveis.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
+
 
 
 

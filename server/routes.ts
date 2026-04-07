@@ -730,7 +730,7 @@ export async function registerRoutes(
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'Gestao de Ar Condicionado API',
+      service: 'Gestao de servicos de ar condicionado API',
       version: '1.0.0'
     });
   });
@@ -1446,6 +1446,7 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   
   return recommendations;
 }
+
 
 
 
