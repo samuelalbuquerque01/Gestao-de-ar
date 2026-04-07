@@ -122,6 +122,14 @@ export default function ServicesPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [machineSearch, setMachineSearch] = useState('');
   const [filteredMachines, setFilteredMachines] = useState(machines);
+  const [dashboardSelectedServiceId, setDashboardSelectedServiceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const selectedServiceId = sessionStorage.getItem('dashboardSelectedServiceId');
+    if (selectedServiceId) {
+      setDashboardSelectedServiceId(selectedServiceId);
+    }
+  }, []);
 
   useEffect(() => {
     if (machineSearch.trim() === '') {
@@ -271,6 +279,22 @@ export default function ServicesPage() {
     setMachineSearch('');
     setIsDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (!dashboardSelectedServiceId) {
+      return;
+    }
+
+    const selectedService = services.find((service) => service.id === dashboardSelectedServiceId);
+    if (!selectedService) {
+      return;
+    }
+
+    sessionStorage.removeItem('dashboardSelectedServiceId');
+    setDashboardSelectedServiceId(null);
+    setFilter('');
+    handleEdit(selectedService);
+  }, [dashboardSelectedServiceId, services]);
 
   const getPriorityColor = (priority: string) => {
     switch(priority) {

@@ -60,10 +60,16 @@ const safeDateCompare = (dateValue: any): number => {
   }
 };
 
+
 export default function Dashboard() {
   const { machines, services, isLoadingMachinesInitial } = useData();
   const [, navigate] = useLocation();
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
+
+  const handleOpenScheduledService = (serviceId: string) => {
+    sessionStorage.setItem('dashboardSelectedServiceId', serviceId);
+    navigate('/servicos');
+  };
 
   if (isLoadingMachinesInitial) {
     return (
@@ -124,6 +130,7 @@ export default function Dashboard() {
   ];
 
   const COLORS = ['hsl(221, 83%, 53%)', 'hsl(173, 58%, 39%)', 'hsl(197, 37%, 24%)', 'hsl(43, 74%, 66%)', 'hsl(27, 87%, 67%)', 'hsl(0, 0%, 40%)'];
+
 
   return (
     <div className="space-y-6">
@@ -254,7 +261,19 @@ export default function Dashboard() {
               .map((service) => {
                 const machine = machines.find((m) => m.id === service.maquinaId);
                 return (
-                  <div key={service.id} className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                  <div
+                    key={service.id}
+                    className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => handleOpenScheduledService(service.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleOpenScheduledService(service.id);
+                      }
+                    }}
+                  >
                     <div className="flex items-center gap-4">
                       <div className={`p-2 rounded-full ${
                         service.prioridade === 'URGENTE' ? 'bg-red-100 text-red-600' :
