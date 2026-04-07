@@ -116,6 +116,7 @@ const extractDateTimeFromISO = (isoString: string) => {
 export default function ServicesPage() {
   const { services, machines, technicians, createService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | ServiceStatus>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -149,11 +150,13 @@ export default function ServicesPage() {
   const filteredServices = services.filter(s => {
     const machine = machines.find(m => m.id === s.maquinaId);
     const searchStr = filter.toLowerCase();
-    return (
+    const matchesSearch = (
       s.tecnicoNome.toLowerCase().includes(searchStr) ||
       s.descricaoServico.toLowerCase().includes(searchStr) ||
       (machine && machine.codigo.toLowerCase().includes(searchStr))
     );
+    const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const totalItems = filteredServices.length;
@@ -166,7 +169,7 @@ export default function ServicesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter]);
+  }, [filter, statusFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -582,14 +585,33 @@ export default function ServicesPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex items-center gap-2 bg-card p-2 rounded-md border shadow-sm">
-        <Search className="w-4 h-4 text-muted-foreground ml-2" />
-        <Input 
-          placeholder="Buscar por técnico, serviço ou máquina..." 
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="border-0 focus-visible:ring-0 shadow-none"
-        />
+      <div className="flex flex-col gap-2 rounded-md border bg-card p-2 shadow-sm md:flex-row md:items-center">
+        <div className="flex items-center gap-2 flex-1">
+          <Search className="ml-2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por técnico, serviço ou máquina..." 
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="border-0 shadow-none focus-visible:ring-0"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 px-2 md:min-w-[220px]">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | ServiceStatus)}>
+            <SelectTrigger className="border-0 shadow-none focus:ring-0">
+              <SelectValue placeholder="Filtrar status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todos os status</SelectItem>
+              <SelectItem value="AGENDADO">Agendado</SelectItem>
+              <SelectItem value="EM_ANDAMENTO">Em andamento</SelectItem>
+              <SelectItem value="CONCLUIDO">Concluído</SelectItem>
+              <SelectItem value="CANCELADO">Cancelado</SelectItem>
+              <SelectItem value="PENDENTE">Pendente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Kanban-like List or Grid */}
