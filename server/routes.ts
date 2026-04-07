@@ -10,6 +10,29 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  const APP_TIMEZONE_OFFSET = '-03:00';
+
+  const normalizeTimePart = (value?: string): string => {
+    if (!value) return '08:00';
+    const trimmed = value.trim();
+    if (!trimmed) return '08:00';
+    const match = trimmed.match(/^(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : '08:00';
+  };
+
+  const buildScheduledDateISO = (dateInput: string, timeInput?: string): string => {
+    const datePart = dateInput.split('T')[0];
+    const embeddedTime = dateInput.includes('T') ? dateInput.split('T')[1]?.slice(0, 5) : undefined;
+    const timePart = normalizeTimePart(timeInput || embeddedTime);
+    const isoWithOffset = `${datePart}T${timePart}:00${APP_TIMEZONE_OFFSET}`;
+    const parsedDate = new Date(isoWithOffset);
+
+    if (isNaN(parsedDate.getTime())) {
+      throw new Error(`Data de agendamento invalida: ${dateInput} ${timePart}`);
+    }
+
+    return parsedDate.toISOString();
+  };
   
   const machineRequestSchema = z.object({
     codigo: z.string().min(1, "C?digo ? obrigat?rio"),
@@ -512,31 +535,17 @@ export async function registerRoutes(
     try {
       const validatedData = serviceRequestSchema.parse(req.body);
       let dataAgendamentoISO: string;
-      const horaAgendamento = validatedData.horaAgendamento || '08:00';
       
       try {
-        const dateFromISO = new Date(validatedData.dataAgendamento);
-        
-        if (!isNaN(dateFromISO.getTime())) {
-          const dateStr = validatedData.dataAgendamento.split('T')[0];
-          
-          const localDateTime = `${dateStr}T${horaAgendamento}:00`;
-          const combinedDate = new Date(localDateTime);
-          
-          if (!isNaN(combinedDate.getTime())) {
-            dataAgendamentoISO = combinedDate.toISOString();
-          } else {
-            throw new Error('Data combinada invalida');
-          }
-        } else {
-          dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
-        }
-        
+        dataAgendamentoISO = buildScheduledDateISO(
+          validatedData.dataAgendamento,
+          validatedData.horaAgendamento
+        );
       } catch (error) {
         console.error('[ERRO] [SERVICES] Erro ao processar data:', error);
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
-        dataAgendamentoISO = `${todayStr}T${horaAgendamento}:00.000Z`;
+        dataAgendamentoISO = buildScheduledDateISO(todayStr, validatedData.horaAgendamento);
       }
       const serviceData = {
         tipo_servico: validatedData.tipoServico,
@@ -592,27 +601,13 @@ export async function registerRoutes(
       };
       
       if (validatedData.dataAgendamento) {
-        const horaAgendamento = validatedData.horaAgendamento || '08:00';
         let dataAgendamentoISO: string;
         
         try {
-          const dateFromISO = new Date(validatedData.dataAgendamento);
-          
-          if (!isNaN(dateFromISO.getTime())) {
-            const dateStr = validatedData.dataAgendamento.split('T')[0];
-            
-            const localDateTime = `${dateStr}T${horaAgendamento}:00`;
-            const combinedDate = new Date(localDateTime);
-            
-            if (!isNaN(combinedDate.getTime())) {
-              dataAgendamentoISO = combinedDate.toISOString();
-            } else {
-              dataAgendamentoISO = validatedData.dataAgendamento;
-            }
-          } else {
-            dataAgendamentoISO = `${validatedData.dataAgendamento}T${horaAgendamento}:00.000Z`;
-          }
-          
+          dataAgendamentoISO = buildScheduledDateISO(
+            validatedData.dataAgendamento,
+            validatedData.horaAgendamento
+          );
           const finalDate = new Date(dataAgendamentoISO);
           if (!isNaN(finalDate.getTime())) {
             serviceData.data_agendamento = dataAgendamentoISO;
