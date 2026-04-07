@@ -4,8 +4,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "build": "npm --prefix client ci --include=dev --no-audit --prefer-offline --fetch-retries=5 && npm --prefix client run build",
-    "vercel-build": "npm --prefix client ci --include=dev --no-audit --prefer-offline --fetch-retries=5 && npm --prefix client run build",
+    "build": "npm --prefix client ci --include=dev --no-audit --prefer-offline --fetch-retries=5 && npm --prefix client rebuild esbuild && npm --prefix client run build",
+    "vercel-build": "npm --prefix client ci --include=dev --no-audit --prefer-offline --fetch-retries=5 && npm --prefix client rebuild esbuild && npm --prefix client run build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cross-env NODE_ENV=development tsx server/index.ts",
