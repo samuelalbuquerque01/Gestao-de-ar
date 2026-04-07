@@ -113,6 +113,12 @@ const extractDateTimeFromISO = (isoString: string) => {
   }
 };
 
+const buildServiceDatePayload = (dateOnly: string, timeOnly: string): string => {
+  if (!dateOnly) return '';
+  const safeTime = timeOnly && timeOnly.trim() ? timeOnly : '08:00';
+  return `${dateOnly}T${safeTime}:00`;
+};
+
 export default function ServicesPage() {
   const { services, machines, technicians, createService, updateService, deleteService } = useData();
   const [filter, setFilter] = useState('');
@@ -208,10 +214,11 @@ export default function ServicesPage() {
     const dateOnly = data.dataAgendamento; // YYYY-MM-DD
     const timeOnly = data.horaAgendamento; // HH:MM
     
-    const isoString = `${dateOnly}T${timeOnly}:00.000Z`;    
-    const testDate = new Date(isoString);
+    const scheduledDateTime = buildServiceDatePayload(dateOnly, timeOnly);
+    
+    const testDate = new Date(scheduledDateTime);
     if (isNaN(testDate.getTime())) {
-      console.error('Data invalida:', isoString);
+      console.error('Data invalida:', scheduledDateTime);
     }
 
     const selectedTech = technicians.find(t => t.id === data.tecnicoId);
@@ -219,7 +226,7 @@ export default function ServicesPage() {
     const formattedData = {
       tipoServico: data.tipoServico as ServiceType,
       maquinaId: data.maquinaId,
-      dataAgendamento: isoString, // Enviar string ISO
+      dataAgendamento: scheduledDateTime,
       horaAgendamento: data.horaAgendamento,
       tecnicoId: data.tecnicoId,
       tecnicoNome: selectedTech ? selectedTech.nome : 'Desconhecido',
