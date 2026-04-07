@@ -6,7 +6,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { initDatabase } from './init-db.js';
 import { updateDatabase } from './update-db.js';
-import { registerRoutes } from './routes';
+import { registerRoutes } from './routes.js';
 
 declare module 'http' {
   interface IncomingMessage {

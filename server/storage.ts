@@ -1,15 +1,14 @@
-﻿
 import { 
   type User, type InsertUser,
   type Technician, type InsertTechnician,
   type Machine, type InsertMachine,
   type Service, type InsertService,
   type ServiceHistory, type InsertServiceHistory
-} from "@shared/schema";
-import { db } from "./db";
+} from "../shared/schema.js";
+import { db } from "./db.js";
 import { 
   users, technicians, machines, services, serviceHistory 
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { eq, and, desc, sql, count, gte, lte, sum, avg } from "drizzle-orm";
 
 export interface IStorage {
@@ -1947,4 +1946,5 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
 

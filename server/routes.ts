@@ -1,7 +1,7 @@
-﻿import type { Express } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertUserSchema, insertMachineSchema, insertTechnicianSchema } from "@shared/schema";
+import { storage } from "./storage.js";
+import { insertUserSchema, insertMachineSchema, insertTechnicianSchema } from "../shared/schema.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -914,6 +914,7 @@ export async function registerRoutes(
             id: service.id,
             tipoServico: service.tipoServico,
             descricaoServico: service.descricaoServico,
+            descricaoProblema: service.descricaoProblema,
             dataAgendamento: service.dataAgendamento,
             dataConclusao: service.dataConclusao,
             tecnicoNome: service.tecnicoNome,
@@ -1450,5 +1451,6 @@ function generateCostRecommendations(services: any[], machines: any[]) {
   
   return recommendations;
 }
+
 
 
