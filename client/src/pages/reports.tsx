@@ -99,6 +99,24 @@ const safeDateTimeFormat = (dateString: any): string => {
   }
 };
 
+const normalizeProblemText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const toProblemLabel = (service: any): string => {
+  const raw = (service?.descricaoProblema || service?.descricaoServico || '').trim();
+  if (!raw) return 'Problema não informado';
+  const normalized = normalizeProblemText(raw);
+  if (!normalized) return 'Problema não informado';
+  return normalized.length > 80 ? `${normalized.slice(0, 80)}...` : normalized;
+};
+
 const generatePDF = async (
   reportTitle: string,
   startDate: string,
@@ -481,6 +499,55 @@ export default function ReportsPage() {
       return true;
     })
     .slice(0, 50);
+
+  const machineProblemInsights = filteredServices.reduce((acc, service) => {
+    const machine = machines.find(m => m.id === service.maquinaId);
+    const machineName = `${service.machineCodigo || 'Sem código'} - ${service.machineModelo || 'Desconhecida'}`;
+    const machineUnit = service.machineFilial || machine?.filial || 'Unidade não informada';
+    const machineKey = `${machineName}::${machineUnit}`;
+
+    if (!acc[machineKey]) {
+      acc[machineKey] = {
+        machineName,
+        machineUnit,
+        totalOccurrences: 0,
+        byProblem: {} as Record<string, number>,
+        lastOccurrence: ''
+      };
+    }
+
+    const problem = toProblemLabel(service);
+    acc[machineKey].totalOccurrences += 1;
+    acc[machineKey].byProblem[problem] = (acc[machineKey].byProblem[problem] || 0) + 1;
+
+    const serviceDate = service?.dataAgendamento || '';
+    if (!acc[machineKey].lastOccurrence || new Date(serviceDate) > new Date(acc[machineKey].lastOccurrence)) {
+      acc[machineKey].lastOccurrence = serviceDate;
+    }
+
+    return acc;
+  }, {} as Record<string, {
+    machineName: string;
+    machineUnit: string;
+    totalOccurrences: number;
+    byProblem: Record<string, number>;
+    lastOccurrence: string;
+  }>);
+
+  const recurringMachineProblems = Object.values(machineProblemInsights)
+    .map((item) => {
+      const topProblem = Object.entries(item.byProblem).sort((a, b) => b[1] - a[1])[0] || ['Problema não informado', 0];
+      return {
+        machineName: item.machineName,
+        machineUnit: item.machineUnit,
+        totalOccurrences: item.totalOccurrences,
+        recurringProblem: topProblem[0],
+        recurringCount: topProblem[1],
+        lastOccurrence: item.lastOccurrence,
+      };
+    })
+    .sort((a, b) => b.totalOccurrences - a.totalOccurrences)
+    .slice(0, 10);
 
   const isLoading = isLoadingReports;
   const error = reportError || localError;
@@ -974,6 +1041,50 @@ export default function ReportsPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {recurringMachineProblems.length > 0 && (
+              <Card className="border border-gray-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-black">
+                    <AlertTriangle className="h-5 w-5" />
+                    Top 10 Máquinas com Mais Defeitos
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Ranking das máquinas com mais ocorrências no período, com a unidade e o defeito mais recorrente de cada uma.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border border-gray-300">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gray-100">
+                          <TableHead className="w-16 text-black font-medium">Top</TableHead>
+                          <TableHead className="text-black font-medium">Máquina</TableHead>
+                          <TableHead className="text-black font-medium">Unidade</TableHead>
+                          <TableHead className="text-black font-medium">Defeitos</TableHead>
+                          <TableHead className="text-black font-medium">Defeito Mais Recorrente</TableHead>
+                          <TableHead className="text-black font-medium">Repetições</TableHead>
+                          <TableHead className="text-black font-medium">Última Ocorrência</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recurringMachineProblems.map((item, index) => (
+                          <TableRow key={`${item.machineName}-${item.machineUnit}`}>
+                            <TableCell className="font-medium text-black">#{index + 1}</TableCell>
+                            <TableCell className="font-medium text-black">{item.machineName}</TableCell>
+                            <TableCell className="text-black">{item.machineUnit}</TableCell>
+                            <TableCell className="text-black">{item.totalOccurrences}</TableCell>
+                            <TableCell className="text-black">{item.recurringProblem}</TableCell>
+                            <TableCell className="text-black">{item.recurringCount}</TableCell>
+                            <TableCell className="text-black">{safeDateFormat(item.lastOccurrence)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>
